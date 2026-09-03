@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>สถาบันสอนพิเศษบ้านครูอ้อย | ติวเตอร์อนุบาล–ป.6 คณิต ไทย อังกฤษ วิทย์ เชาวน์ปัญญา</title>
-<meta name="description" content="สถาบันสอนพิเศษบ้านครูอ้อย สอนเด็กระดับอนุบาลถึงประถมศึกษาปีที่ 6 วิชาคณิตศาสตร์ ภาษาไทย ภาษาอังกฤษ วิทยาศาสตร์ และเชาวน์ปัญญา กลุ่มเล็ก ดูแลใกล้ชิด บรรยากาศอบอุ่นเหมือนอยู่บ้าน">
-<meta name="keywords" content="เรียนพิเศษ, ติวเตอร์, บ้านครูอ้อย, อนุบาล, ประถม, คณิตศาสตร์, ภาษาไทย, ภาษาอังกฤษ, วิทยาศาสตร์, เชาวน์ปัญญา">
-<meta property="og:title" content="สถาบันสอนพิเศษบ้านครูอ้อย">
-<meta property="og:description" content="ติวเตอร์อนุบาล–ป.6 กลุ่มเล็ก ดูแลใกล้ชิด บรรยากาศอบอุ่นเหมือนอยู่บ้าน">
+<title>เรียนพิเศษบ้านครูอ้อย หนองบัวลำภู | อนุบาล 2 – ป.6 คณิต ไทย อังกฤษ วิทย์ เชาวน์ปัญญา</title>
+<meta name="description" content="เรียนพิเศษบ้านครูอ้อย อำเภอเมือง จังหวัดหนองบัวลำภู สอนระดับอนุบาล 2 ถึงประถมศึกษาปีที่ 6 วิชาคณิตศาสตร์ ภาษาไทย ภาษาอังกฤษ วิทยาศาสตร์ และเชาวน์ปัญญา โดยครูอ้อย ประสบการณ์สอน 32 ปี ครูดีเด่นแห่งชาติ สาขาปฐมวัย">
+<meta name="keywords" content="เรียนพิเศษ, ติวเตอร์, บ้านครูอ้อย, หนองบัวลำภู, อนุบาล, ประถม, คณิตศาสตร์, ภาษาไทย, ภาษาอังกฤษ, วิทยาศาสตร์, เชาวน์ปัญญา">
+<meta property="og:title" content="เรียนพิเศษบ้านครูอ้อย หนองบัวลำภู">
+<meta property="og:description" content="สอนอนุบาล 2 – ป.6 โดยครูอ้อย ประสบการณ์ 32 ปี ครูดีเด่นแห่งชาติ สาขาปฐมวัย">
 <meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -220,6 +220,7 @@ section{position:relative}
 
 /* ---------- ตาราง/ค่าเรียน ---------- */
 .price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:start}
+.price-grid.two-up{grid-template-columns:repeat(2,1fr);max-width:780px;margin:0 auto}
 .price{
   background:#fff;border-radius:var(--r-lg);padding:32px 26px;border:2px solid var(--sky-100);
   box-shadow:var(--shadow-sm);position:relative;transition:.3s;
@@ -248,19 +249,6 @@ th{background:var(--sky-100);color:var(--sky-700);font-weight:600;white-space:no
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover{background:var(--sky-50)}
 
-/* ---------- รีวิว ---------- */
-.reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
-.review{
-  background:#fff;border-radius:var(--r);padding:28px 24px;border:1px solid var(--sky-100);
-  box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:1rem;
-}
-.stars{color:var(--sun);font-size:1rem;letter-spacing:.1em}
-.review p{font-size:.95rem;color:var(--ink-soft);flex:1}
-.who{display:flex;align-items:center;gap:.75rem}
-.avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex:none}
-.who b{display:block;font-size:.94rem}
-.who span{font-size:.82rem;color:var(--ink-soft)}
-
 /* ---------- คำถามที่พบบ่อย ---------- */
 .faq{max-width:800px;margin:0 auto;display:grid;gap:12px}
 .q{background:#fff;border:1px solid var(--sky-100);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow-sm)}
@@ -280,18 +268,25 @@ tbody tr:hover{background:var(--sky-50)}
 .info i{font-style:normal;width:46px;height:46px;border-radius:15px;background:var(--sky-100);color:var(--sky-600);display:grid;place-items:center;font-size:1.15rem;flex:none}
 .info b{display:block;font-size:.95rem}
 .info span{font-size:.9rem;color:var(--ink-soft)}
-form.card{background:#fff;border-radius:var(--r-lg);padding:32px;box-shadow:var(--shadow);border:1px solid var(--sky-100);display:grid;gap:14px}
-form.card h3{font-family:'Mali',cursive;font-size:1.35rem;margin-bottom:.2rem}
-form.card p.hint{font-size:.88rem;color:var(--ink-soft);margin-bottom:.6rem}
-.field label{display:block;font-size:.88rem;font-weight:500;margin-bottom:.35rem}
-.field input,.field select,.field textarea{
-  width:100%;padding:.8rem 1rem;border-radius:14px;border:1.5px solid var(--sky-200);
-  font-family:inherit;font-size:.95rem;color:var(--ink);background:var(--sky-50);transition:.2s;
-}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--sky-400);background:#fff;box-shadow:0 0 0 4px rgba(79,190,240,.16)}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.ok{display:none;background:#EAF7F1;color:#20805C;border-radius:14px;padding:.85rem 1rem;font-size:.92rem}
-.map{border-radius:var(--r);overflow:hidden;border:1px solid var(--sky-100);box-shadow:var(--shadow-sm);margin-top:1.4rem;background:var(--sky-100);aspect-ratio:16/9;display:grid;place-items:center;color:var(--sky-700);text-align:center;font-size:.9rem;padding:1rem}
+.contact-card{background:#fff;border-radius:var(--r-lg);padding:32px;box-shadow:var(--shadow);border:1px solid var(--sky-100);display:grid;gap:14px}
+.contact-card h3{font-family:'Mali',cursive;font-size:1.35rem;margin-bottom:.2rem}
+.contact-card p.hint{font-size:.9rem;color:var(--ink-soft);margin-bottom:.6rem}
+.big-cta{display:flex;align-items:center;gap:1rem;border-radius:20px;padding:1.1rem 1.25rem;border:2px solid var(--sky-200);background:var(--sky-50);transition:.25s}
+.big-cta .ico{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-size:1.5rem;flex:none;background:#fff;box-shadow:var(--shadow-sm)}
+.big-cta b{display:block;font-family:'Mali',cursive;font-size:1.5rem;line-height:1.3;color:var(--sky-700)}
+.big-cta small{font-size:.85rem;color:var(--ink-soft)}
+a.big-cta.tel{background:linear-gradient(135deg,var(--sky-500),var(--sky-600));border-color:transparent}
+a.big-cta.tel b,a.big-cta.tel small{color:#fff}
+a.big-cta.tel small{opacity:.9}
+a.big-cta.tel:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(18,135,196,.35)}
+.big-cta.line-id{border-color:#BDEBCF;background:#F1FBF5}
+.big-cta.line-id .ico{color:#06C755}
+.big-cta.line-id b{color:#12844B}
+.ready{background:var(--sky-50);border-radius:18px;padding:1.1rem 1.25rem;font-size:.92rem}
+.ready b{display:block;margin-bottom:.5rem;color:var(--sky-700)}
+.ready ul{list-style:none;display:grid;gap:.4rem;color:var(--ink-soft)}
+.ready li{display:flex;gap:.55rem}
+.ready li::before{content:'•';color:var(--sky-400);font-weight:700}
 
 /* ---------- CTA แถบ ---------- */
 .cta-band{background:linear-gradient(135deg,var(--sky-500),var(--sky-700));color:#fff;border-radius:var(--r-lg);padding:48px 40px;text-align:center;box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
@@ -310,9 +305,6 @@ footer a:hover{color:#fff}
 .f-logo{display:flex;align-items:center;gap:.65rem;margin-bottom:1rem}
 .f-logo .logo-mark{background:rgba(255,255,255,.14)}
 .f-logo b{color:#fff;font-size:1.05rem}
-.socials{display:flex;gap:.6rem;margin-top:1rem}
-.socials a{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.1);display:grid;place-items:center;font-size:1.1rem;transition:.2s}
-.socials a:hover{background:var(--sky-500);transform:translateY(-3px)}
 .f-bot{border-top:1px solid rgba(255,255,255,.12);padding-top:22px;text-align:center;font-size:.86rem}
 
 /* ---------- ปุ่มลอย ---------- */
@@ -329,7 +321,7 @@ footer a:hover{color:#fff}
 /* ---------- จอเล็ก ---------- */
 @media(max-width:1024px){
   .feats{grid-template-columns:repeat(2,1fr)}
-  .subjects,.levels,.price-grid,.reviews{grid-template-columns:repeat(2,1fr)}
+  .subjects,.levels,.price-grid{grid-template-columns:repeat(2,1fr)}
   .f-grid{grid-template-columns:1fr 1fr}
 }
 @media(max-width:860px){
@@ -355,10 +347,13 @@ footer a:hover{color:#fff}
   .sec{padding:64px 0}
 }
 @media(max-width:620px){
-  .feats,.subjects,.levels,.price-grid,.reviews,.f-grid,.two{grid-template-columns:1fr}
+  .feats,.subjects,.levels,.price-grid,.price-grid.two-up,.f-grid{grid-template-columns:1fr}
+  .contact-card{padding:22px}
+  .big-cta{padding:.9rem 1rem;gap:.75rem}
+  .big-cta .ico{width:44px;height:44px;font-size:1.25rem}
+  .big-cta b{font-size:1.25rem}
   .hero-stats{gap:1.3rem}
   .cta-band{padding:36px 22px}
-  form.card{padding:24px}
 }
 </style>
 </head>
@@ -379,13 +374,12 @@ footer a:hover{color:#fff}
       <a href="#subjects">วิชาที่เปิดสอน</a>
       <a href="#levels">ระดับชั้น</a>
       <a href="#course">ตาราง &amp; ค่าเรียน</a>
-      <a href="#reviews">รีวิว</a>
       <a href="#faq">คำถามที่พบบ่อย</a>
       <a href="#contact">ติดต่อเรา</a>
     </nav>
     <div class="nav-cta">
-      <a href="tel:0812345678" class="btn btn-ghost">📞 08X-XXX-XXXX</a>
-      <a href="#contact" class="btn btn-primary">ทดลองเรียนฟรี</a>
+      <a href="tel:0818734996" class="btn btn-ghost">📞 081-873-4996</a>
+      <a href="#contact" class="btn btn-primary">สมัครเรียน</a>
       <button class="burger" id="burger" aria-label="เมนู"><span></span></button>
     </div>
   </div>
@@ -397,21 +391,21 @@ footer a:hover{color:#fff}
   <span class="cloud c2">☁️</span>
   <div class="wrap hero-grid">
     <div>
-      <span class="pill">✨ เปิดรับสมัครนักเรียนใหม่ ภาคเรียนนี้</span>
+      <span class="pill">📍 อำเภอเมือง จังหวัดหนองบัวลำภู</span>
       <h1>เรียนสนุก เข้าใจจริง<br>ที่ <em>บ้านครูอ้อย</em></h1>
       <p class="lead">
-        สถาบันสอนพิเศษสำหรับน้อง ๆ ระดับ <b>อนุบาล – ประถมศึกษาปีที่ 6</b>
-        สอนกลุ่มเล็ก ดูแลใกล้ชิด ปรับพื้นฐานให้แน่น พร้อมเสริมทักษะคิดวิเคราะห์
-        ในบรรยากาศอบอุ่นเหมือนอยู่บ้าน
+        เรียนพิเศษสำหรับน้อง ๆ ระดับ <b>อนุบาล 2 – ประถมศึกษาปีที่ 6</b>
+        สอนโดยครูอ้อย ประสบการณ์ 32 ปี ปรับพื้นฐานให้แน่น
+        พร้อมเสริมทักษะคิดวิเคราะห์ ในบรรยากาศอบอุ่นเหมือนอยู่บ้าน
       </p>
       <div class="hero-btns">
-        <a href="#contact" class="btn btn-primary">🎒 จองเรียนทดลองฟรี</a>
+        <a href="tel:0818734996" class="btn btn-primary">📞 โทรหาครูอ้อย</a>
         <a href="#subjects" class="btn btn-ghost">ดูวิชาที่เปิดสอน</a>
       </div>
       <div class="hero-stats">
-        <div><b>15+</b><span>ปีประสบการณ์การสอน</span></div>
-        <div><b>1,200+</b><span>นักเรียนที่ดูแลแล้ว</span></div>
-        <div><b>1:8</b><span>ครู 1 ท่านต่อนักเรียน</span></div>
+        <div><b>32</b><span>ปีประสบการณ์การสอน</span></div>
+        <div><b>1,000+</b><span>นักเรียนที่ดูแลแล้ว</span></div>
+        <div><b>150.-</b><span>ค่าเรียนต่อชั่วโมง</span></div>
       </div>
     </div>
     <div class="hero-art">
@@ -443,9 +437,9 @@ footer a:hover{color:#fff}
       <p>เราไม่ได้แค่ติวให้คะแนนขึ้น แต่สร้างนิสัยรักการเรียนรู้ให้ติดตัวน้อง ๆ ไปตลอด</p>
     </div>
     <div class="feats">
-      <div class="feat reveal"><i style="background:#E1F3FE;color:#1187C4">👩‍🏫</i><h3>กลุ่มเล็ก ดูแลทั่วถึง</h3><p>ห้องละไม่เกิน 8 คน ครูรู้จักน้องทุกคน เห็นจุดอ่อนและแก้ได้ตรงจุด</p></div>
-      <div class="feat reveal"><i style="background:#FFF3D6;color:#D99400">📘</i><h3>สื่อการสอนของเราเอง</h3><p>ชีทและแบบฝึกหัดที่ครูออกแบบเอง อิงหลักสูตรแกนกลาง เข้าใจง่ายเป็นขั้นตอน</p></div>
-      <div class="feat reveal"><i style="background:#EAF7F1;color:#2AA277">📊</i><h3>รายงานผลทุกเดือน</h3><p>ผู้ปกครองรู้พัฒนาการของลูกชัดเจน พร้อมคำแนะนำการฝึกที่บ้าน</p></div>
+      <div class="feat reveal"><i style="background:#E1F3FE;color:#1187C4">👩‍🏫</i><h3>ประสบการณ์ 32 ปี</h3><p>ครูอ้อยสอนเด็กอนุบาลและประถมมากว่า 32 ปี เข้าใจธรรมชาติของเด็กแต่ละวัย</p></div>
+      <div class="feat reveal"><i style="background:#FFF3D6;color:#D99400">🏅</i><h3>ครูดีเด่นแห่งชาติ</h3><p>ได้รับรางวัลครูดีเด่นแห่งชาติ สาขาปฐมวัย เครื่องยืนยันคุณภาพการสอน</p></div>
+      <div class="feat reveal"><i style="background:#EAF7F1;color:#2AA277">📚</i><h3>ครบทั้ง 5 วิชา</h3><p>คณิตศาสตร์ ภาษาไทย ภาษาอังกฤษ วิทยาศาสตร์ และเชาวน์ปัญญา ในที่เดียว</p></div>
       <div class="feat reveal"><i style="background:#FFEFEA;color:#E8663C">💛</i><h3>บรรยากาศเหมือนบ้าน</h3><p>เด็ก ๆ กล้าถาม กล้าลองผิด ไม่กดดัน เรียนแล้วอยากมาอีก</p></div>
     </div>
   </div>
@@ -456,7 +450,7 @@ footer a:hover{color:#fff}
   <div class="wrap about">
     <div class="about-photo reveal">
       <div class="ph"><span>👩‍🏫</span><small>[ ใส่รูปครูอ้อย / บรรยากาศห้องเรียน ]</small></div>
-      <div class="badge-float"><span style="font-size:1.4rem">🏅</span><div><b>ครูอ้อย (ชื่อ-นามสกุล)</b><span style="font-size:.82rem;color:var(--ink-soft);display:block">ปริญญาตรี ครุศาสตร์ · ประสบการณ์สอน 15 ปี</span></div></div>
+      <div class="badge-float"><span style="font-size:1.4rem">🏅</span><div><b>ครูอ้อย · มัลลิกา ปัญญาวชิรพงษ์</b><span style="font-size:.82rem;color:var(--ink-soft);display:block">ปริญญาตรี ครุศาสตร์ · ประสบการณ์สอน 32 ปี</span></div></div>
     </div>
     <div class="reveal">
       <span class="eyebrow">ABOUT US</span>
@@ -464,19 +458,19 @@ footer a:hover{color:#fff}
       <p>
         บ้านครูอ้อยเริ่มต้นจากห้องเรียนเล็ก ๆ ที่บ้าน ด้วยความตั้งใจเดียวคือ
         อยากให้เด็ก ๆ ในชุมชนได้เรียนกับครูที่ “มีเวลาให้จริง ๆ”
-        วันนี้เราเติบโตขึ้น แต่ยังคงยึดหลักเดิม คือดูแลนักเรียนทุกคนเหมือนลูกหลาน
+        วันนี้เรายังคงยึดหลักเดิม คือดูแลนักเรียนทุกคนเหมือนลูกหลาน
       </p>
       <p>
-        เราสอนตั้งแต่ระดับอนุบาลจนถึงประถมศึกษาปีที่ 6
+        เราสอนตั้งแต่ระดับอนุบาล 2 จนถึงประถมศึกษาปีที่ 6
         ครอบคลุม 5 วิชาหลัก พร้อมปรับเนื้อหาให้เข้ากับพื้นฐานของน้องแต่ละคน
       </p>
       <ul class="checks">
-        <li><b>✓</b><span>ทดสอบพื้นฐานก่อนเรียน เพื่อจัดกลุ่มและวางแผนการสอนรายบุคคล</span></li>
-        <li><b>✓</b><span>ครูผู้สอนจบตรงสาย ผ่านการอบรมจิตวิทยาเด็ก</span></li>
-        <li><b>✓</b><span>เตรียมความพร้อมสอบเข้า ป.1 และสอบเข้า ม.1 โรงเรียนชื่อดัง</span></li>
-        <li><b>✓</b><span>มีเรียนชดเชยให้ ไม่เสียสิทธิ์เมื่อลาป่วย</span></li>
+        <li><b>✓</b><span>ครูอ้อย — นางมัลลิกา ปัญญาวชิรพงษ์ ปริญญาตรี ครุศาสตร์</span></li>
+        <li><b>✓</b><span>ประสบการณ์สอนเด็กอนุบาลและประถม 32 ปี</span></li>
+        <li><b>✓</b><span>รางวัลครูดีเด่นแห่งชาติ สาขาปฐมวัย</span></li>
+        <li><b>✓</b><span>ดูแลนักเรียนมาแล้วกว่า 1,000 คน</span></li>
       </ul>
-      <a href="#contact" class="btn btn-primary">นัดเข้าชมสถาบัน</a>
+      <a href="tel:0818734996" class="btn btn-primary">📞 โทรสอบถามครูอ้อย</a>
     </div>
   </div>
 </section>
@@ -487,14 +481,14 @@ footer a:hover{color:#fff}
     <div class="sec-head reveal">
       <span class="eyebrow">OUR COURSES</span>
       <h2>5 วิชาที่เปิดสอน</h2>
-      <p>ทุกวิชาออกแบบเนื้อหาแยกตามระดับชั้น ตั้งแต่อนุบาลถึง ป.6</p>
+      <p>ทุกวิชาออกแบบเนื้อหาแยกตามระดับชั้น ตั้งแต่อนุบาล 2 ถึง ป.6</p>
     </div>
     <div class="subjects">
       <div class="subj s-math reveal">
         <i>➗</i>
         <h3>คณิตศาสตร์</h3>
         <p>ปูพื้นฐานให้แน่น ตั้งแต่นับเลขจนถึงโจทย์ปัญหาหลายขั้นตอน</p>
-        <ul><li>คิดเลขเร็ว บวก ลบ คูณ หาร</li><li>เศษส่วน ทศนิยม ร้อยละ</li><li>เรขาคณิตและการวัด</li><li>โจทย์ปัญหา &amp; ข้อสอบแข่งขัน</li></ul>
+        <ul><li>คิดเลขเร็ว บวก ลบ คูณ หาร</li><li>เศษส่วน ทศนิยม ร้อยละ</li><li>เรขาคณิตและการวัด</li><li>โจทย์ปัญหาหลายขั้นตอน</li></ul>
       </div>
       <div class="subj s-thai reveal">
         <i>ก</i>
@@ -506,7 +500,7 @@ footer a:hover{color:#fff}
         <i>A</i>
         <h3>ภาษาอังกฤษ</h3>
         <p>เรียนผ่านเกมและกิจกรรม ให้น้องกล้าพูดและใช้ได้จริง</p>
-        <ul><li>Phonics &amp; คำศัพท์พื้นฐาน</li><li>Grammar ตามระดับชั้น</li><li>Conversation กับครู</li><li>เตรียมสอบ CEFR / เข้า ม.1</li></ul>
+        <ul><li>Phonics &amp; คำศัพท์พื้นฐาน</li><li>Grammar ตามระดับชั้น</li><li>Conversation กับครู</li><li>อ่านและเขียนประโยคง่าย ๆ</li></ul>
       </div>
       <div class="subj s-sci reveal">
         <i>🔬</i>
@@ -517,13 +511,13 @@ footer a:hover{color:#fff}
       <div class="subj s-iq reveal">
         <i>🧩</i>
         <h3>เชาวน์ปัญญา</h3>
-        <p>ฝึกคิดเป็นระบบ สังเกต และแก้ปัญหา — หัวใจของการสอบแข่งขัน</p>
-        <ul><li>อนุกรม มิติสัมพันธ์</li><li>ตรรกะและการให้เหตุผล</li><li>ความจำและสมาธิ</li><li>ข้อสอบเชาวน์เข้า ป.1 / ม.1</li></ul>
+        <p>ฝึกคิดเป็นระบบ สังเกต และแก้ปัญหา ให้น้องคิดไวและรอบคอบ</p>
+        <ul><li>อนุกรม มิติสัมพันธ์</li><li>ตรรกะและการให้เหตุผล</li><li>ความจำและสมาธิ</li><li>แบบฝึกเชาวน์ตามระดับชั้น</li></ul>
       </div>
       <div class="subj s-more reveal">
         <h3>ไม่แน่ใจว่าน้องควรเรียนวิชาไหน?</h3>
-        <p>ให้ครูอ้อยช่วยประเมินพื้นฐานฟรี แล้วแนะนำคอร์สที่เหมาะกับน้องที่สุด</p>
-        <a href="#contact" class="btn btn-sun">ขอคำแนะนำจากครู</a>
+        <p>โทรคุยกับครูอ้อยได้เลยค่ะ ยินดีให้คำแนะนำเรื่องการเรียนของน้อง</p>
+        <a href="tel:0818734996" class="btn btn-sun">📞 081-873-4996</a>
       </div>
     </div>
   </div>
@@ -535,14 +529,14 @@ footer a:hover{color:#fff}
     <div class="sec-head reveal">
       <span class="eyebrow">LEVELS</span>
       <h2>เราดูแลน้อง ๆ ระดับไหนบ้าง</h2>
-      <p>แบ่งกลุ่มตามช่วงวัย เพื่อให้เนื้อหาและวิธีสอนเหมาะกับพัฒนาการ</p>
+      <p>แบ่งกลุ่มตามช่วงวัย เพื่อให้เนื้อหาและวิธีสอนเหมาะกับพัฒนาการ · รับตั้งแต่อนุบาล 2 ถึง ป.6</p>
     </div>
     <div class="levels">
       <div class="level lv1 reveal">
         <em>ระดับที่ 1</em>
-        <h3>อนุบาล 1 – 3</h3>
+        <h3>อนุบาล 2 – 3</h3>
         <p>เตรียมความพร้อมก่อนเข้า ป.1 ผ่านการเล่นและกิจกรรม</p>
-        <ul><li>กล้ามเนื้อมือ &amp; คัดลายมือ</li><li>นับเลข รู้จักตัวเลข 1–100</li><li>สระ พยัญชนะ อ่านคำง่าย ๆ</li><li>เชาวน์และสมาธิเบื้องต้น</li><li>ติวสอบเข้า ป.1</li></ul>
+        <ul><li>กล้ามเนื้อมือ &amp; คัดลายมือ</li><li>นับเลข รู้จักตัวเลข 1–100</li><li>สระ พยัญชนะ อ่านคำง่าย ๆ</li><li>เชาวน์และสมาธิเบื้องต้น</li></ul>
         <span class="big">อ.</span>
       </div>
       <div class="level lv2 reveal">
@@ -555,8 +549,8 @@ footer a:hover{color:#fff}
       <div class="level lv3 reveal">
         <em>ระดับที่ 3</em>
         <h3>ประถมศึกษา 4 – 6</h3>
-        <p>เข้มข้นขึ้น เน้นคิดวิเคราะห์และเตรียมสอบเข้า ม.1</p>
-        <ul><li>โจทย์ปัญหาขั้นสูง</li><li>หลักภาษา &amp; อ่านจับใจความ</li><li>Grammar &amp; Conversation</li><li>วิทย์เชิงทดลองและวิเคราะห์</li><li>ติวเข้ม สอบเข้า ม.1</li></ul>
+        <p>เข้มข้นขึ้น เน้นคิดวิเคราะห์และแก้โจทย์หลายขั้นตอน</p>
+        <ul><li>โจทย์ปัญหาขั้นสูง</li><li>หลักภาษา &amp; อ่านจับใจความ</li><li>Grammar &amp; Conversation</li><li>วิทย์เชิงทดลองและวิเคราะห์</li></ul>
         <span class="big">ป.ปลาย</span>
       </div>
     </div>
@@ -569,76 +563,38 @@ footer a:hover{color:#fff}
     <div class="sec-head reveal">
       <span class="eyebrow">SCHEDULE &amp; TUITION</span>
       <h2>ตารางเรียน และ ค่าเรียน</h2>
-      <p>เลือกแพ็กเกจที่เหมาะกับน้อง ๆ ได้ตามความสะดวก · <em>(ตัวเลขด้านล่างเป็นตัวอย่าง รอปรับตามจริง)</em></p>
+      <p>เลือกได้ทั้งจ่ายรายชั่วโมง หรือเหมาจ่ายเป็นคอร์ส</p>
     </div>
-    <div class="price-grid">
+    <div class="price-grid two-up">
       <div class="price reveal">
-        <h3>คอร์สรายชั่วโมง</h3>
-        <p class="sub">เหมาะกับน้องที่อยากลองก่อน</p>
-        <div class="amt">250<small> บาท / ชม.</small></div>
-        <ul><li>เรียนกลุ่มเล็ก ไม่เกิน 8 คน</li><li>เลือกวิชาได้อิสระ</li><li>มีชีทเรียนให้</li><li>ไม่มีขั้นต่ำ</li></ul>
-        <a href="#contact" class="btn btn-ghost">สอบถามเพิ่มเติม</a>
+        <h3>เรียนรายชั่วโมง</h3>
+        <p class="sub">จ่ายตามที่เรียนจริง</p>
+        <div class="amt">150<small> บาท / ชม.</small></div>
+        <ul><li>เลือกวิชาได้อิสระ</li><li>ไม่มีขั้นต่ำ</li><li>เหมาะกับน้องที่อยากลองก่อน</li></ul>
+        <a href="tel:0818734996" class="btn btn-ghost">📞 สอบถามเพิ่มเติม</a>
       </div>
       <div class="price hot reveal">
-        <span class="tag">🔥 ผู้ปกครองเลือกมากที่สุด</span>
-        <h3>แพ็ก 20 ชั่วโมง</h3>
-        <p class="sub">คุ้มที่สุด เห็นพัฒนาการชัด</p>
-        <div class="amt">4,200<small> บาท</small></div>
-        <ul><li>เฉลี่ยเพียง 210 บาท / ชม.</li><li>สลับวิชาได้ตลอดคอร์ส</li><li>ทดสอบพื้นฐานก่อนเรียน</li><li>รายงานผลรายเดือน</li><li>เรียนชดเชยได้เมื่อลาป่วย</li></ul>
-        <a href="#contact" class="btn btn-primary">สมัครแพ็กนี้</a>
-      </div>
-      <div class="price reveal">
-        <h3>คอร์สติวเข้ม</h3>
-        <p class="sub">สอบเข้า ป.1 / ม.1</p>
-        <div class="amt">6,900<small> บาท / คอร์ส</small></div>
-        <ul><li>30 ชั่วโมง เนื้อหาเข้มข้น</li><li>ตะลุยข้อสอบเก่า</li><li>สอบเสมือนจริง 3 ครั้ง</li><li>วิเคราะห์ผลรายบุคคล</li></ul>
-        <a href="#contact" class="btn btn-ghost">ดูรายละเอียด</a>
+        <span class="tag">🔥 คุ้มกว่า ประหยัดกว่า</span>
+        <h3>คอร์สเหมาจ่าย 24 ชั่วโมง</h3>
+        <p class="sub">เรียนต่อเนื่อง เห็นพัฒนาการชัด</p>
+        <div class="amt">2,200<small> บาท / คอร์ส</small></div>
+        <ul><li>เฉลี่ยเพียงราว 92 บาท / ชม.</li><li>ประหยัดกว่ารายชั่วโมงกว่า 38%</li><li>เรียนต่อเนื่องได้ผลกว่า</li></ul>
+        <a href="tel:0818734996" class="btn btn-primary">📞 สมัครคอร์สนี้</a>
       </div>
     </div>
 
     <div class="table-wrap reveal">
       <table>
         <thead>
-          <tr><th>วัน</th><th>เวลา</th><th>ระดับชั้น</th><th>วิชา</th><th>สถานะ</th></tr>
+          <tr><th>วัน</th><th>เวลา</th><th>ระดับชั้น</th><th>วิชา</th></tr>
         </thead>
         <tbody>
-          <tr><td>จันทร์ – ศุกร์</td><td>16.30 – 18.30 น.</td><td>ป.1 – ป.3</td><td>คณิต / ไทย / อังกฤษ</td><td>เปิดรับ</td></tr>
-          <tr><td>จันทร์ – ศุกร์</td><td>18.00 – 20.00 น.</td><td>ป.4 – ป.6</td><td>คณิต / วิทย์ / อังกฤษ</td><td>เปิดรับ</td></tr>
-          <tr><td>เสาร์</td><td>09.00 – 12.00 น.</td><td>อนุบาล 1 – 3</td><td>เตรียมความพร้อม + เชาวน์</td><td>เหลือ 2 ที่</td></tr>
-          <tr><td>เสาร์</td><td>13.00 – 16.00 น.</td><td>ป.4 – ป.6</td><td>ติวเข้มสอบเข้า ม.1</td><td>เปิดรับ</td></tr>
-          <tr><td>อาทิตย์</td><td>09.00 – 12.00 น.</td><td>ป.1 – ป.6</td><td>ตามการบ้าน / ปรับพื้นฐาน</td><td>เปิดรับ</td></tr>
+          <tr><td>เสาร์</td><td>09.00 – 12.00 น.</td><td>อนุบาล 2–3 · ป.1 – ป.3</td><td>คณิต · วิทย์ · อังกฤษ · ไทย</td></tr>
+          <tr><td>เสาร์</td><td>13.00 – 15.00 น.</td><td>อนุบาล 2–3 · ป.1 – ป.6</td><td>คณิต · วิทย์ · อังกฤษ · ไทย</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="note">* ตารางอาจปรับเปลี่ยนตามจำนวนนักเรียน กรุณาสอบถามรอบล่าสุดทาง LINE</p>
-  </div>
-</section>
-
-<!-- ================= รีวิว ================= -->
-<section class="sec" id="reviews">
-  <div class="wrap">
-    <div class="sec-head reveal">
-      <span class="eyebrow">TESTIMONIALS</span>
-      <h2>เสียงจากผู้ปกครอง</h2>
-      <p>ความไว้วางใจของครอบครัว คือรางวัลที่ดีที่สุดของเรา</p>
-    </div>
-    <div class="reviews">
-      <div class="review reveal">
-        <div class="stars">★★★★★</div>
-        <p>“ลูกเคยกลัวเลขมาก เรียนกับครูอ้อยได้ 3 เดือน กลับมาทำการบ้านเองได้ คะแนนสอบกลางภาคขึ้นจาก 12 เป็น 24 เต็ม 30 ค่ะ”</p>
-        <div class="who"><span class="avatar" style="background:#4FBEF0">ก</span><div><b>คุณแม่กิ่ง</b><span>ผู้ปกครองน้องปุ๊กกี้ ป.3</span></div></div>
-      </div>
-      <div class="review reveal">
-        <div class="stars">★★★★★</div>
-        <p>“ประทับใจที่ครูส่งรายงานให้ทุกเดือน บอกละเอียดว่าลูกอ่อนตรงไหน ควรฝึกอะไรที่บ้าน ทำให้เราช่วยลูกได้ถูกจุดค่ะ”</p>
-        <div class="who"><span class="avatar" style="background:#FF9A76">ว</span><div><b>คุณวิภา</b><span>ผู้ปกครองน้องข้าวปั้น ป.5</span></div></div>
-      </div>
-      <div class="review reveal">
-        <div class="stars">★★★★★</div>
-        <p>“ส่งน้องมาตั้งแต่อนุบาล 2 ตอนนี้สอบติด ป.1 โรงเรียนที่ตั้งใจไว้แล้วค่ะ ที่นี่ไม่กดดันเด็ก แต่ได้ผลจริง”</p>
-        <div class="who"><span class="avatar" style="background:#5FD6A8">ธ</span><div><b>คุณพ่อธนา</b><span>ผู้ปกครองน้องเจได อ.3</span></div></div>
-      </div>
-    </div>
+    <p class="note">* ตารางอาจปรับเปลี่ยนตามจำนวนนักเรียน กรุณาโทรสอบถามรอบล่าสุดที่ 081-873-4996</p>
   </div>
 </section>
 
@@ -648,15 +604,15 @@ footer a:hover{color:#fff}
     <div class="sec-head reveal">
       <span class="eyebrow">FAQ</span>
       <h2>คำถามที่พบบ่อย</h2>
-      <p>ถ้ายังไม่เจอคำตอบที่ต้องการ ทักไลน์มาถามครูได้เลยค่ะ</p>
+      <p>ถ้ายังไม่เจอคำตอบที่ต้องการ โทรมาถามครูอ้อยได้เลยค่ะ</p>
     </div>
     <div class="faq">
-      <details class="q reveal"><summary>ทดลองเรียนก่อนได้ไหม มีค่าใช้จ่ายหรือเปล่า</summary><div class="a">ได้ค่ะ น้องทุกคนทดลองเรียนฟรี 1 ครั้ง (1 ชั่วโมง) พร้อมทดสอบพื้นฐานให้ฟรี เพื่อให้ครูแนะนำคอร์สที่เหมาะสมที่สุด</div></details>
-      <details class="q reveal"><summary>เปิดสอนตั้งแต่ระดับชั้นไหนถึงไหน</summary><div class="a">ตั้งแต่ระดับอนุบาล 1 จนถึงประถมศึกษาปีที่ 6 ครอบคลุมวิชาคณิตศาสตร์ ภาษาไทย ภาษาอังกฤษ วิทยาศาสตร์ และเชาวน์ปัญญา</div></details>
-      <details class="q reveal"><summary>หนึ่งห้องมีนักเรียนกี่คน</summary><div class="a">สูงสุด 8 คนต่อห้องค่ะ เพื่อให้ครูดูแลได้ทั่วถึง หากต้องการเรียนตัวต่อตัวก็มีคอร์สแยกให้เลือกเช่นกัน</div></details>
-      <details class="q reveal"><summary>ถ้าน้องลาป่วย เรียนชดเชยได้ไหม</summary><div class="a">ได้ค่ะ แจ้งล่วงหน้าอย่างน้อย 3 ชั่วโมงก่อนเวลาเรียน ทางสถาบันจะจัดคาบชดเชยให้ภายในเดือนเดียวกัน</div></details>
-      <details class="q reveal"><summary>มีที่จอดรถหรือรับ-ส่งไหม</summary><div class="a">มีที่จอดรถหน้าสถาบันประมาณ 5 คัน และมีจุดรอสำหรับผู้ปกครอง กรณีต้องการรถรับ-ส่ง กรุณาสอบถามเป็นรายกรณีค่ะ</div></details>
-      <details class="q reveal"><summary>ชำระค่าเรียนอย่างไรได้บ้าง</summary><div class="a">รับชำระเงินสด โอนผ่านธนาคาร และ PromptPay ค่ะ ออกใบเสร็จรับเงินให้ทุกครั้ง</div></details>
+      <details class="q reveal"><summary>เปิดสอนตั้งแต่ระดับชั้นไหนถึงไหน</summary><div class="a">ตั้งแต่ระดับอนุบาล 2 จนถึงประถมศึกษาปีที่ 6 ครอบคลุมวิชาคณิตศาสตร์ ภาษาไทย ภาษาอังกฤษ วิทยาศาสตร์ และเชาวน์ปัญญา</div></details>
+      <details class="q reveal"><summary>ค่าเรียนเท่าไหร่</summary><div class="a">เรียนรายชั่วโมง ชั่วโมงละ 150 บาท หรือเลือกคอร์สเหมาจ่าย 24 ชั่วโมง 2,200 บาท ซึ่งเฉลี่ยแล้วถูกกว่าราว 38% ค่ะ</div></details>
+      <details class="q reveal"><summary>เรียนวันไหน เวลาอะไรบ้าง</summary><div class="a">ปัจจุบันเปิดสอนวันเสาร์ 2 รอบ คือ 09.00 – 12.00 น. และ 13.00 – 15.00 น. ตารางอาจปรับเปลี่ยนตามจำนวนนักเรียน กรุณาโทรสอบถามรอบล่าสุดที่ 081-873-4996</div></details>
+      <details class="q reveal"><summary>ใครเป็นผู้สอน</summary><div class="a">ครูอ้อย — นางมัลลิกา ปัญญาวชิรพงษ์ จบปริญญาตรี ครุศาสตร์ มีประสบการณ์สอนเด็กอนุบาลและประถมมากว่า 32 ปี และได้รับรางวัลครูดีเด่นแห่งชาติ สาขาปฐมวัย</div></details>
+      <details class="q reveal"><summary>สถานที่เรียนอยู่ที่ไหน</summary><div class="a">บ้านเลขที่ 77/7 ถนนวิริโยธิน ตำบลลำภู อำเภอเมือง จังหวัดหนองบัวลำภู 39000</div></details>
+      <details class="q reveal"><summary>สมัครเรียนอย่างไร</summary><div class="a">โทรมาที่ 081-873-4996 หรือแอดไลน์ ID: kruaoymalika แจ้งชื่อน้อง ระดับชั้น และวิชาที่สนใจ ครูจะแนะนำรอบเรียนที่เหมาะสมให้ค่ะ</div></details>
     </div>
   </div>
 </section>
@@ -667,46 +623,39 @@ footer a:hover{color:#fff}
     <div class="reveal">
       <span class="eyebrow">CONTACT US</span>
       <h2 style="font-family:'Mali',cursive;font-size:clamp(1.6rem,3.4vw,2.2rem);margin-bottom:.8rem">ติดต่อบ้านครูอ้อย</h2>
-      <p style="color:var(--ink-soft)">ทักมาคุยกับครูได้ทุกวัน ยินดีให้คำแนะนำเรื่องการเรียนของน้อง ๆ แม้ยังไม่ตัดสินใจสมัครค่ะ</p>
+      <p style="color:var(--ink-soft)">โทรมาคุยกับครูได้เลยค่ะ ยินดีให้คำแนะนำเรื่องการเรียนของน้อง ๆ แม้ยังไม่ตัดสินใจสมัคร</p>
       <div class="info-list">
-        <div class="info"><i>📍</i><div><b>ที่ตั้งสถาบัน</b><span>[ บ้านเลขที่ / ซอย / ถนน / ตำบล / อำเภอ / จังหวัด / รหัสไปรษณีย์ ]</span></div></div>
-        <div class="info"><i>📞</i><div><b>โทรศัพท์</b><span><a href="tel:0812345678">08X-XXX-XXXX</a> (ครูอ้อย)</span></div></div>
-        <div class="info"><i>💬</i><div><b>LINE Official</b><span>@bankruaoy (ใส่ LINE ID จริง)</span></div></div>
-        <div class="info"><i>🕘</i><div><b>เวลาทำการ</b><span>จันทร์ – ศุกร์ 15.00 – 20.00 น. · เสาร์ – อาทิตย์ 09.00 – 17.00 น.</span></div></div>
+        <div class="info"><i>📍</i><div><b>ที่ตั้ง</b><span>77/7 ถนนวิริโยธิน ตำบลลำภู<br>อำเภอเมือง จังหวัดหนองบัวลำภู 39000</span></div></div>
+        <div class="info"><i>📞</i><div><b>โทรศัพท์</b><span><a href="tel:0818734996" style="color:var(--sky-600);font-weight:600">081-873-4996</a> (ครูอ้อย)</span></div></div>
+        <div class="info"><i>💬</i><div><b>LINE ID</b><span>kruaoymalika</span></div></div>
+        <div class="info"><i>📘</i><div><b>Facebook</b><span>เรียนพิเศษบ้านครูอ้อย</span></div></div>
+        <div class="info"><i>🕘</i><div><b>เวลาทำการ</b><span>จันทร์ – ศุกร์ 15.00 – 20.00 น.<br>เสาร์ – อาทิตย์ 09.00 – 17.00 น.</span></div></div>
       </div>
-      <div class="map">📌 [ วางโค้ดฝัง Google Maps ตรงนี้ ]<br><small>วิธีทำ: Google Maps → ค้นหาที่ตั้ง → แชร์ → ฝังแผนที่ → คัดลอก &lt;iframe&gt; มาวางแทนกล่องนี้</small></div>
     </div>
 
-    <form class="card reveal" id="form" novalidate>
-      <h3>📝 ลงทะเบียนทดลองเรียนฟรี</h3>
-      <p class="hint">กรอกข้อมูลสั้น ๆ แล้วครูจะติดต่อกลับภายใน 1 วันทำการ</p>
-      <div class="two">
-        <div class="field"><label for="pname">ชื่อผู้ปกครอง *</label><input id="pname" name="pname" required placeholder="เช่น คุณสมหญิง"></div>
-        <div class="field"><label for="tel">เบอร์โทร *</label><input id="tel" name="tel" type="tel" required placeholder="08X-XXX-XXXX"></div>
+    <div class="contact-card reveal">
+      <h3>📞 สนใจให้น้องเรียน ติดต่อได้เลยค่ะ</h3>
+      <p class="hint">โทรหรือแอดไลน์มาคุยกับครูอ้อยได้โดยตรง</p>
+
+      <a href="tel:0818734996" class="big-cta tel">
+        <span class="ico">📞</span>
+        <span><b>081-873-4996</b><small>กดเพื่อโทรหาครูอ้อย</small></span>
+      </a>
+
+      <div class="big-cta line-id">
+        <span class="ico">💬</span>
+        <span><b>kruaoymalika</b><small>LINE ID — ค้นหา ID นี้ในแอป LINE เพื่อแอดครู</small></span>
       </div>
-      <div class="two">
-        <div class="field"><label for="sname">ชื่อเล่นน้อง</label><input id="sname" name="sname" placeholder="เช่น น้องปุ๊กกี้"></div>
-        <div class="field"><label for="level">ระดับชั้น *</label>
-          <select id="level" name="level" required>
-            <option value="">— เลือกระดับชั้น —</option>
-            <option>อนุบาล 1</option><option>อนุบาล 2</option><option>อนุบาล 3</option>
-            <option>ประถมศึกษาปีที่ 1</option><option>ประถมศึกษาปีที่ 2</option><option>ประถมศึกษาปีที่ 3</option>
-            <option>ประถมศึกษาปีที่ 4</option><option>ประถมศึกษาปีที่ 5</option><option>ประถมศึกษาปีที่ 6</option>
-          </select>
-        </div>
+
+      <div class="ready">
+        <b>เตรียมข้อมูลเหล่านี้ไว้ ครูจะแนะนำได้เร็วขึ้น</b>
+        <ul>
+          <li>ชื่อเล่นน้อง และระดับชั้นที่กำลังเรียน</li>
+          <li>วิชาที่อยากให้เสริม (หรือให้ครูช่วยประเมินก็ได้)</li>
+          <li>วัน–เวลาที่สะดวกพาน้องมาเรียน</li>
+        </ul>
       </div>
-      <div class="field"><label for="subj">วิชาที่สนใจ</label>
-        <select id="subj" name="subj">
-          <option value="">— เลือกวิชา —</option>
-          <option>คณิตศาสตร์</option><option>ภาษาไทย</option><option>ภาษาอังกฤษ</option>
-          <option>วิทยาศาสตร์</option><option>เชาวน์ปัญญา</option><option>ยังไม่แน่ใจ ขอคำแนะนำจากครู</option>
-        </select>
-      </div>
-      <div class="field"><label for="msg">ข้อความเพิ่มเติม</label><textarea id="msg" name="msg" rows="3" placeholder="เช่น อยากให้เน้นเรื่องการอ่านจับใจความค่ะ"></textarea></div>
-      <button type="submit" class="btn btn-primary">ส่งข้อมูลให้ครูอ้อย</button>
-      <div class="ok" id="ok">✅ ส่งข้อมูลเรียบร้อยแล้วค่ะ ครูจะติดต่อกลับโดยเร็วที่สุด</div>
-      <p class="hint" style="text-align:center;margin:0">หรือทักไลน์ <a href="#" style="color:var(--sky-600);font-weight:600">@bankruaoy</a> ได้เลยค่ะ</p>
-    </form>
+    </div>
   </div>
 </section>
 
@@ -715,10 +664,10 @@ footer a:hover{color:#fff}
   <div class="wrap">
     <div class="cta-band reveal">
       <h2>ให้บ้านครูอ้อยดูแลการเรียนของน้องนะคะ 💙</h2>
-      <p>ทดลองเรียนฟรี 1 ครั้ง พร้อมทดสอบพื้นฐานและคำแนะนำจากครูโดยตรง</p>
+      <p>โทรมาปรึกษาครูอ้อยได้เลย ยินดีแนะนำแม้ยังไม่ตัดสินใจสมัคร</p>
       <div class="btns">
-        <a href="#contact" class="btn btn-sun">🎒 จองเรียนทดลองฟรี</a>
-        <a href="tel:0812345678" class="btn btn-ghost">📞 โทรหาครูอ้อย</a>
+        <a href="tel:0818734996" class="btn btn-sun">📞 081-873-4996</a>
+        <a href="#contact" class="btn btn-ghost">ดูข้อมูลติดต่อทั้งหมด</a>
       </div>
     </div>
   </div>
@@ -729,14 +678,8 @@ footer a:hover{color:#fff}
   <div class="wrap">
     <div class="f-grid">
       <div>
-        <div class="f-logo"><span class="logo-mark">🏠</span><b>สถาบันสอนพิเศษบ้านครูอ้อย</b></div>
-        <p style="font-size:.92rem">สอนพิเศษระดับอนุบาล – ประถมศึกษาปีที่ 6<br>กลุ่มเล็ก ดูแลใกล้ชิด บรรยากาศอบอุ่นเหมือนอยู่บ้าน</p>
-        <div class="socials">
-          <a href="#" aria-label="Facebook">📘</a>
-          <a href="#" aria-label="LINE">💬</a>
-          <a href="#" aria-label="TikTok">🎵</a>
-          <a href="#" aria-label="YouTube">▶️</a>
-        </div>
+        <div class="f-logo"><span class="logo-mark">🏠</span><b>เรียนพิเศษบ้านครูอ้อย</b></div>
+        <p style="font-size:.92rem">สอนพิเศษระดับอนุบาล 2 – ประถมศึกษาปีที่ 6<br>อำเภอเมือง จังหวัดหนองบัวลำภู<br>โดยครูอ้อย ประสบการณ์ 32 ปี</p>
       </div>
       <div>
         <h4>เมนูลัด</h4>
@@ -757,38 +700,34 @@ footer a:hover{color:#fff}
       <div>
         <h4>ติดต่อเรา</h4>
         <ul>
-          <li>📍 [ ที่อยู่สถาบัน ]</li>
-          <li>📞 <a href="tel:0812345678">08X-XXX-XXXX</a></li>
-          <li>💬 LINE: @bankruaoy</li>
-          <li>✉️ [ อีเมล ]</li>
+          <li>📍 77/7 ถนนวิริโยธิน ต.ลำภู อ.เมือง จ.หนองบัวลำภู 39000</li>
+          <li>📞 <a href="tel:0818734996">081-873-4996</a></li>
+          <li>💬 LINE ID: kruaoymalika</li>
+          <li>📘 Facebook: เรียนพิเศษบ้านครูอ้อย</li>
         </ul>
       </div>
     </div>
-    <div class="f-bot">© <span id="yr">2026</span> สถาบันสอนพิเศษบ้านครูอ้อย · สงวนลิขสิทธิ์</div>
+    <div class="f-bot">© <span id="yr">2026</span> เรียนพิเศษบ้านครูอ้อย · สงวนลิขสิทธิ์</div>
   </div>
 </footer>
 
 <div class="fab">
-  <a href="#" class="line" aria-label="แชททางไลน์">💬</a>
-  <a href="tel:0812345678" class="tel" aria-label="โทรหาเรา">📞</a>
+  <a href="#contact" class="line" aria-label="ข้อมูลติดต่อ">💬</a>
+  <a href="tel:0818734996" class="tel" aria-label="โทรหาเรา">📞</a>
 </div>
 
 <script>
-// ปีปัจจุบันใน footer
 document.getElementById('yr').textContent = new Date().getFullYear();
 
-// เมนูมือถือ
 var burger = document.getElementById('burger'), menu = document.getElementById('menu');
 burger.addEventListener('click', function(){ menu.classList.toggle('open'); });
 menu.addEventListener('click', function(e){ if(e.target.tagName === 'A') menu.classList.remove('open'); });
 
-// เงาแถบเมนูตอนเลื่อน
 var header = document.getElementById('site-header');
 window.addEventListener('scroll', function(){
   header.classList.toggle('scrolled', window.scrollY > 12);
 }, {passive:true});
 
-// แอนิเมชันตอนเลื่อนถึง
 var io = new IntersectionObserver(function(entries){
   entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
 }, {threshold:.12});
@@ -797,19 +736,19 @@ document.querySelectorAll('.reveal').forEach(function(el, i){
   io.observe(el);
 });
 
-// ฟอร์มลงทะเบียน (ยังไม่ต่อระบบหลังบ้าน — แสดงข้อความยืนยันไว้ก่อน)
-document.getElementById('form').addEventListener('submit', function(e){
-  e.preventDefault();
-  var req = ['pname','tel','level'], okAll = true;
-  req.forEach(function(id){
-    var el = document.getElementById(id);
-    if(!el.value.trim()){ el.style.borderColor = '#FF8FA9'; okAll = false; }
-    else { el.style.borderColor = ''; }
+var lineBox = document.querySelector('.big-cta.line-id');
+if(lineBox){
+  lineBox.style.cursor = 'pointer';
+  lineBox.addEventListener('click', function(){
+    var small = lineBox.querySelector('small'), original = small.textContent;
+    if(navigator.clipboard){
+      navigator.clipboard.writeText('kruaoymalika').then(function(){
+        small.textContent = '✅ คัดลอก LINE ID แล้ว นำไปค้นหาในแอป LINE ได้เลย';
+        setTimeout(function(){ small.textContent = original; }, 2500);
+      });
+    }
   });
-  if(!okAll) return;
-  document.getElementById('ok').style.display = 'block';
-  this.reset();
-});
+}
 </script>
 </body>
 </html>
