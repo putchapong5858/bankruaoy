@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สถาบันสอนพิเศษบ้านครูอ้อย | ติวเตอร์อนุบาล–ป.6 คณิต ไทย อังกฤษ วิทย์ เชาวน์ปัญญา</title>
+<meta name="description" content="สถาบันสอนพิเศษบ้านครูอ้อย สอนเด็กระดับอนุบาลถึงประถมศึกษาปีที่ 6 วิชาคณิตศาสตร์ ภาษาไทย ภาษาอังกฤษ วิทยาศาสตร์ และเชาวน์ปัญญา กลุ่มเล็ก ดูแลใกล้ชิด บรรยากาศอบอุ่นเหมือนอยู่บ้าน">
+<meta name="keywords" content="เรียนพิเศษ, ติวเตอร์, บ้านครูอ้อย, อนุบาล, ประถม, คณิตศาสตร์, ภาษาไทย, ภาษาอังกฤษ, วิทยาศาสตร์, เชาวน์ปัญญา">
+<meta property="og:title" content="สถาบันสอนพิเศษบ้านครูอ้อย">
+<meta property="og:description" content="ติวเตอร์อนุบาล–ป.6 กลุ่มเล็ก ดูแลใกล้ชิด บรรยากาศอบอุ่นเหมือนอยู่บ้าน">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sky-50:#F2FAFF; --sky-100:#E1F3FE; --sky-200:#BFE6FC; --sky-300:#8FD4F8;
+  --sky-400:#4FBEF0; --sky-500:#26A5E0; --sky-600:#1187C4; --sky-700:#0C6B9E;
+  --ink:#0E3B57; --ink-soft:#3E6B85; --white:#fff;
+  --sun:#FFC94D; --peach:#FF9A76; --mint:#5FD6A8; --grape:#A78BFA; --rose:#FF8FA9;
+  --shadow-sm:0 2px 8px rgba(14,59,87,.06);
+  --shadow:0 10px 28px rgba(14,59,87,.10);
+  --shadow-lg:0 20px 50px rgba(14,59,87,.14);
+  --r:22px; --r-lg:32px;
+  --wrap:1120px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:86px}
+body{
+  font-family:'Prompt','Noto Sans Thai',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color:var(--ink); background:var(--sky-50); line-height:1.75;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+.wrap{width:100%;max-width:var(--wrap);margin:0 auto;padding:0 22px}
+.fam{font-family:'Mali','Prompt',cursive}
+
+/* ---------- ปุ่ม ---------- */
+.btn{
+  display:inline-flex;align-items:center;gap:.5rem;justify-content:center;
+  padding:.85rem 1.7rem;border-radius:999px;font-weight:600;font-size:1rem;
+  border:2px solid transparent;cursor:pointer;transition:.25s;white-space:nowrap;
+}
+.btn-primary{background:linear-gradient(135deg,var(--sky-500),var(--sky-600));color:#fff;box-shadow:0 8px 20px rgba(18,135,196,.32)}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 14px 28px rgba(18,135,196,.42)}
+.btn-sun{background:var(--sun);color:#7A4E00;box-shadow:0 8px 20px rgba(255,201,77,.42)}
+.btn-sun:hover{transform:translateY(-3px)}
+.btn-ghost{background:#fff;color:var(--sky-700);border-color:var(--sky-200)}
+.btn-ghost:hover{background:var(--sky-100);transform:translateY(-3px)}
+
+/* ---------- แถบเมนู ---------- */
+header{
+  position:fixed;inset:0 0 auto 0;z-index:100;
+  background:rgba(255,255,255,.82);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--sky-100);transition:.3s;
+}
+header.scrolled{box-shadow:var(--shadow-sm)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:74px;gap:1rem}
+.logo{display:flex;align-items:center;gap:.65rem;font-weight:700}
+.logo-mark{
+  width:46px;height:46px;border-radius:16px;flex:none;
+  background:linear-gradient(140deg,var(--sky-400),var(--sky-600));
+  display:grid;place-items:center;color:#fff;font-size:1.35rem;
+  box-shadow:0 6px 16px rgba(18,135,196,.35);
+}
+.logo-txt b{display:block;font-size:1.06rem;line-height:1.25;color:var(--ink);white-space:nowrap}
+.logo-txt span{display:block;font-size:.68rem;letter-spacing:.16em;color:var(--sky-600);font-weight:500}
+.menu{display:flex;align-items:center;gap:.35rem}
+.menu a{padding:.5rem .85rem;border-radius:999px;font-size:.95rem;font-weight:500;color:var(--ink-soft);transition:.2s}
+.menu a:hover{background:var(--sky-100);color:var(--sky-700)}
+.nav-cta{display:flex;gap:.5rem;align-items:center}
+.nav-cta .btn{padding:.6rem 1.25rem;font-size:.92rem}
+.burger{display:none;width:46px;height:46px;border-radius:14px;border:1px solid var(--sky-200);background:#fff;cursor:pointer;place-items:center}
+.burger span{display:block;width:20px;height:2px;background:var(--sky-700);border-radius:2px;position:relative}
+.burger span::before,.burger span::after{content:'';position:absolute;left:0;width:20px;height:2px;background:var(--sky-700);border-radius:2px}
+.burger span::before{top:-6px}.burger span::after{top:6px}
+
+/* ---------- ฮีโร่ ---------- */
+.hero{position:relative;padding:150px 0 90px;overflow:hidden}
+.hero::before{
+  content:'';position:absolute;inset:-30% -20% auto -20%;height:130%;
+  background:radial-gradient(60% 60% at 30% 20%,#DCF1FE 0%,transparent 60%),
+             radial-gradient(50% 50% at 85% 10%,#E9F7FF 0%,transparent 60%);
+  z-index:-1;
+}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.pill{
+  display:inline-flex;align-items:center;gap:.5rem;background:#fff;color:var(--sky-700);
+  padding:.45rem 1.1rem;border-radius:999px;font-size:.86rem;font-weight:600;
+  box-shadow:var(--shadow-sm);border:1px solid var(--sky-100);margin-bottom:1.25rem;
+}
+.hero h1{font-family:'Mali',cursive;font-size:clamp(2.1rem,5vw,3.4rem);line-height:1.35;font-weight:700;margin-bottom:1rem}
+.hero h1 em{font-style:normal;color:var(--sky-600);position:relative;white-space:nowrap}
+.hero h1 em::after{
+  content:'';position:absolute;left:0;right:0;bottom:.06em;height:.32em;
+  background:var(--sun);opacity:.45;border-radius:6px;z-index:-1;
+}
+.hero p.lead{font-size:1.08rem;color:var(--ink-soft);max-width:520px;margin-bottom:1.9rem}
+.hero-btns{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:2rem}
+.hero-stats{display:flex;gap:2rem;flex-wrap:wrap}
+.hero-stats div b{display:block;font-family:'Mali',cursive;font-size:1.75rem;color:var(--sky-600);line-height:1.2}
+.hero-stats div span{font-size:.86rem;color:var(--ink-soft)}
+
+.hero-art{position:relative}
+.art-card{
+  background:#fff;border-radius:var(--r-lg);padding:26px;box-shadow:var(--shadow-lg);
+  border:1px solid var(--sky-100);position:relative;z-index:2;
+}
+.art-window{
+  border-radius:24px;background:linear-gradient(160deg,var(--sky-100),#fff);
+  padding:24px;display:grid;gap:14px;
+}
+.subj-chip{
+  display:flex;align-items:center;gap:.75rem;background:#fff;border-radius:18px;padding:.8rem 1rem;
+  box-shadow:var(--shadow-sm);font-weight:500;font-size:.95rem;
+  animation:floaty 4s ease-in-out infinite;
+}
+.subj-chip:nth-child(2){animation-delay:.5s}
+.subj-chip:nth-child(3){animation-delay:1s}
+.subj-chip i{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-style:normal;font-size:1.15rem;flex:none}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.blob{position:absolute;border-radius:50%;filter:blur(2px);opacity:.7;z-index:1}
+.b1{width:120px;height:120px;background:var(--sun);top:-34px;right:-24px;opacity:.35}
+.b2{width:90px;height:90px;background:var(--mint);bottom:-30px;left:-30px;opacity:.35}
+.cloud{position:absolute;color:#fff;font-size:2.4rem;opacity:.9;animation:drift 9s ease-in-out infinite}
+.c1{top:8%;left:4%}.c2{top:26%;right:6%;animation-delay:2s;font-size:1.8rem}
+@keyframes drift{0%,100%{transform:translateX(0)}50%{transform:translateX(18px)}}
+
+/* ---------- ตัวคั่นคลื่น ---------- */
+.wave{display:block;width:100%;height:70px}
+
+/* ---------- ส่วนทั่วไป ---------- */
+section{position:relative}
+.sec{padding:84px 0}
+.sec-white{background:#fff}
+.sec-head{text-align:center;max-width:680px;margin:0 auto 52px}
+.eyebrow{display:inline-block;font-size:.82rem;font-weight:600;letter-spacing:.18em;color:var(--sky-500);margin-bottom:.6rem}
+.sec-head h2{font-family:'Mali',cursive;font-size:clamp(1.7rem,3.6vw,2.4rem);font-weight:700;margin-bottom:.7rem}
+.sec-head p{color:var(--ink-soft);font-size:1.02rem}
+
+/* ---------- จุดเด่น ---------- */
+.feats{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.feat{
+  background:#fff;border-radius:var(--r);padding:26px 22px;text-align:center;
+  border:1px solid var(--sky-100);box-shadow:var(--shadow-sm);transition:.28s;
+}
+.feat:hover{transform:translateY(-6px);box-shadow:var(--shadow)}
+.feat i{font-style:normal;font-size:1.6rem;width:60px;height:60px;border-radius:20px;display:grid;place-items:center;margin:0 auto .9rem}
+.feat h3{font-size:1.05rem;font-weight:600;margin-bottom:.35rem}
+.feat p{font-size:.9rem;color:var(--ink-soft);line-height:1.65}
+
+/* ---------- เกี่ยวกับเรา ---------- */
+.about{display:grid;grid-template-columns:.9fr 1.1fr;gap:56px;align-items:center}
+.about-photo{
+  border-radius:var(--r-lg);background:linear-gradient(150deg,var(--sky-200),var(--sky-100));
+  aspect-ratio:4/5;display:grid;place-items:center;position:relative;overflow:hidden;
+  box-shadow:var(--shadow);border:8px solid #fff;
+}
+.about-photo .ph{text-align:center;color:var(--sky-700);opacity:.85}
+.about-photo .ph span{font-size:4rem;display:block}
+.about-photo .ph small{font-size:.85rem}
+.badge-float{
+  position:absolute;bottom:18px;left:18px;right:18px;background:rgba(255,255,255,.94);
+  border-radius:18px;padding:.85rem 1rem;display:flex;align-items:center;gap:.7rem;
+  box-shadow:var(--shadow-sm);font-size:.88rem;
+}
+.about h2{font-family:'Mali',cursive;font-size:clamp(1.6rem,3.4vw,2.25rem);margin-bottom:1rem;line-height:1.45}
+.about p{color:var(--ink-soft);margin-bottom:1rem}
+.checks{display:grid;gap:.7rem;margin:1.4rem 0}
+.checks li{list-style:none;display:flex;gap:.7rem;align-items:flex-start;font-size:.98rem}
+.checks li b{
+  flex:none;width:26px;height:26px;border-radius:50%;background:var(--sky-100);
+  color:var(--sky-600);display:grid;place-items:center;font-size:.8rem;margin-top:.25rem;
+}
+
+/* ---------- วิชา ---------- */
+.subjects{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.subj{
+  background:#fff;border-radius:var(--r-lg);padding:30px 26px;position:relative;overflow:hidden;
+  border:1px solid var(--sky-100);box-shadow:var(--shadow-sm);transition:.3s;
+}
+.subj::after{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;border-radius:50%;opacity:.12;transition:.3s}
+.subj:hover{transform:translateY(-8px);box-shadow:var(--shadow-lg)}
+.subj:hover::after{transform:scale(1.35)}
+.subj i{font-style:normal;font-size:1.8rem;width:66px;height:66px;border-radius:22px;display:grid;place-items:center;margin-bottom:1rem}
+.subj h3{font-family:'Mali',cursive;font-size:1.35rem;margin-bottom:.5rem}
+.subj p{font-size:.93rem;color:var(--ink-soft);margin-bottom:1rem;min-height:3.2em}
+.subj ul{list-style:none;display:grid;gap:.4rem}
+.subj li{font-size:.88rem;color:var(--ink-soft);display:flex;gap:.5rem}
+.subj li::before{content:'●';font-size:.55rem;line-height:2.1}
+.s-math i{background:#E7F0FF;color:#3B76D8}.s-math::after{background:#3B76D8}.s-math li::before{color:#3B76D8}
+.s-thai i{background:#FFEFEA;color:#E8663C}.s-thai::after{background:#E8663C}.s-thai li::before{color:#E8663C}
+.s-eng  i{background:#EAF7F1;color:#2AA277}.s-eng::after{background:#2AA277}.s-eng li::before{color:#2AA277}
+.s-sci  i{background:#F1EDFF;color:#7C5CD6}.s-sci::after{background:#7C5CD6}.s-sci li::before{color:#7C5CD6}
+.s-iq   i{background:#FFF3D6;color:#D99400}.s-iq::after{background:#D99400}.s-iq li::before{color:#D99400}
+.s-more{
+  background:linear-gradient(150deg,var(--sky-500),var(--sky-700));color:#fff;
+  display:flex;flex-direction:column;justify-content:center;gap:1rem;
+}
+.s-more h3{color:#fff}.s-more p{color:rgba(255,255,255,.88);min-height:auto}
+
+/* ---------- ระดับชั้น ---------- */
+.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.level{
+  border-radius:var(--r-lg);padding:32px 26px;color:#fff;position:relative;overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.lv1{background:linear-gradient(145deg,#7DC8F7,#3FA9E8)}
+.lv2{background:linear-gradient(145deg,#4FBEF0,#1187C4)}
+.lv3{background:linear-gradient(145deg,#2F9AD4,#0B5F8E)}
+.level em{font-style:normal;font-size:.8rem;letter-spacing:.14em;opacity:.9;font-weight:600}
+.level h3{font-family:'Mali',cursive;font-size:1.55rem;margin:.35rem 0 .8rem}
+.level p{font-size:.93rem;opacity:.95;margin-bottom:1.1rem}
+.level ul{list-style:none;display:grid;gap:.5rem;font-size:.9rem}
+.level li{display:flex;gap:.55rem;align-items:flex-start}
+.level li::before{content:'✓';font-weight:700;opacity:.9}
+.level .big{position:absolute;right:-10px;bottom:-24px;font-size:6rem;opacity:.16;font-family:'Mali',cursive;font-weight:700}
+
+/* ---------- ตาราง/ค่าเรียน ---------- */
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:start}
+.price{
+  background:#fff;border-radius:var(--r-lg);padding:32px 26px;border:2px solid var(--sky-100);
+  box-shadow:var(--shadow-sm);position:relative;transition:.3s;
+}
+.price:hover{transform:translateY(-6px);box-shadow:var(--shadow)}
+.price.hot{border-color:var(--sky-400);box-shadow:var(--shadow)}
+.price .tag{
+  position:absolute;top:-14px;left:50%;transform:translateX(-50%);
+  background:var(--sun);color:#7A4E00;font-size:.78rem;font-weight:700;
+  padding:.3rem 1rem;border-radius:999px;white-space:nowrap;
+}
+.price h3{font-family:'Mali',cursive;font-size:1.3rem;margin-bottom:.3rem}
+.price .sub{font-size:.86rem;color:var(--ink-soft);margin-bottom:1rem}
+.price .amt{font-family:'Mali',cursive;font-size:2.2rem;color:var(--sky-600);line-height:1.2}
+.price .amt small{font-size:.85rem;color:var(--ink-soft);font-family:'Prompt',sans-serif}
+.price ul{list-style:none;display:grid;gap:.55rem;margin:1.2rem 0 1.5rem;font-size:.92rem;color:var(--ink-soft)}
+.price li{display:flex;gap:.55rem}
+.price li::before{content:'✓';color:var(--mint);font-weight:700}
+.price .btn{width:100%}
+.note{text-align:center;font-size:.88rem;color:var(--ink-soft);margin-top:1.6rem}
+
+.table-wrap{overflow-x:auto;border-radius:var(--r);box-shadow:var(--shadow-sm);border:1px solid var(--sky-100);background:#fff;margin-top:2.4rem}
+table{width:100%;border-collapse:collapse;min-width:620px;font-size:.94rem}
+th,td{padding:.95rem 1.1rem;text-align:left;border-bottom:1px solid var(--sky-100)}
+th{background:var(--sky-100);color:var(--sky-700);font-weight:600;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--sky-50)}
+
+/* ---------- รีวิว ---------- */
+.reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.review{
+  background:#fff;border-radius:var(--r);padding:28px 24px;border:1px solid var(--sky-100);
+  box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:1rem;
+}
+.stars{color:var(--sun);font-size:1rem;letter-spacing:.1em}
+.review p{font-size:.95rem;color:var(--ink-soft);flex:1}
+.who{display:flex;align-items:center;gap:.75rem}
+.avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex:none}
+.who b{display:block;font-size:.94rem}
+.who span{font-size:.82rem;color:var(--ink-soft)}
+
+/* ---------- คำถามที่พบบ่อย ---------- */
+.faq{max-width:800px;margin:0 auto;display:grid;gap:12px}
+.q{background:#fff;border:1px solid var(--sky-100);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow-sm)}
+.q summary{
+  padding:1.1rem 1.4rem;font-weight:600;cursor:pointer;list-style:none;
+  display:flex;justify-content:space-between;gap:1rem;align-items:center;font-size:1rem;
+}
+.q summary::-webkit-details-marker{display:none}
+.q summary::after{content:'+';font-size:1.5rem;color:var(--sky-500);font-weight:400;transition:.25s;flex:none}
+.q[open] summary::after{transform:rotate(45deg)}
+.q .a{padding:0 1.4rem 1.25rem;color:var(--ink-soft);font-size:.95rem}
+
+/* ---------- ติดต่อ ---------- */
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+.info-list{display:grid;gap:14px;margin-top:1.6rem}
+.info{display:flex;gap:1rem;align-items:flex-start;background:#fff;border-radius:var(--r);padding:1.1rem 1.25rem;border:1px solid var(--sky-100);box-shadow:var(--shadow-sm)}
+.info i{font-style:normal;width:46px;height:46px;border-radius:15px;background:var(--sky-100);color:var(--sky-600);display:grid;place-items:center;font-size:1.15rem;flex:none}
+.info b{display:block;font-size:.95rem}
+.info span{font-size:.9rem;color:var(--ink-soft)}
+form.card{background:#fff;border-radius:var(--r-lg);padding:32px;box-shadow:var(--shadow);border:1px solid var(--sky-100);display:grid;gap:14px}
+form.card h3{font-family:'Mali',cursive;font-size:1.35rem;margin-bottom:.2rem}
+form.card p.hint{font-size:.88rem;color:var(--ink-soft);margin-bottom:.6rem}
+.field label{display:block;font-size:.88rem;font-weight:500;margin-bottom:.35rem}
+.field input,.field select,.field textarea{
+  width:100%;padding:.8rem 1rem;border-radius:14px;border:1.5px solid var(--sky-200);
+  font-family:inherit;font-size:.95rem;color:var(--ink);background:var(--sky-50);transition:.2s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--sky-400);background:#fff;box-shadow:0 0 0 4px rgba(79,190,240,.16)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ok{display:none;background:#EAF7F1;color:#20805C;border-radius:14px;padding:.85rem 1rem;font-size:.92rem}
+.map{border-radius:var(--r);overflow:hidden;border:1px solid var(--sky-100);box-shadow:var(--shadow-sm);margin-top:1.4rem;background:var(--sky-100);aspect-ratio:16/9;display:grid;place-items:center;color:var(--sky-700);text-align:center;font-size:.9rem;padding:1rem}
+
+/* ---------- CTA แถบ ---------- */
+.cta-band{background:linear-gradient(135deg,var(--sky-500),var(--sky-700));color:#fff;border-radius:var(--r-lg);padding:48px 40px;text-align:center;box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
+.cta-band::before{content:'';position:absolute;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.08);top:-120px;left:-60px}
+.cta-band::after{content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.08);bottom:-110px;right:-50px}
+.cta-band h2{font-family:'Mali',cursive;font-size:clamp(1.5rem,3.2vw,2.1rem);margin-bottom:.6rem;position:relative}
+.cta-band p{opacity:.92;margin-bottom:1.7rem;position:relative}
+.cta-band .btns{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;position:relative}
+
+/* ---------- ท้ายเว็บ ---------- */
+footer{background:var(--ink);color:rgba(255,255,255,.72);padding:56px 0 26px;margin-top:84px}
+.f-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.2fr;gap:36px;margin-bottom:36px}
+footer h4{color:#fff;font-size:1rem;margin-bottom:1rem;font-weight:600}
+footer ul{list-style:none;display:grid;gap:.6rem;font-size:.92rem}
+footer a:hover{color:#fff}
+.f-logo{display:flex;align-items:center;gap:.65rem;margin-bottom:1rem}
+.f-logo .logo-mark{background:rgba(255,255,255,.14)}
+.f-logo b{color:#fff;font-size:1.05rem}
+.socials{display:flex;gap:.6rem;margin-top:1rem}
+.socials a{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.1);display:grid;place-items:center;font-size:1.1rem;transition:.2s}
+.socials a:hover{background:var(--sky-500);transform:translateY(-3px)}
+.f-bot{border-top:1px solid rgba(255,255,255,.12);padding-top:22px;text-align:center;font-size:.86rem}
+
+/* ---------- ปุ่มลอย ---------- */
+.fab{position:fixed;right:20px;bottom:20px;z-index:90;display:grid;gap:10px}
+.fab a{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font-size:1.4rem;color:#fff;box-shadow:var(--shadow);transition:.25s}
+.fab a:hover{transform:scale(1.1)}
+.fab .line{background:#06C755}
+.fab .tel{background:var(--sky-600)}
+
+/* ---------- แอนิเมชันตอนเลื่อน ---------- */
+.reveal{opacity:0;transform:translateY(26px);transition:.7s cubic-bezier(.2,.7,.3,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* ---------- จอเล็ก ---------- */
+@media(max-width:1024px){
+  .feats{grid-template-columns:repeat(2,1fr)}
+  .subjects,.levels,.price-grid,.reviews{grid-template-columns:repeat(2,1fr)}
+  .f-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:860px){
+  .menu{
+    position:fixed;top:74px;left:0;right:0;background:#fff;flex-direction:column;
+    align-items:stretch;padding:14px 22px 22px;gap:.25rem;box-shadow:var(--shadow);
+    transform:translateY(-12px);opacity:0;visibility:hidden;pointer-events:none;
+    transition:opacity .25s,transform .25s,visibility .25s;border-bottom:1px solid var(--sky-100);
+    max-height:calc(100vh - 74px);overflow-y:auto;
+  }
+  .menu.open{transform:none;opacity:1;visibility:visible;pointer-events:auto}
+  .menu a{padding:.75rem 1rem}
+  .burger{display:grid}
+  .nav-cta .btn-ghost{display:none}
+  .nav-cta .btn{padding:.55rem 1rem;font-size:.86rem}
+  .logo-mark{width:40px;height:40px;border-radius:14px;font-size:1.15rem}
+  .logo-txt b{font-size:.95rem}
+  .logo-txt span{font-size:.6rem;letter-spacing:.1em}
+  .cloud{display:none}
+  .hero{padding:120px 0 60px}
+  .hero-grid,.about,.contact-grid{grid-template-columns:1fr;gap:36px}
+  .about-photo{max-width:360px;margin:0 auto;aspect-ratio:1/1}
+  .sec{padding:64px 0}
+}
+@media(max-width:620px){
+  .feats,.subjects,.levels,.price-grid,.reviews,.f-grid,.two{grid-template-columns:1fr}
+  .hero-stats{gap:1.3rem}
+  .cta-band{padding:36px 22px}
+  form.card{padding:24px}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= แถบเมนู ================= -->
+<header id="site-header">
+  <div class="wrap nav">
+    <a href="#top" class="logo">
+      <span class="logo-mark">🏠</span>
+      <span class="logo-txt">
+        <b>บ้านครูอ้อย</b>
+        <span>BAAN KRU AOY</span>
+      </span>
+    </a>
+    <nav class="menu" id="menu">
+      <a href="#about">เกี่ยวกับเรา</a>
+      <a href="#subjects">วิชาที่เปิดสอน</a>
+      <a href="#levels">ระดับชั้น</a>
+      <a href="#course">ตาราง &amp; ค่าเรียน</a>
+      <a href="#reviews">รีวิว</a>
+      <a href="#faq">คำถามที่พบบ่อย</a>
+      <a href="#contact">ติดต่อเรา</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="tel:0812345678" class="btn btn-ghost">📞 08X-XXX-XXXX</a>
+      <a href="#contact" class="btn btn-primary">ทดลองเรียนฟรี</a>
+      <button class="burger" id="burger" aria-label="เมนู"><span></span></button>
+    </div>
+  </div>
+</header>
+
+<!-- ================= ฮีโร่ ================= -->
+<section class="hero" id="top">
+  <span class="cloud c1">☁️</span>
+  <span class="cloud c2">☁️</span>
+  <div class="wrap hero-grid">
+    <div>
+      <span class="pill">✨ เปิดรับสมัครนักเรียนใหม่ ภาคเรียนนี้</span>
+      <h1>เรียนสนุก เข้าใจจริง<br>ที่ <em>บ้านครูอ้อย</em></h1>
+      <p class="lead">
+        สถาบันสอนพิเศษสำหรับน้อง ๆ ระดับ <b>อนุบาล – ประถมศึกษาปีที่ 6</b>
+        สอนกลุ่มเล็ก ดูแลใกล้ชิด ปรับพื้นฐานให้แน่น พร้อมเสริมทักษะคิดวิเคราะห์
+        ในบรรยากาศอบอุ่นเหมือนอยู่บ้าน
+      </p>
+      <div class="hero-btns">
+        <a href="#contact" class="btn btn-primary">🎒 จองเรียนทดลองฟรี</a>
+        <a href="#subjects" class="btn btn-ghost">ดูวิชาที่เปิดสอน</a>
+      </div>
+      <div class="hero-stats">
+        <div><b>15+</b><span>ปีประสบการณ์การสอน</span></div>
+        <div><b>1,200+</b><span>นักเรียนที่ดูแลแล้ว</span></div>
+        <div><b>1:8</b><span>ครู 1 ท่านต่อนักเรียน</span></div>
+      </div>
+    </div>
+    <div class="hero-art">
+      <span class="blob b1"></span>
+      <span class="blob b2"></span>
+      <div class="art-card">
+        <div class="art-window">
+          <div class="subj-chip"><i style="background:#E7F0FF;color:#3B76D8">➗</i> คณิตศาสตร์ · คิดเลขเร็ว แก้โจทย์เป็น</div>
+          <div class="subj-chip"><i style="background:#FFEFEA;color:#E8663C">ก</i> ภาษาไทย · อ่านคล่อง เขียนสวย</div>
+          <div class="subj-chip"><i style="background:#EAF7F1;color:#2AA277">A</i> ภาษาอังกฤษ · กล้าพูด กล้าใช้</div>
+          <div class="subj-chip"><i style="background:#F1EDFF;color:#7C5CD6">🔬</i> วิทยาศาสตร์ · ทดลองจริง เห็นภาพ</div>
+          <div class="subj-chip"><i style="background:#FFF3D6;color:#D99400">🧩</i> เชาวน์ปัญญา · คิดไว ตอบแม่น</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<svg class="wave" viewBox="0 0 1440 70" preserveAspectRatio="none" aria-hidden="true">
+  <path fill="#ffffff" d="M0,40 C240,80 480,0 720,25 C960,50 1200,75 1440,35 L1440,70 L0,70 Z"></path>
+</svg>
+
+<!-- ================= จุดเด่น ================= -->
+<section class="sec sec-white">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">WHY BAAN KRU AOY</span>
+      <h2>ทำไมผู้ปกครองถึงไว้ใจบ้านครูอ้อย</h2>
+      <p>เราไม่ได้แค่ติวให้คะแนนขึ้น แต่สร้างนิสัยรักการเรียนรู้ให้ติดตัวน้อง ๆ ไปตลอด</p>
+    </div>
+    <div class="feats">
+      <div class="feat reveal"><i style="background:#E1F3FE;color:#1187C4">👩‍🏫</i><h3>กลุ่มเล็ก ดูแลทั่วถึง</h3><p>ห้องละไม่เกิน 8 คน ครูรู้จักน้องทุกคน เห็นจุดอ่อนและแก้ได้ตรงจุด</p></div>
+      <div class="feat reveal"><i style="background:#FFF3D6;color:#D99400">📘</i><h3>สื่อการสอนของเราเอง</h3><p>ชีทและแบบฝึกหัดที่ครูออกแบบเอง อิงหลักสูตรแกนกลาง เข้าใจง่ายเป็นขั้นตอน</p></div>
+      <div class="feat reveal"><i style="background:#EAF7F1;color:#2AA277">📊</i><h3>รายงานผลทุกเดือน</h3><p>ผู้ปกครองรู้พัฒนาการของลูกชัดเจน พร้อมคำแนะนำการฝึกที่บ้าน</p></div>
+      <div class="feat reveal"><i style="background:#FFEFEA;color:#E8663C">💛</i><h3>บรรยากาศเหมือนบ้าน</h3><p>เด็ก ๆ กล้าถาม กล้าลองผิด ไม่กดดัน เรียนแล้วอยากมาอีก</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= เกี่ยวกับเรา ================= -->
+<section class="sec" id="about">
+  <div class="wrap about">
+    <div class="about-photo reveal">
+      <div class="ph"><span>👩‍🏫</span><small>[ ใส่รูปครูอ้อย / บรรยากาศห้องเรียน ]</small></div>
+      <div class="badge-float"><span style="font-size:1.4rem">🏅</span><div><b>ครูอ้อย (ชื่อ-นามสกุล)</b><span style="font-size:.82rem;color:var(--ink-soft);display:block">ปริญญาตรี ครุศาสตร์ · ประสบการณ์สอน 15 ปี</span></div></div>
+    </div>
+    <div class="reveal">
+      <span class="eyebrow">ABOUT US</span>
+      <h2>เพราะเด็กแต่ละคน<br>เรียนรู้ไม่เหมือนกัน</h2>
+      <p>
+        บ้านครูอ้อยเริ่มต้นจากห้องเรียนเล็ก ๆ ที่บ้าน ด้วยความตั้งใจเดียวคือ
+        อยากให้เด็ก ๆ ในชุมชนได้เรียนกับครูที่ “มีเวลาให้จริง ๆ”
+        วันนี้เราเติบโตขึ้น แต่ยังคงยึดหลักเดิม คือดูแลนักเรียนทุกคนเหมือนลูกหลาน
+      </p>
+      <p>
+        เราสอนตั้งแต่ระดับอนุบาลจนถึงประถมศึกษาปีที่ 6
+        ครอบคลุม 5 วิชาหลัก พร้อมปรับเนื้อหาให้เข้ากับพื้นฐานของน้องแต่ละคน
+      </p>
+      <ul class="checks">
+        <li><b>✓</b><span>ทดสอบพื้นฐานก่อนเรียน เพื่อจัดกลุ่มและวางแผนการสอนรายบุคคล</span></li>
+        <li><b>✓</b><span>ครูผู้สอนจบตรงสาย ผ่านการอบรมจิตวิทยาเด็ก</span></li>
+        <li><b>✓</b><span>เตรียมความพร้อมสอบเข้า ป.1 และสอบเข้า ม.1 โรงเรียนชื่อดัง</span></li>
+        <li><b>✓</b><span>มีเรียนชดเชยให้ ไม่เสียสิทธิ์เมื่อลาป่วย</span></li>
+      </ul>
+      <a href="#contact" class="btn btn-primary">นัดเข้าชมสถาบัน</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= วิชา ================= -->
+<section class="sec sec-white" id="subjects">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">OUR COURSES</span>
+      <h2>5 วิชาที่เปิดสอน</h2>
+      <p>ทุกวิชาออกแบบเนื้อหาแยกตามระดับชั้น ตั้งแต่อนุบาลถึง ป.6</p>
+    </div>
+    <div class="subjects">
+      <div class="subj s-math reveal">
+        <i>➗</i>
+        <h3>คณิตศาสตร์</h3>
+        <p>ปูพื้นฐานให้แน่น ตั้งแต่นับเลขจนถึงโจทย์ปัญหาหลายขั้นตอน</p>
+        <ul><li>คิดเลขเร็ว บวก ลบ คูณ หาร</li><li>เศษส่วน ทศนิยม ร้อยละ</li><li>เรขาคณิตและการวัด</li><li>โจทย์ปัญหา &amp; ข้อสอบแข่งขัน</li></ul>
+      </div>
+      <div class="subj s-thai reveal">
+        <i>ก</i>
+        <h3>ภาษาไทย</h3>
+        <p>อ่านออก เขียนได้ จับใจความเป็น ใช้ภาษาถูกต้องสวยงาม</p>
+        <ul><li>สะกดคำ · อ่านคล่อง</li><li>คัดลายมือ &amp; เขียนเรียงความ</li><li>หลักภาษา ชนิดของคำ</li><li>อ่านจับใจความ &amp; วรรณคดี</li></ul>
+      </div>
+      <div class="subj s-eng reveal">
+        <i>A</i>
+        <h3>ภาษาอังกฤษ</h3>
+        <p>เรียนผ่านเกมและกิจกรรม ให้น้องกล้าพูดและใช้ได้จริง</p>
+        <ul><li>Phonics &amp; คำศัพท์พื้นฐาน</li><li>Grammar ตามระดับชั้น</li><li>Conversation กับครู</li><li>เตรียมสอบ CEFR / เข้า ม.1</li></ul>
+      </div>
+      <div class="subj s-sci reveal">
+        <i>🔬</i>
+        <h3>วิทยาศาสตร์</h3>
+        <p>เรียนจากการทดลองและของจริง ให้น้องเห็นภาพและจำได้นาน</p>
+        <ul><li>สิ่งมีชีวิตและสิ่งแวดล้อม</li><li>สสาร แรง และพลังงาน</li><li>ดาราศาสตร์และโลกของเรา</li><li>การทดลองในห้องเรียน</li></ul>
+      </div>
+      <div class="subj s-iq reveal">
+        <i>🧩</i>
+        <h3>เชาวน์ปัญญา</h3>
+        <p>ฝึกคิดเป็นระบบ สังเกต และแก้ปัญหา — หัวใจของการสอบแข่งขัน</p>
+        <ul><li>อนุกรม มิติสัมพันธ์</li><li>ตรรกะและการให้เหตุผล</li><li>ความจำและสมาธิ</li><li>ข้อสอบเชาวน์เข้า ป.1 / ม.1</li></ul>
+      </div>
+      <div class="subj s-more reveal">
+        <h3>ไม่แน่ใจว่าน้องควรเรียนวิชาไหน?</h3>
+        <p>ให้ครูอ้อยช่วยประเมินพื้นฐานฟรี แล้วแนะนำคอร์สที่เหมาะกับน้องที่สุด</p>
+        <a href="#contact" class="btn btn-sun">ขอคำแนะนำจากครู</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ระดับชั้น ================= -->
+<section class="sec" id="levels">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">LEVELS</span>
+      <h2>เราดูแลน้อง ๆ ระดับไหนบ้าง</h2>
+      <p>แบ่งกลุ่มตามช่วงวัย เพื่อให้เนื้อหาและวิธีสอนเหมาะกับพัฒนาการ</p>
+    </div>
+    <div class="levels">
+      <div class="level lv1 reveal">
+        <em>ระดับที่ 1</em>
+        <h3>อนุบาล 1 – 3</h3>
+        <p>เตรียมความพร้อมก่อนเข้า ป.1 ผ่านการเล่นและกิจกรรม</p>
+        <ul><li>กล้ามเนื้อมือ &amp; คัดลายมือ</li><li>นับเลข รู้จักตัวเลข 1–100</li><li>สระ พยัญชนะ อ่านคำง่าย ๆ</li><li>เชาวน์และสมาธิเบื้องต้น</li><li>ติวสอบเข้า ป.1</li></ul>
+        <span class="big">อ.</span>
+      </div>
+      <div class="level lv2 reveal">
+        <em>ระดับที่ 2</em>
+        <h3>ประถมศึกษา 1 – 3</h3>
+        <p>ปูพื้นฐานทุกวิชาให้แน่น สร้างวินัยการเรียนตั้งแต่ต้น</p>
+        <ul><li>อ่านคล่อง เขียนคล่อง</li><li>คิดเลขเร็ว 4 กระบวนการ</li><li>คำศัพท์และ Phonics</li><li>วิทยาศาสตร์รอบตัว</li><li>ตามติดการบ้านโรงเรียน</li></ul>
+        <span class="big">ป.ต้น</span>
+      </div>
+      <div class="level lv3 reveal">
+        <em>ระดับที่ 3</em>
+        <h3>ประถมศึกษา 4 – 6</h3>
+        <p>เข้มข้นขึ้น เน้นคิดวิเคราะห์และเตรียมสอบเข้า ม.1</p>
+        <ul><li>โจทย์ปัญหาขั้นสูง</li><li>หลักภาษา &amp; อ่านจับใจความ</li><li>Grammar &amp; Conversation</li><li>วิทย์เชิงทดลองและวิเคราะห์</li><li>ติวเข้ม สอบเข้า ม.1</li></ul>
+        <span class="big">ป.ปลาย</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ตาราง & ค่าเรียน ================= -->
+<section class="sec sec-white" id="course">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">SCHEDULE &amp; TUITION</span>
+      <h2>ตารางเรียน และ ค่าเรียน</h2>
+      <p>เลือกแพ็กเกจที่เหมาะกับน้อง ๆ ได้ตามความสะดวก · <em>(ตัวเลขด้านล่างเป็นตัวอย่าง รอปรับตามจริง)</em></p>
+    </div>
+    <div class="price-grid">
+      <div class="price reveal">
+        <h3>คอร์สรายชั่วโมง</h3>
+        <p class="sub">เหมาะกับน้องที่อยากลองก่อน</p>
+        <div class="amt">250<small> บาท / ชม.</small></div>
+        <ul><li>เรียนกลุ่มเล็ก ไม่เกิน 8 คน</li><li>เลือกวิชาได้อิสระ</li><li>มีชีทเรียนให้</li><li>ไม่มีขั้นต่ำ</li></ul>
+        <a href="#contact" class="btn btn-ghost">สอบถามเพิ่มเติม</a>
+      </div>
+      <div class="price hot reveal">
+        <span class="tag">🔥 ผู้ปกครองเลือกมากที่สุด</span>
+        <h3>แพ็ก 20 ชั่วโมง</h3>
+        <p class="sub">คุ้มที่สุด เห็นพัฒนาการชัด</p>
+        <div class="amt">4,200<small> บาท</small></div>
+        <ul><li>เฉลี่ยเพียง 210 บาท / ชม.</li><li>สลับวิชาได้ตลอดคอร์ส</li><li>ทดสอบพื้นฐานก่อนเรียน</li><li>รายงานผลรายเดือน</li><li>เรียนชดเชยได้เมื่อลาป่วย</li></ul>
+        <a href="#contact" class="btn btn-primary">สมัครแพ็กนี้</a>
+      </div>
+      <div class="price reveal">
+        <h3>คอร์สติวเข้ม</h3>
+        <p class="sub">สอบเข้า ป.1 / ม.1</p>
+        <div class="amt">6,900<small> บาท / คอร์ส</small></div>
+        <ul><li>30 ชั่วโมง เนื้อหาเข้มข้น</li><li>ตะลุยข้อสอบเก่า</li><li>สอบเสมือนจริง 3 ครั้ง</li><li>วิเคราะห์ผลรายบุคคล</li></ul>
+        <a href="#contact" class="btn btn-ghost">ดูรายละเอียด</a>
+      </div>
+    </div>
+
+    <div class="table-wrap reveal">
+      <table>
+        <thead>
+          <tr><th>วัน</th><th>เวลา</th><th>ระดับชั้น</th><th>วิชา</th><th>สถานะ</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>จันทร์ – ศุกร์</td><td>16.30 – 18.30 น.</td><td>ป.1 – ป.3</td><td>คณิต / ไทย / อังกฤษ</td><td>เปิดรับ</td></tr>
+          <tr><td>จันทร์ – ศุกร์</td><td>18.00 – 20.00 น.</td><td>ป.4 – ป.6</td><td>คณิต / วิทย์ / อังกฤษ</td><td>เปิดรับ</td></tr>
+          <tr><td>เสาร์</td><td>09.00 – 12.00 น.</td><td>อนุบาล 1 – 3</td><td>เตรียมความพร้อม + เชาวน์</td><td>เหลือ 2 ที่</td></tr>
+          <tr><td>เสาร์</td><td>13.00 – 16.00 น.</td><td>ป.4 – ป.6</td><td>ติวเข้มสอบเข้า ม.1</td><td>เปิดรับ</td></tr>
+          <tr><td>อาทิตย์</td><td>09.00 – 12.00 น.</td><td>ป.1 – ป.6</td><td>ตามการบ้าน / ปรับพื้นฐาน</td><td>เปิดรับ</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">* ตารางอาจปรับเปลี่ยนตามจำนวนนักเรียน กรุณาสอบถามรอบล่าสุดทาง LINE</p>
+  </div>
+</section>
+
+<!-- ================= รีวิว ================= -->
+<section class="sec" id="reviews">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">TESTIMONIALS</span>
+      <h2>เสียงจากผู้ปกครอง</h2>
+      <p>ความไว้วางใจของครอบครัว คือรางวัลที่ดีที่สุดของเรา</p>
+    </div>
+    <div class="reviews">
+      <div class="review reveal">
+        <div class="stars">★★★★★</div>
+        <p>“ลูกเคยกลัวเลขมาก เรียนกับครูอ้อยได้ 3 เดือน กลับมาทำการบ้านเองได้ คะแนนสอบกลางภาคขึ้นจาก 12 เป็น 24 เต็ม 30 ค่ะ”</p>
+        <div class="who"><span class="avatar" style="background:#4FBEF0">ก</span><div><b>คุณแม่กิ่ง</b><span>ผู้ปกครองน้องปุ๊กกี้ ป.3</span></div></div>
+      </div>
+      <div class="review reveal">
+        <div class="stars">★★★★★</div>
+        <p>“ประทับใจที่ครูส่งรายงานให้ทุกเดือน บอกละเอียดว่าลูกอ่อนตรงไหน ควรฝึกอะไรที่บ้าน ทำให้เราช่วยลูกได้ถูกจุดค่ะ”</p>
+        <div class="who"><span class="avatar" style="background:#FF9A76">ว</span><div><b>คุณวิภา</b><span>ผู้ปกครองน้องข้าวปั้น ป.5</span></div></div>
+      </div>
+      <div class="review reveal">
+        <div class="stars">★★★★★</div>
+        <p>“ส่งน้องมาตั้งแต่อนุบาล 2 ตอนนี้สอบติด ป.1 โรงเรียนที่ตั้งใจไว้แล้วค่ะ ที่นี่ไม่กดดันเด็ก แต่ได้ผลจริง”</p>
+        <div class="who"><span class="avatar" style="background:#5FD6A8">ธ</span><div><b>คุณพ่อธนา</b><span>ผู้ปกครองน้องเจได อ.3</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= คำถามที่พบบ่อย ================= -->
+<section class="sec sec-white" id="faq">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">FAQ</span>
+      <h2>คำถามที่พบบ่อย</h2>
+      <p>ถ้ายังไม่เจอคำตอบที่ต้องการ ทักไลน์มาถามครูได้เลยค่ะ</p>
+    </div>
+    <div class="faq">
+      <details class="q reveal"><summary>ทดลองเรียนก่อนได้ไหม มีค่าใช้จ่ายหรือเปล่า</summary><div class="a">ได้ค่ะ น้องทุกคนทดลองเรียนฟรี 1 ครั้ง (1 ชั่วโมง) พร้อมทดสอบพื้นฐานให้ฟรี เพื่อให้ครูแนะนำคอร์สที่เหมาะสมที่สุด</div></details>
+      <details class="q reveal"><summary>เปิดสอนตั้งแต่ระดับชั้นไหนถึงไหน</summary><div class="a">ตั้งแต่ระดับอนุบาล 1 จนถึงประถมศึกษาปีที่ 6 ครอบคลุมวิชาคณิตศาสตร์ ภาษาไทย ภาษาอังกฤษ วิทยาศาสตร์ และเชาวน์ปัญญา</div></details>
+      <details class="q reveal"><summary>หนึ่งห้องมีนักเรียนกี่คน</summary><div class="a">สูงสุด 8 คนต่อห้องค่ะ เพื่อให้ครูดูแลได้ทั่วถึง หากต้องการเรียนตัวต่อตัวก็มีคอร์สแยกให้เลือกเช่นกัน</div></details>
+      <details class="q reveal"><summary>ถ้าน้องลาป่วย เรียนชดเชยได้ไหม</summary><div class="a">ได้ค่ะ แจ้งล่วงหน้าอย่างน้อย 3 ชั่วโมงก่อนเวลาเรียน ทางสถาบันจะจัดคาบชดเชยให้ภายในเดือนเดียวกัน</div></details>
+      <details class="q reveal"><summary>มีที่จอดรถหรือรับ-ส่งไหม</summary><div class="a">มีที่จอดรถหน้าสถาบันประมาณ 5 คัน และมีจุดรอสำหรับผู้ปกครอง กรณีต้องการรถรับ-ส่ง กรุณาสอบถามเป็นรายกรณีค่ะ</div></details>
+      <details class="q reveal"><summary>ชำระค่าเรียนอย่างไรได้บ้าง</summary><div class="a">รับชำระเงินสด โอนผ่านธนาคาร และ PromptPay ค่ะ ออกใบเสร็จรับเงินให้ทุกครั้ง</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ติดต่อ ================= -->
+<section class="sec" id="contact">
+  <div class="wrap contact-grid">
+    <div class="reveal">
+      <span class="eyebrow">CONTACT US</span>
+      <h2 style="font-family:'Mali',cursive;font-size:clamp(1.6rem,3.4vw,2.2rem);margin-bottom:.8rem">ติดต่อบ้านครูอ้อย</h2>
+      <p style="color:var(--ink-soft)">ทักมาคุยกับครูได้ทุกวัน ยินดีให้คำแนะนำเรื่องการเรียนของน้อง ๆ แม้ยังไม่ตัดสินใจสมัครค่ะ</p>
+      <div class="info-list">
+        <div class="info"><i>📍</i><div><b>ที่ตั้งสถาบัน</b><span>[ บ้านเลขที่ / ซอย / ถนน / ตำบล / อำเภอ / จังหวัด / รหัสไปรษณีย์ ]</span></div></div>
+        <div class="info"><i>📞</i><div><b>โทรศัพท์</b><span><a href="tel:0812345678">08X-XXX-XXXX</a> (ครูอ้อย)</span></div></div>
+        <div class="info"><i>💬</i><div><b>LINE Official</b><span>@bankruaoy (ใส่ LINE ID จริง)</span></div></div>
+        <div class="info"><i>🕘</i><div><b>เวลาทำการ</b><span>จันทร์ – ศุกร์ 15.00 – 20.00 น. · เสาร์ – อาทิตย์ 09.00 – 17.00 น.</span></div></div>
+      </div>
+      <div class="map">📌 [ วางโค้ดฝัง Google Maps ตรงนี้ ]<br><small>วิธีทำ: Google Maps → ค้นหาที่ตั้ง → แชร์ → ฝังแผนที่ → คัดลอก &lt;iframe&gt; มาวางแทนกล่องนี้</small></div>
+    </div>
+
+    <form class="card reveal" id="form" novalidate>
+      <h3>📝 ลงทะเบียนทดลองเรียนฟรี</h3>
+      <p class="hint">กรอกข้อมูลสั้น ๆ แล้วครูจะติดต่อกลับภายใน 1 วันทำการ</p>
+      <div class="two">
+        <div class="field"><label for="pname">ชื่อผู้ปกครอง *</label><input id="pname" name="pname" required placeholder="เช่น คุณสมหญิง"></div>
+        <div class="field"><label for="tel">เบอร์โทร *</label><input id="tel" name="tel" type="tel" required placeholder="08X-XXX-XXXX"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label for="sname">ชื่อเล่นน้อง</label><input id="sname" name="sname" placeholder="เช่น น้องปุ๊กกี้"></div>
+        <div class="field"><label for="level">ระดับชั้น *</label>
+          <select id="level" name="level" required>
+            <option value="">— เลือกระดับชั้น —</option>
+            <option>อนุบาล 1</option><option>อนุบาล 2</option><option>อนุบาล 3</option>
+            <option>ประถมศึกษาปีที่ 1</option><option>ประถมศึกษาปีที่ 2</option><option>ประถมศึกษาปีที่ 3</option>
+            <option>ประถมศึกษาปีที่ 4</option><option>ประถมศึกษาปีที่ 5</option><option>ประถมศึกษาปีที่ 6</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label for="subj">วิชาที่สนใจ</label>
+        <select id="subj" name="subj">
+          <option value="">— เลือกวิชา —</option>
+          <option>คณิตศาสตร์</option><option>ภาษาไทย</option><option>ภาษาอังกฤษ</option>
+          <option>วิทยาศาสตร์</option><option>เชาวน์ปัญญา</option><option>ยังไม่แน่ใจ ขอคำแนะนำจากครู</option>
+        </select>
+      </div>
+      <div class="field"><label for="msg">ข้อความเพิ่มเติม</label><textarea id="msg" name="msg" rows="3" placeholder="เช่น อยากให้เน้นเรื่องการอ่านจับใจความค่ะ"></textarea></div>
+      <button type="submit" class="btn btn-primary">ส่งข้อมูลให้ครูอ้อย</button>
+      <div class="ok" id="ok">✅ ส่งข้อมูลเรียบร้อยแล้วค่ะ ครูจะติดต่อกลับโดยเร็วที่สุด</div>
+      <p class="hint" style="text-align:center;margin:0">หรือทักไลน์ <a href="#" style="color:var(--sky-600);font-weight:600">@bankruaoy</a> ได้เลยค่ะ</p>
+    </form>
+  </div>
+</section>
+
+<!-- ================= CTA ================= -->
+<section class="sec" style="padding-top:0">
+  <div class="wrap">
+    <div class="cta-band reveal">
+      <h2>ให้บ้านครูอ้อยดูแลการเรียนของน้องนะคะ 💙</h2>
+      <p>ทดลองเรียนฟรี 1 ครั้ง พร้อมทดสอบพื้นฐานและคำแนะนำจากครูโดยตรง</p>
+      <div class="btns">
+        <a href="#contact" class="btn btn-sun">🎒 จองเรียนทดลองฟรี</a>
+        <a href="tel:0812345678" class="btn btn-ghost">📞 โทรหาครูอ้อย</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ท้ายเว็บ ================= -->
+<footer>
+  <div class="wrap">
+    <div class="f-grid">
+      <div>
+        <div class="f-logo"><span class="logo-mark">🏠</span><b>สถาบันสอนพิเศษบ้านครูอ้อย</b></div>
+        <p style="font-size:.92rem">สอนพิเศษระดับอนุบาล – ประถมศึกษาปีที่ 6<br>กลุ่มเล็ก ดูแลใกล้ชิด บรรยากาศอบอุ่นเหมือนอยู่บ้าน</p>
+        <div class="socials">
+          <a href="#" aria-label="Facebook">📘</a>
+          <a href="#" aria-label="LINE">💬</a>
+          <a href="#" aria-label="TikTok">🎵</a>
+          <a href="#" aria-label="YouTube">▶️</a>
+        </div>
+      </div>
+      <div>
+        <h4>เมนูลัด</h4>
+        <ul>
+          <li><a href="#about">เกี่ยวกับเรา</a></li>
+          <li><a href="#subjects">วิชาที่เปิดสอน</a></li>
+          <li><a href="#levels">ระดับชั้น</a></li>
+          <li><a href="#course">ตาราง &amp; ค่าเรียน</a></li>
+          <li><a href="#faq">คำถามที่พบบ่อย</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>วิชาที่สอน</h4>
+        <ul>
+          <li>คณิตศาสตร์</li><li>ภาษาไทย</li><li>ภาษาอังกฤษ</li><li>วิทยาศาสตร์</li><li>เชาวน์ปัญญา</li>
+        </ul>
+      </div>
+      <div>
+        <h4>ติดต่อเรา</h4>
+        <ul>
+          <li>📍 [ ที่อยู่สถาบัน ]</li>
+          <li>📞 <a href="tel:0812345678">08X-XXX-XXXX</a></li>
+          <li>💬 LINE: @bankruaoy</li>
+          <li>✉️ [ อีเมล ]</li>
+        </ul>
+      </div>
+    </div>
+    <div class="f-bot">© <span id="yr">2026</span> สถาบันสอนพิเศษบ้านครูอ้อย · สงวนลิขสิทธิ์</div>
+  </div>
+</footer>
+
+<div class="fab">
+  <a href="#" class="line" aria-label="แชททางไลน์">💬</a>
+  <a href="tel:0812345678" class="tel" aria-label="โทรหาเรา">📞</a>
+</div>
+
+<script>
+// ปีปัจจุบันใน footer
+document.getElementById('yr').textContent = new Date().getFullYear();
+
+// เมนูมือถือ
+var burger = document.getElementById('burger'), menu = document.getElementById('menu');
+burger.addEventListener('click', function(){ menu.classList.toggle('open'); });
+menu.addEventListener('click', function(e){ if(e.target.tagName === 'A') menu.classList.remove('open'); });
+
+// เงาแถบเมนูตอนเลื่อน
+var header = document.getElementById('site-header');
+window.addEventListener('scroll', function(){
+  header.classList.toggle('scrolled', window.scrollY > 12);
+}, {passive:true});
+
+// แอนิเมชันตอนเลื่อนถึง
+var io = new IntersectionObserver(function(entries){
+  entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+}, {threshold:.12});
+document.querySelectorAll('.reveal').forEach(function(el, i){
+  el.style.transitionDelay = (i % 4) * 70 + 'ms';
+  io.observe(el);
+});
+
+// ฟอร์มลงทะเบียน (ยังไม่ต่อระบบหลังบ้าน — แสดงข้อความยืนยันไว้ก่อน)
+document.getElementById('form').addEventListener('submit', function(e){
+  e.preventDefault();
+  var req = ['pname','tel','level'], okAll = true;
+  req.forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el.value.trim()){ el.style.borderColor = '#FF8FA9'; okAll = false; }
+    else { el.style.borderColor = ''; }
+  });
+  if(!okAll) return;
+  document.getElementById('ok').style.display = 'block';
+  this.reset();
+});
+</script>
+</body>
+</html>
