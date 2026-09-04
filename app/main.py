@@ -55,6 +55,10 @@ def clean_phone(raw: str) -> str:
     return re.sub(r"[^0-9]", "", raw or "")
 
 
+def enrolled_flag(request: Request) -> str:
+    return request.query_params.get("enrolled", "")
+
+
 # ────────────────────────────────────────────────
 #  หน้าเว็บสาธารณะ
 # ────────────────────────────────────────────────
@@ -232,6 +236,7 @@ def portal(request: Request, child: int = 0):
 
     index = max(0, min(child, len(children) - 1))
     detail = db.get_student_detail(children[index])
+    enrolled = enrolled_flag(request)
 
     return page(
         request, "portal.html",
@@ -239,7 +244,41 @@ def portal(request: Request, child: int = 0):
         children=children, index=index, s=detail,
         schedule=db.get_schedule(),
         news=db.get_announcements(),
+        courses=db.list_courses(),
+        enrollments=db.get_enrollments(detail["id"]),
+        enrolled=enrolled,
     )
+
+
+@app.post("/portal/enroll")
+def portal_enroll(
+    request: Request,
+    student_id: str = Form(...),
+    course_id: str = Form(...),
+    hours: str = Form("1"),
+    child: int = Form(0),
+):
+    """ผู้ปกครองเลือกคอร์สให้ลูก — ส่งเป็นคำขอ รอครูอ้อยยืนยัน"""
+    user = current_line_user(request)
+    if not user:
+        return RedirectResponse("/portal", status_code=303)
+
+    parent = db.get_parent_by_line(user["user_id"])
+    if not parent or parent.get("status") != "active":
+        return RedirectResponse("/portal", status_code=303)
+
+    # กันไม่ให้เลือกคอร์สให้ลูกคนอื่นที่ไม่ใช่ของตัวเอง
+    mine = {c["id"] for c in db.get_children(parent["id"])}
+    if student_id not in mine:
+        return RedirectResponse("/portal", status_code=303)
+
+    try:
+        db.request_enrollment(student_id, course_id, float(hours or 1))
+        flag = "sent"
+    except Exception as exc:
+        flag = "dup" if "รอครูอ้อยยืนยัน" in str(exc) else "err"
+
+    return RedirectResponse(f"/portal?child={child}&enrolled={flag}", status_code=303)
 
 
 @app.get("/login")
@@ -285,6 +324,7 @@ def admin(request: Request, saved: str = ""):
         request, "admin.html",
         user=user,
         pending=db.list_parents("pending"),
+        enroll_requests=db.list_enrollment_requests(),
         students=students,
         levels=config.LEVELS,
         payment_statuses=config.PAYMENT_STATUSES,
@@ -301,6 +341,18 @@ def admin_parent(request: Request, parent_id: str, action: str):
         return blocked
     if action in ("approve", "reject"):
         db.set_parent_status(parent_id, "active" if action == "approve" else "rejected")
+    return RedirectResponse(f"/admin?saved={action}", status_code=303)
+
+
+@app.post("/admin/enrollment/{enrollment_id}/{action}")
+def admin_enrollment(request: Request, enrollment_id: str, action: str):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    if action == "confirm":
+        db.confirm_enrollment(enrollment_id)
+    elif action == "cancel":
+        db.cancel_enrollment(enrollment_id)
     return RedirectResponse(f"/admin?saved={action}", status_code=303)
 
 

@@ -45,6 +45,74 @@
     {% endif %}
   </section>
 
+  <!-- เลือกคอร์สเรียน -->
+  <section class="panel" id="courses">
+    <h2><i>🎒</i> เลือกคอร์สเรียนให้{{ s.nickname }}</h2>
+
+    {% if enrolled == 'sent' %}
+      <div class="flash">✓ ส่งคำขอแล้วค่ะ รอครูอ้อยยืนยัน แล้วชั่วโมงเรียนจะเพิ่มให้อัตโนมัติ</div>
+    {% elif enrolled == 'dup' %}
+      <div class="flash warn">มีคำขอคอร์สนี้รอครูอ้อยยืนยันอยู่แล้วค่ะ</div>
+    {% elif enrolled == 'err' %}
+      <div class="flash warn">ส่งคำขอไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>
+    {% endif %}
+
+    {% set waiting = enrollments | selectattr('status','equalto','requested') | list %}
+    {% if waiting %}
+    <div class="rows" style="margin-bottom:1.1rem">
+      {% for e in waiting %}
+      <div class="row">
+        <div class="body">
+          <b>{{ e.course_name }}</b>
+          <span>{{ e.hours | round(0) | int }} ชม. · {{ '{:,.0f}'.format(e.price | float) }} บาท</span>
+        </div>
+        <span class="tag amber">รอครูอ้อยยืนยัน</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="courses">
+      {% for c in courses %}
+      <form method="post" action="/portal/enroll" class="course {{ 'hot' if c.highlight }}">
+        <input type="hidden" name="student_id" value="{{ s.id }}">
+        <input type="hidden" name="course_id" value="{{ c.id }}">
+        <input type="hidden" name="child" value="{{ index }}">
+
+        {% if c.highlight %}<span class="ribbon">แนะนำ</span>{% endif %}
+        <b class="c-name">{{ c.name }}</b>
+        <p class="c-desc">{{ c.description }}</p>
+
+        <div class="c-price">
+          {% if c.is_hourly %}
+            <span class="num">{{ '{:,.0f}'.format(c.price | float) }}</span> บาท<small>/ชั่วโมง</small>
+          {% else %}
+            <span class="num">{{ '{:,.0f}'.format(c.price | float) }}</span> บาท
+            <small>{{ c.hours | round(0) | int }} ชั่วโมง</small>
+          {% endif %}
+        </div>
+
+        {% if c.level_note %}<span class="c-lv">{{ c.level_note }}</span>{% endif %}
+
+        {% if c.is_hourly %}
+        <label class="c-hours">จำนวนชั่วโมง
+          <input type="number" name="hours" value="10" min="1" max="100" step="1">
+        </label>
+        {% else %}
+        <input type="hidden" name="hours" value="{{ c.hours }}">
+        {% endif %}
+
+        <button class="btn {{ 'btn-primary' if c.highlight else 'btn-ghost' }}">เลือกคอร์สนี้</button>
+      </form>
+      {% endfor %}
+    </div>
+
+    <p class="fineprint" style="text-align:left">
+      กดเลือกแล้วเป็นเพียง “คำขอ” ยังไม่ต้องชำระเงินทันที —
+      ครูอ้อยจะติดต่อกลับเพื่อยืนยันและแจ้งวิธีชำระเงินค่ะ
+    </p>
+  </section>
+
   <!-- ประกาศ -->
   {% if news %}
   <section class="panel news">

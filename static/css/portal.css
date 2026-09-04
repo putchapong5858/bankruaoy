@@ -198,3 +198,24 @@ table.tbl tr:last-child td{border-bottom:none}
   .ways{grid-template-columns:1fr}
   .way .qr{width:150px;height:150px}
 }
+
+/* ---------- เลือกคอร์สเรียน ---------- */
+.flash{background:#E4F7EE;color:#1F8A62;border-radius:14px;padding:.7rem 1.1rem;
+       margin-bottom:1rem;font-weight:600;font-size:.92rem}
+.flash.warn{background:#FFF3D6;color:#9A6A00}
+.courses{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.course{position:relative;background:var(--sky-50);border:2px solid var(--sky-100);
+        border-radius:var(--r);padding:1.2rem 1.15rem;display:flex;flex-direction:column;gap:.4rem}
+.course.hot{border-color:var(--sky-300);background:#fff;box-shadow:var(--shadow-sm)}
+.ribbon{position:absolute;top:-11px;right:14px;background:var(--sun);color:#7A4E00;
+        font-size:.72rem;font-weight:700;padding:.15rem .7rem;border-radius:999px}
+.c-name{font-size:1.02rem;line-height:1.45}
+.c-desc{font-size:.84rem;color:var(--ink-soft);line-height:1.6;margin-bottom:.2rem}
+.c-price{font-family:'Mali',cursive;color:var(--sky-700);line-height:1.3}
+.c-price .num{font-size:1.75rem;font-weight:700}
+.c-price small{display:block;font-size:.78rem;color:var(--ink-soft);font-family:'Prompt',sans-serif}
+.c-lv{font-size:.78rem;background:var(--sky-100);color:var(--sky-700);
+      padding:.15rem .7rem;border-radius:999px;align-self:flex-start}
+.c-hours{font-size:.84rem;margin:.3rem 0 0}
+.c-hours input{margin-top:.2rem;padding:.5rem .8rem;font-size:.95rem}
+.course .btn{margin-top:auto;padding-top:.6rem;padding-bottom:.6rem}

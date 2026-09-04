@@ -264,3 +264,95 @@ def add_homework(row: dict) -> None:
 
 def add_announcement(row: dict) -> None:
     insert("announcements", row)
+
+
+# ────────────────────────────────────────────────
+#  คอร์สเรียน และคำขอลงคอร์ส
+# ────────────────────────────────────────────────
+
+def list_courses() -> list[dict]:
+    return select("courses", active="eq.true", order="sort_order.asc")
+
+
+def get_course(course_id: str | int) -> dict | None:
+    return select_one("courses", id=f"eq.{course_id}")
+
+
+def get_enrollments(student_id: str) -> list[dict]:
+    rows = select("enrollments", student_id=f"eq.{student_id}",
+                  order="requested_at.desc", limit=20)
+    courses = {str(c["id"]): c for c in select("courses")}
+    for r in rows:
+        c = courses.get(str(r.get("course_id"))) or {}
+        r["course_name"] = c.get("name", "")
+        r["course_code"] = c.get("code", "")
+    return rows
+
+
+def request_enrollment(student_id: str, course_id: str | int, hours: float) -> dict:
+    """ผู้ปกครองส่งคำขอลงคอร์ส — ยังไม่หักเงินหรือเพิ่มชั่วโมงจนกว่าครูจะยืนยัน"""
+    course = get_course(course_id)
+    if not course:
+        raise SupabaseError("ไม่พบคอร์สที่เลือก")
+
+    if course.get("is_hourly"):
+        hours = max(1.0, min(float(hours or 1), 100.0))
+        price = hours * float(course.get("price") or 0)
+    else:
+        hours = float(course.get("hours") or 0)
+        price = float(course.get("price") or 0)
+
+    pending = select("enrollments", student_id=f"eq.{student_id}",
+                     course_id=f"eq.{course_id}", status="eq.requested", limit=1)
+    if pending:
+        raise SupabaseError("มีคำขอคอร์สนี้รอครูอ้อยยืนยันอยู่แล้ว")
+
+    return insert("enrollments", {
+        "student_id": student_id, "course_id": course["id"],
+        "hours": hours, "price": price, "status": "requested",
+    })[0]
+
+
+def list_enrollment_requests() -> list[dict]:
+    """คำขอที่รอครูอ้อยยืนยัน พร้อมชื่อนักเรียนและผู้ปกครอง"""
+    rows = select("enrollments", status="eq.requested", order="requested_at.asc")
+    if not rows:
+        return []
+    students = {s["id"]: s for s in select("students")}
+    parents = {p["id"]: p for p in select("parents")}
+    courses = {str(c["id"]): c for c in select("courses")}
+    for r in rows:
+        s = students.get(r.get("student_id")) or {}
+        p = parents.get(s.get("parent_id")) or {}
+        c = courses.get(str(r.get("course_id"))) or {}
+        r["nickname"] = s.get("nickname", "")
+        r["level"] = s.get("level", "")
+        r["code"] = s.get("code", "")
+        r["parent_name"] = p.get("full_name", "")
+        r["parent_phone"] = p.get("phone", "")
+        r["course_name"] = c.get("name", "")
+    return rows
+
+
+def confirm_enrollment(enrollment_id: str | int) -> None:
+    """ครูอ้อยยืนยัน — บวกชั่วโมงเข้าให้นักเรียนอัตโนมัติ"""
+    from datetime import datetime, timezone
+
+    en = select_one("enrollments", id=f"eq.{enrollment_id}")
+    if not en or en.get("status") != "requested":
+        return
+
+    stu = select_one("students", "id,hours_bought", id=f"eq.{en['student_id']}")
+    if stu:
+        update("students",
+               {"hours_bought": float(stu.get("hours_bought") or 0) + float(en.get("hours") or 0)},
+               id=f"eq.{stu['id']}")
+
+    update("enrollments",
+           {"status": "confirmed",
+            "confirmed_at": datetime.now(timezone.utc).isoformat()},
+           id=f"eq.{enrollment_id}")
+
+
+def cancel_enrollment(enrollment_id: str | int) -> None:
+    update("enrollments", {"status": "cancelled"}, id=f"eq.{enrollment_id}")

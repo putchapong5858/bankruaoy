@@ -47,6 +47,38 @@
     {% else %}<p class="empty">ไม่มีใครรออนุมัติ</p>{% endif %}
   </section>
 
+  <!-- ══════ คำขอลงคอร์ส ══════ -->
+  <section class="panel">
+    <h2><i>🎒</i> คำขอลงคอร์สจากผู้ปกครอง
+      {% if enroll_requests %}<span class="badge">{{ enroll_requests | length }}</span>{% endif %}
+    </h2>
+    {% if enroll_requests %}
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:.9rem">
+      กดยืนยันแล้วระบบจะบวกชั่วโมงเรียนให้นักเรียนอัตโนมัติ
+    </p>
+    <div class="rows">
+      {% for e in enroll_requests %}
+      <div class="row">
+        <div class="body">
+          <b>{{ e.nickname }} ({{ e.level }}) · {{ e.course_name }}</b>
+          <span>
+            {{ e.hours | round(0) | int }} ชม. · {{ '{:,.0f}'.format(e.price | float) }} บาท
+            · ผู้ปกครอง {{ e.parent_name }} {{ e.parent_phone }}
+          </span>
+        </div>
+        <form method="post" action="/admin/enrollment/{{ e.id }}/confirm" class="inline">
+          <button class="btn btn-primary btn-sm">ยืนยัน</button>
+        </form>
+        <form method="post" action="/admin/enrollment/{{ e.id }}/cancel" class="inline"
+              onsubmit="return confirm('ยกเลิกคำขอนี้?')">
+          <button class="btn btn-ghost btn-sm">ยกเลิก</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<p class="empty">ยังไม่มีคำขอลงคอร์ส</p>{% endif %}
+  </section>
+
   <!-- ══════ เช็คชื่อ ══════ -->
   <section class="panel">
     <h2><i>✅</i> เช็คชื่อเข้าเรียน</h2>
