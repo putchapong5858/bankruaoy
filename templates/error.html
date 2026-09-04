@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}เกิดข้อผิดพลาด | เรียนพิเศษบ้านครูอ้อย{% endblock %}
+{% block content %}
+<div class="reg-wrap">
+  <div class="card center" style="margin-top:2rem">
+    <span class="reg-emoji">😅</span>
+    <h2>เกิดข้อผิดพลาด</h2>
+    <p class="muted">{{ message }}</p>
+    <a class="btn btn-primary" href="/portal">ลองใหม่อีกครั้ง</a>
+    <a class="btn btn-ghost" href="tel:{{ site.phone_raw }}">📞 โทรหาครูอ้อย {{ site.phone }}</a>
+  </div>
+</div>
+{% endblock %}

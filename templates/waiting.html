@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}รอครูอ้อยอนุมัติ | เรียนพิเศษบ้านครูอ้อย{% endblock %}
+{% block topright %}
+<div class="who">
+  {% if user.picture_url %}<img src="{{ user.picture_url }}" alt="">{% endif %}
+  <span class="who-name">{{ user.display_name }}</span>
+  <a class="btn btn-ghost btn-sm" href="/logout">ออกจากระบบ</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="reg-wrap">
+  <div class="card center" style="margin-top:1.5rem">
+    <span class="reg-emoji">⏳</span>
+    <h2>รอครูอ้อยอนุมัติ</h2>
+    <p class="muted">
+      {% if note %}{{ note }}{% else %}
+      ส่งใบสมัครเรียบร้อยแล้วค่ะ ครูอ้อยจะตรวจสอบและเปิดสิทธิ์ให้เร็ว ๆ นี้<br>
+      ระบบจะแจ้งเตือนทาง LINE เมื่ออนุมัติแล้ว
+      {% endif %}
+    </p>
+    <div class="recap">
+      <div><span>ผู้ปกครอง</span><b>{{ parent.full_name }}</b></div>
+      <div><span>เบอร์โทร</span><b>{{ parent.phone }}</b></div>
+      {% for s in students %}
+      <div><span>ลูกคนที่ {{ loop.index }}</span><b>{{ s.nickname }} · {{ s.level }}</b></div>
+      {% endfor %}
+    </div>
+    <a class="btn btn-primary" href="/portal">🔄 ตรวจสอบสถานะอีกครั้ง</a>
+    <a class="btn btn-ghost" href="tel:{{ site.phone_raw }}">📞 โทรหาครูอ้อย {{ site.phone }}</a>
+  </div>
+</div>
+{% endblock %}

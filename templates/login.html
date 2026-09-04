@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}เข้าสู่ระบบผู้ปกครอง | เรียนพิเศษบ้านครูอ้อย{% endblock %}
+{% block content %}
+<div class="reg-wrap">
+  <div class="card center" style="margin-top:2rem">
+    <span class="reg-emoji">👨‍👩‍👧</span>
+    <h2>เข้าสู่ระบบผู้ปกครอง</h2>
+    <p class="muted">ดูตารางเรียน การเข้าเรียน ชั่วโมงคงเหลือ การบ้าน และคะแนนสอบของลูก</p>
+    <a class="btn btn-line" href="/login">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.5 2 2 5.6 2 10c0 4 3.6 7.3 8.4 7.9.3.1.8.2.9.5.1.3.1.7 0 1l-.1.9c0 .3-.2 1 .9.6 1.1-.5 6-3.5 8.2-6C21.5 13.2 22 11.7 22 10c0-4.4-4.5-8-10-8z"/></svg>
+      เข้าสู่ระบบด้วย LINE
+    </a>
+    <a class="btn btn-ghost" href="/register">ยังไม่เป็นสมาชิก · สมัครที่นี่</a>
+    <p class="fineprint">ระบบใช้เพียงชื่อและรูปโปรไฟล์ LINE ของคุณ<br>ไม่มีการเข้าถึงข้อความหรือรายชื่อเพื่อน</p>
+  </div>
+</div>
+{% endblock %}

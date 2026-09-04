@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}ข้อมูลการเรียนของลูก | เรียนพิเศษบ้านครูอ้อย{% endblock %}
+
+{% block topright %}
+<div class="who">
+  {% if user.picture_url %}<img src="{{ user.picture_url }}" alt="">{% endif %}
+  <span class="who-name">{{ user.display_name }}</span>
+  <a class="btn btn-ghost btn-sm" href="/logout">ออกจากระบบ</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<main class="portal">
+
+  <div class="hello">
+    <h1>สวัสดีค่ะ {{ parent.full_name }}</h1>
+    <p class="muted">ข้อมูลการเรียนล่าสุดของลูก ๆ</p>
+  </div>
+
+  {% if children | length > 1 %}
+  <nav class="kid-tabs" aria-label="เลือกลูก">
+    {% for c in children %}
+      <a href="/portal?child={{ loop.index0 }}"
+         class="{{ 'on' if loop.index0 == index }}">{{ c.nickname }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+
+  <!-- การ์ดสรุป -->
+  <section class="stats">
+    <div class="stat {{ 'warn' if s.hours_left is not none and s.hours_left|float <= 3 }}">
+      <em>ชั่วโมงคงเหลือ</em>
+      <b>{{ s.hours_left | round(1) }} <small>ชม.</small></b>
+      <small>ซื้อไว้ {{ s.hours_bought | round(1) }} · ใช้ไป {{ s.hours_used | round(1) }} ชม.</small>
+    </div>
+    <div class="stat {{ 'ok' if 'ครบ' in (s.payment_status or '') else 'due' }}">
+      <em>สถานะการจ่ายเงิน</em><b class="sm">{{ s.payment_status or '—' }}</b>
+    </div>
+    <div class="stat">
+      <em>ระดับชั้น</em><b class="sm">{{ s.level }}</b>
+      <small>{{ s.full_name or s.nickname }}{% if s.code %} · {{ s.code }}{% endif %}</small>
+    </div>
+    {% if s.course_expiry %}
+    <div class="stat"><em>คอร์สหมดอายุ</em><b class="sm">{{ s.course_expiry }}</b></div>
+    {% endif %}
+  </section>
+
+  <!-- ประกาศ -->
+  {% if news %}
+  <section class="panel news">
+    <h2><i>📣</i> ประกาศจากบ้านครูอ้อย</h2>
+    {% for n in news %}
+    <div class="n-item"><b>{{ n.title }}</b><span>{{ n.body }}</span></div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <!-- ตารางเรียน -->
+  <section class="panel">
+    <h2><i>🗓️</i> ตารางเรียน</h2>
+    {% if schedule %}
+    <div class="scroll-x">
+      <table class="tbl">
+        <tr><th>วัน</th><th>เวลา</th><th>ระดับชั้น</th><th>วิชา</th></tr>
+        {% for r in schedule %}
+        <tr><td>{{ r.day }}</td><td>{{ r.time_range }}</td><td>{{ r.level }}</td><td>{{ r.subjects }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% else %}<p class="empty">ยังไม่มีตารางเรียน</p>{% endif %}
+  </section>
+
+  <!-- การบ้าน -->
+  <section class="panel">
+    <h2><i>📚</i> การบ้าน &amp; เอกสารประกอบการเรียน</h2>
+    {% if s.homework %}
+    <div class="rows">
+      {% for h in s.homework %}
+      <div class="row">
+        <div class="date">{% if h.due_date %}ส่ง {{ h.due_date }}{% else %}—{% endif %}</div>
+        <div class="body">
+          <b>{{ h.title }}</b>
+          <span>{{ h.subject or '' }}{% if h.file_url %} · <a href="{{ h.file_url }}" target="_blank" rel="noopener" class="lnk">เปิดไฟล์</a>{% endif %}</span>
+        </div>
+        <span class="tag {{ 'green' if 'ส่งแล้ว' in (h.status or '') else 'amber' }}">{{ h.status }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<p class="empty">ยังไม่มีการบ้านที่ต้องส่ง</p>{% endif %}
+  </section>
+
+  <!-- คะแนน -->
+  <section class="panel">
+    <h2><i>📝</i> คะแนนสอบ</h2>
+    {% if s.scores %}
+    <div class="rows">
+      {% for x in s.scores %}
+      <div class="row">
+        <div class="date">{{ x.date }}</div>
+        <div class="body">
+          <b>{{ x.exam_name or 'ทดสอบ' }}</b>
+          <span>{{ x.subject or '' }}{% if x.comment %} · {{ x.comment }}{% endif %}</span>
+          {% if x.full_score and x.full_score|float > 0 %}
+          <div class="score-bar"><i style="width:{{ ((x.score|float / x.full_score|float) * 100) | round | int }}%"></i></div>
+          {% endif %}
+        </div>
+        <span class="tag">{{ x.score | round(0) | int }}/{{ x.full_score | round(0) | int }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<p class="empty">ยังไม่มีผลคะแนน</p>{% endif %}
+  </section>
+
+  <!-- เช็คชื่อ -->
+  <section class="panel">
+    <h2><i>✅</i> ประวัติการเข้าเรียน</h2>
+    {% if s.attendance %}
+    <div class="rows">
+      {% for a in s.attendance %}
+      <div class="row">
+        <div class="date">{{ a.date }}</div>
+        <div class="body">
+          <b>{{ a.session or '-' }}</b>
+          <span>{{ a.hours | round(1) }} ชม.{% if a.note %} · {{ a.note }}{% endif %}</span>
+        </div>
+        <span class="tag {% if a.status == 'มาเรียน' %}green{% elif a.status in ['ลา','สาย'] %}amber{% else %}red{% endif %}">{{ a.status }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<p class="empty">ยังไม่มีประวัติการเข้าเรียน</p>{% endif %}
+  </section>
+
+</main>
+{% endblock %}
