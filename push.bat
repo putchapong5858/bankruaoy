@@ -13,6 +13,7 @@ git --version >nul 2>&1
 if errorlevel 1 goto NOGIT
 
 REM ---- remove old static-site files that are no longer used ----
+if exist "CNAME"          del /q "CNAME"
 if exist "index.html"     del /q "index.html"
 if exist "portal.html"    del /q "portal.html"
 if exist "Code.gs"        del /q "Code.gs"
