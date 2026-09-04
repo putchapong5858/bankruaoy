@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}หน้าจัดการครูอ้อย | เรียนพิเศษบ้านครูอ้อย{% endblock %}
+
+{% block topright %}
+<div class="who">
+  {% if user.picture_url %}<img src="{{ user.picture_url }}" alt="">{% endif %}
+  <span class="who-name">{{ user.display_name }}</span>
+  <a class="btn btn-ghost btn-sm" href="/logout">ออกจากระบบ</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<main class="portal">
+
+  <div class="hello">
+    <h1>หน้าจัดการของครูอ้อย</h1>
+    <p class="muted">อนุมัติสมาชิก · เช็คชื่อ · บันทึกคะแนน · สั่งการบ้าน</p>
+  </div>
+
+  {% if saved %}
+  <div class="flash">✓ บันทึกเรียบร้อยแล้วค่ะ</div>
+  {% endif %}
+
+  <!-- ══════ รออนุมัติ ══════ -->
+  <section class="panel">
+    <h2><i>🔔</i> ผู้ปกครองรออนุมัติ
+      {% if pending %}<span class="badge">{{ pending | length }}</span>{% endif %}
+    </h2>
+    {% if pending %}
+    <div class="rows">
+      {% for p in pending %}
+      <div class="row">
+        <div class="body">
+          <b>{{ p.full_name }}</b>
+          <span>{{ p.phone }} · LINE: {{ p.line_name }} · สมัคร {{ p.created_at[:10] }}</span>
+        </div>
+        <form method="post" action="/admin/parent/{{ p.id }}/approve" class="inline">
+          <button class="btn btn-primary btn-sm">อนุมัติ</button>
+        </form>
+        <form method="post" action="/admin/parent/{{ p.id }}/reject" class="inline"
+              onsubmit="return confirm('ปฏิเสธผู้ปกครองรายนี้?')">
+          <button class="btn btn-ghost btn-sm">ปฏิเสธ</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<p class="empty">ไม่มีใครรออนุมัติ</p>{% endif %}
+  </section>
+
+  <!-- ══════ เช็คชื่อ ══════ -->
+  <section class="panel">
+    <h2><i>✅</i> เช็คชื่อเข้าเรียน</h2>
+    {% if students %}
+    <form method="post" action="/admin/attendance">
+      <div class="grid4">
+        <label>วันที่<input type="date" name="date" value="{{ today }}" required></label>
+        <label>รอบเรียน<input type="text" name="session" value="09.00 - 12.00 น." placeholder="เช่น 09.00 - 12.00 น."></label>
+        <label>จำนวนชั่วโมง<input type="number" name="hours" value="3" step="0.5" min="0"></label>
+        <label>สถานะ
+          <select name="status">
+            {% for s in attendance_statuses %}<option>{{ s }}</option>{% endfor %}
+          </select>
+        </label>
+      </div>
+      <p class="muted" style="margin:.4rem 0 .7rem">ติ๊กชื่อน้องที่มาเรียน — ระบบจะหักชั่วโมงคงเหลือให้อัตโนมัติ</p>
+      <div class="pickgrid">
+        {% for s in students %}
+        <label class="pick">
+          <input type="checkbox" name="student_id" value="{{ s.id }}">
+          <span><b>{{ s.nickname }}</b><small>{{ s.level }} · เหลือ {{ s.hours_left }} ชม.</small></span>
+        </label>
+        {% endfor %}
+      </div>
+      <button class="btn btn-primary">บันทึกเช็คชื่อ</button>
+    </form>
+    {% else %}<p class="empty">ยังไม่มีนักเรียนในระบบ</p>{% endif %}
+  </section>
+
+  <!-- ══════ คะแนน ══════ -->
+  <section class="panel">
+    <h2><i>📝</i> บันทึกคะแนนสอบ</h2>
+    {% if students %}
+    <form method="post" action="/admin/score">
+      <div class="grid4">
+        <label>นักเรียน
+          <select name="student_id" required>
+            {% for s in students %}<option value="{{ s.id }}">{{ s.nickname }} ({{ s.level }})</option>{% endfor %}
+          </select>
+        </label>
+        <label>วันที่<input type="date" name="date" value="{{ today }}" required></label>
+        <label>วิชา<input type="text" name="subject" placeholder="คณิตศาสตร์"></label>
+        <label>ชื่อการสอบ<input type="text" name="exam_name" placeholder="ทดสอบบทที่ 1"></label>
+        <label>คะแนนที่ได้<input type="number" name="score" step="0.5" min="0" value="0"></label>
+        <label>คะแนนเต็ม<input type="number" name="full_score" step="0.5" min="0" value="20"></label>
+      </div>
+      <label>ความเห็นครู<input type="text" name="comment" placeholder="ทำได้ดีมาก คิดเลขเร็วขึ้น"></label>
+      <button class="btn btn-primary">บันทึกคะแนน</button>
+    </form>
+    {% else %}<p class="empty">ยังไม่มีนักเรียนในระบบ</p>{% endif %}
+  </section>
+
+  <!-- ══════ การบ้าน ══════ -->
+  <section class="panel">
+    <h2><i>📚</i> สั่งการบ้าน</h2>
+    <form method="post" action="/admin/homework">
+      <div class="grid4">
+        <label>สั่งให้ใคร
+          <select name="target" id="hwTarget">
+            <option value="level">ทั้งระดับชั้น</option>
+            <option value="student">รายคน</option>
+          </select>
+        </label>
+        <label id="hwLevel">ระดับชั้น
+          <select name="level">
+            {% for lv in levels %}<option>{{ lv }}</option>{% endfor %}
+          </select>
+        </label>
+        <label id="hwStudent" style="display:none">นักเรียน
+          <select name="student_id">
+            {% for s in students %}<option value="{{ s.id }}">{{ s.nickname }} ({{ s.level }})</option>{% endfor %}
+          </select>
+        </label>
+        <label>กำหนดส่ง<input type="date" name="due_date"></label>
+        <label>วิชา<input type="text" name="subject" placeholder="คณิตศาสตร์"></label>
+      </div>
+      <label>เรื่อง <b class="req">*</b><input type="text" name="title" required placeholder="แบบฝึกหัดการคูณ ชุดที่ 3"></label>
+      <label>ลิงก์ไฟล์ (ถ้ามี)<input type="url" name="file_url" placeholder="https://drive.google.com/..."></label>
+      <button class="btn btn-primary">สั่งการบ้าน</button>
+    </form>
+  </section>
+
+  <!-- ══════ ประกาศ ══════ -->
+  <section class="panel">
+    <h2><i>📣</i> ประกาศถึงผู้ปกครอง</h2>
+    <form method="post" action="/admin/announcement">
+      <label>หัวข้อ <b class="req">*</b><input type="text" name="title" required placeholder="งดเรียนวันเสาร์ที่ 12"></label>
+      <label>รายละเอียด<input type="text" name="body" placeholder="เนื่องจากครูติดอบรม จะสอนชดเชยวันอาทิตย์"></label>
+      <label>แสดงถึงวันที่<input type="date" name="show_until"></label>
+      <button class="btn btn-primary">ประกาศ</button>
+    </form>
+  </section>
+
+  <!-- ══════ นักเรียนทั้งหมด ══════ -->
+  <section class="panel">
+    <h2><i>👧</i> นักเรียนทั้งหมด <span class="badge">{{ students | length }}</span></h2>
+    {% if students %}
+    {% for s in students %}
+    <form method="post" action="/admin/student/{{ s.id }}" class="stu">
+      <div class="stu-head">
+        <b>{{ s.nickname }}</b>
+        <span class="muted">{{ s.code }} · ผู้ปกครอง {{ s.parent_name }} {{ s.parent_phone }}</span>
+      </div>
+      <div class="grid4">
+        <label>ชื่อ-นามสกุล<input type="text" name="full_name" value="{{ s.full_name or '' }}"></label>
+        <label>ระดับชั้น
+          <select name="level">
+            {% for lv in levels %}<option {{ 'selected' if lv == s.level }}>{{ lv }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>ชั่วโมงที่ซื้อ<input type="number" name="hours_bought" step="0.5" min="0" value="{{ s.hours_bought }}"></label>
+        <label>ชั่วโมงที่ใช้ไป<input type="number" name="hours_used" step="0.5" min="0" value="{{ s.hours_used }}"></label>
+        <label>สถานะการจ่ายเงิน
+          <select name="payment_status">
+            {% for ps in payment_statuses %}<option {{ 'selected' if ps == s.payment_status }}>{{ ps }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>คอร์สหมดอายุ<input type="date" name="course_expiry" value="{{ s.course_expiry or '' }}"></label>
+      </div>
+      <button class="btn btn-ghost btn-sm">บันทึก</button>
+    </form>
+    {% endfor %}
+    {% else %}<p class="empty">ยังไม่มีนักเรียนในระบบ</p>{% endif %}
+  </section>
+
+</main>
+
+<style>
+.flash{background:#E4F7EE;color:#1F8A62;border-radius:16px;padding:.7rem 1.1rem;margin-bottom:1.2rem;font-weight:600}
+.badge{background:var(--sky-100);color:var(--sky-700);border-radius:999px;
+       padding:.05rem .6rem;font-size:.8rem;font-family:'Prompt',sans-serif}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0 14px}
+.inline{display:inline;flex:none}
+.pickgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:1rem}
+.pick{display:flex;align-items:center;gap:.6rem;background:var(--sky-50);border-radius:14px;
+      padding:.6rem .9rem;margin:0;cursor:pointer;border:2px solid transparent}
+.pick:has(input:checked){border-color:var(--sky-500);background:#fff}
+.pick input{width:auto;margin:0;flex:none;accent-color:var(--sky-600);width:18px;height:18px}
+.pick b{display:block;font-size:.95rem}
+.pick small{color:var(--ink-soft);font-size:.78rem}
+.stu{border-top:1px solid var(--sky-100);padding-top:1rem;margin-top:1rem}
+.stu:first-of-type{border-top:none;padding-top:0;margin-top:0}
+.stu-head{margin-bottom:.6rem}
+.stu-head b{font-size:1.05rem;margin-right:.5rem}
+.panel form .btn{width:auto;margin-top:.4rem}
+</style>
+
+<script>
+(function () {
+  const t = document.getElementById('hwTarget');
+  if (!t) return;
+  const lv = document.getElementById('hwLevel'), st = document.getElementById('hwStudent');
+  t.addEventListener('change', function () {
+    const byStudent = t.value === 'student';
+    lv.style.display = byStudent ? 'none' : '';
+    st.style.display = byStudent ? '' : 'none';
+  });
+})();
+</script>
+{% endblock %}

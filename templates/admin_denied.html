@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}หน้าจัดการ | เรียนพิเศษบ้านครูอ้อย{% endblock %}
+{% block content %}
+<div class="reg-wrap">
+  <div class="card center" style="margin-top:2rem">
+    <span class="reg-emoji">🔐</span>
+    <h2>หน้านี้สำหรับครูอ้อยเท่านั้น</h2>
+    <p class="muted">
+      บัญชี LINE ของคุณยังไม่ได้รับสิทธิ์เข้าหน้าจัดการ<br>
+      ถ้าคุณคือครูอ้อย ให้เพิ่มรหัสด้านล่างนี้ในค่า <code>ADMIN_LINE_IDS</code> ที่ Vercel
+    </p>
+    <div class="idbox">
+      <span>LINE User ID ของคุณ</span>
+      <code id="uid">{{ user.user_id }}</code>
+      <button class="btn btn-ghost btn-sm" onclick="
+        navigator.clipboard.writeText(document.getElementById('uid').textContent.trim());
+        this.textContent='คัดลอกแล้ว ✓';">คัดลอก</button>
+    </div>
+    <a class="btn btn-primary" href="/portal">ไปหน้าข้อมูลลูก</a>
+    <a class="btn btn-ghost" href="/logout">ออกจากระบบ</a>
+  </div>
+</div>
+<style>
+.idbox{background:var(--sky-50);border-radius:var(--r);padding:1rem 1.2rem;margin-bottom:1.3rem;text-align:center}
+.idbox span{display:block;font-size:.82rem;color:var(--ink-soft);margin-bottom:.35rem}
+.idbox code{display:block;font-size:.86rem;word-break:break-all;color:var(--sky-700);
+            background:#fff;border-radius:10px;padding:.55rem .7rem;margin-bottom:.6rem}
+.idbox .btn{width:auto}
+</style>
+{% endblock %}

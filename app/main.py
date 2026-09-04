@@ -6,6 +6,7 @@ FastAPI + Jinja2 + Supabase + LINE Login
 from __future__ import annotations
 
 import re
+from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
@@ -257,3 +258,155 @@ def login(request: Request):
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/", status_code=303)
+
+
+# ────────────────────────────────────────────────
+#  หน้าจัดการของครูอ้อย
+# ────────────────────────────────────────────────
+
+def require_admin(request: Request):
+    """คืน (user, response) — ถ้า response ไม่ใช่ None ให้ส่งกลับทันที"""
+    user = current_line_user(request)
+    if not user:
+        return None, page(request, "login.html")
+    if user["user_id"] not in config.ADMIN_LINE_IDS:
+        return None, page(request, "admin_denied.html", user=user)
+    return user, None
+
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin(request: Request, saved: str = ""):
+    user, blocked = require_admin(request)
+    if blocked:
+        return blocked
+
+    students = db.list_students()
+    return page(
+        request, "admin.html",
+        user=user,
+        pending=db.list_parents("pending"),
+        students=students,
+        levels=config.LEVELS,
+        payment_statuses=config.PAYMENT_STATUSES,
+        attendance_statuses=config.ATTENDANCE_STATUSES,
+        today=date.today().isoformat(),
+        saved=saved,
+    )
+
+
+@app.post("/admin/parent/{parent_id}/{action}")
+def admin_parent(request: Request, parent_id: str, action: str):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    if action in ("approve", "reject"):
+        db.set_parent_status(parent_id, "active" if action == "approve" else "rejected")
+    return RedirectResponse(f"/admin?saved={action}", status_code=303)
+
+
+@app.post("/admin/student/{student_id}")
+def admin_student(
+    request: Request,
+    student_id: str,
+    full_name: str = Form(""),
+    level: str = Form(""),
+    hours_bought: str = Form(""),
+    hours_used: str = Form(""),
+    payment_status: str = Form(""),
+    course_expiry: str = Form(""),
+):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    db.update_student(student_id, {
+        "full_name": full_name.strip(),
+        "level": level,
+        "hours_bought": hours_bought,
+        "hours_used": hours_used,
+        "payment_status": payment_status,
+        "course_expiry": course_expiry or None,
+    })
+    return RedirectResponse("/admin?saved=student", status_code=303)
+
+
+@app.post("/admin/attendance")
+def admin_attendance(
+    request: Request,
+    date_: str = Form(..., alias="date"),
+    session: str = Form(""),
+    hours: str = Form("3"),
+    status: str = Form("มาเรียน"),
+    student_id: list[str] = Form([]),
+):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    rows = [{
+        "student_id": sid, "date": date_, "session": session,
+        "status": status, "hours": float(hours or 0),
+    } for sid in student_id]
+    db.add_attendance(rows)
+    return RedirectResponse("/admin?saved=attendance", status_code=303)
+
+
+@app.post("/admin/score")
+def admin_score(
+    request: Request,
+    student_id: str = Form(...),
+    date_: str = Form(..., alias="date"),
+    subject: str = Form(""),
+    exam_name: str = Form(""),
+    score: str = Form("0"),
+    full_score: str = Form("0"),
+    comment: str = Form(""),
+):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    db.add_score({
+        "student_id": student_id, "date": date_, "subject": subject,
+        "exam_name": exam_name, "score": float(score or 0),
+        "full_score": float(full_score or 0), "comment": comment.strip(),
+    })
+    return RedirectResponse("/admin?saved=score", status_code=303)
+
+
+@app.post("/admin/homework")
+def admin_homework(
+    request: Request,
+    target: str = Form("level"),
+    student_id: str = Form(""),
+    level: str = Form(""),
+    due_date: str = Form(""),
+    subject: str = Form(""),
+    title: str = Form(...),
+    file_url: str = Form(""),
+):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    db.add_homework({
+        "student_id": student_id if target == "student" and student_id else None,
+        "level": level if target == "level" else None,
+        "due_date": due_date or None,
+        "subject": subject, "title": title.strip(),
+        "file_url": file_url.strip() or None,
+    })
+    return RedirectResponse("/admin?saved=homework", status_code=303)
+
+
+@app.post("/admin/announcement")
+def admin_announcement(
+    request: Request,
+    title: str = Form(...),
+    body: str = Form(""),
+    show_until: str = Form(""),
+):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    db.add_announcement({
+        "title": title.strip(), "body": body.strip(),
+        "show_until": show_until or None,
+    })
+    return RedirectResponse("/admin?saved=announcement", status_code=303)

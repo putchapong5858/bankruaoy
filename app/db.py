@@ -201,3 +201,66 @@ def get_announcements() -> list[dict]:
     rows = select("announcements", active="eq.true", order="published_at.desc", limit=10)
     today = date.today().isoformat()
     return [r for r in rows if not r.get("show_until") or r["show_until"] >= today]
+
+
+# ────────────────────────────────────────────────
+#  สำหรับหน้าจัดการของครูอ้อย
+# ────────────────────────────────────────────────
+
+def list_parents(status: str | None = None) -> list[dict]:
+    filters = {"status": f"eq.{status}"} if status else {}
+    return select("parents", order="created_at.desc", **filters)
+
+
+def list_students(active_only: bool = True) -> list[dict]:
+    filters = {"active": "eq.true"} if active_only else {}
+    rows = select("students", order="code.asc", **filters)
+    parents = {p["id"]: p for p in select("parents")}
+    for r in rows:
+        p = parents.get(r.get("parent_id")) or {}
+        r["parent_name"] = p.get("full_name", "")
+        r["parent_phone"] = p.get("phone", "")
+        r["parent_status"] = p.get("status", "")
+    return rows
+
+
+def set_parent_status(parent_id: str, status: str) -> None:
+    values = {"status": status}
+    if status == "active":
+        from datetime import datetime, timezone
+        values["approved_at"] = datetime.now(timezone.utc).isoformat()
+    update("parents", values, id=f"eq.{parent_id}")
+
+
+def update_student(student_id: str, values: dict) -> None:
+    clean = {k: v for k, v in values.items() if v is not None and v != ""}
+    if clean:
+        update("students", clean, id=f"eq.{student_id}")
+
+
+def add_attendance(rows: list[dict]) -> None:
+    """บันทึกเช็คชื่อหลายคนพร้อมกัน แล้วบวกชั่วโมงที่ใช้ไปให้อัตโนมัติ"""
+    if not rows:
+        return
+    insert("attendance", rows)
+    for r in rows:
+        hours = float(r.get("hours") or 0)
+        if hours <= 0:
+            continue
+        cur = select_one("students", "id,hours_used", id=f"eq.{r['student_id']}")
+        if cur:
+            update("students",
+                   {"hours_used": float(cur.get("hours_used") or 0) + hours},
+                   id=f"eq.{r['student_id']}")
+
+
+def add_score(row: dict) -> None:
+    insert("scores", row)
+
+
+def add_homework(row: dict) -> None:
+    insert("homework", row)
+
+
+def add_announcement(row: dict) -> None:
+    insert("announcements", row)
