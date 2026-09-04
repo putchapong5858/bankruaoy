@@ -31,7 +31,7 @@ INSTITUTE = {
     "teacher_credential": "ปริญญาตรี ครุศาสตร์ · ประสบการณ์สอน 32 ปี",
     "phone": "081-873-4996",
     "phone_raw": "0818734996",
-    "line_id": "kruaoymalika",
+    "line_id": "kruaoymallika",
     "facebook": "https://www.facebook.com/100082980602399",
     "address": "77/7 ถนนวิริโยธิน ต.ลำภู อ.เมือง จ.หนองบัวลำภู 39000",
     "hours_weekday": "จันทร์ – ศุกร์ 15.00 – 20.00 น.",

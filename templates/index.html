@@ -72,11 +72,27 @@ header.scrolled{box-shadow:var(--shadow-sm)}
 }
 .logo-txt b{display:block;font-size:1.06rem;line-height:1.25;color:var(--ink);white-space:nowrap}
 .logo-txt span{display:block;font-size:.68rem;letter-spacing:.16em;color:var(--sky-600);font-weight:500}
-.menu{display:flex;align-items:center;gap:.35rem}
-.menu a{padding:.5rem .85rem;border-radius:999px;font-size:.95rem;font-weight:500;color:var(--ink-soft);transition:.2s}
+.logo{flex:none}
+.menu{display:flex;align-items:center;gap:.1rem;justify-content:center;flex:1 1 auto;min-width:0}
+.menu a{
+  padding:.5rem .6rem;border-radius:999px;font-size:.92rem;font-weight:500;
+  color:var(--ink-soft);transition:.2s;white-space:nowrap;   /* กันตัวหนังสือตกบรรทัด */
+}
 .menu a:hover{background:var(--sky-100);color:var(--sky-700)}
-.nav-cta{display:flex;gap:.5rem;align-items:center}
-.nav-cta .btn{padding:.6rem 1.25rem;font-size:.92rem}
+/* 2 เมนูนี้กับปุ่มล็อกอิน ย้ายไปอยู่ในเมนูแฮมเบอร์เกอร์ ให้แถบบนโปร่ง ไม่แน่นจนล้น */
+.menu .m-extra,.menu .m-login{display:none}
+
+.nav-cta{display:flex;gap:.45rem;align-items:center;flex:none}
+.nav-cta .btn{padding:.58rem 1.05rem;font-size:.9rem;white-space:nowrap}
+.nav-tel{                             /* ปุ่มโทร — เป็นไอคอนกลม ประหยัดที่บนแถบเมนู */
+  display:inline-flex;align-items:center;justify-content:center;gap:.45rem;
+  border:1px solid var(--sky-200);background:#fff;color:var(--sky-700);
+  border-radius:999px;width:42px;height:42px;font-size:1.05rem;
+  white-space:nowrap;transition:.2s;flex:none;
+}
+.nav-tel:hover{background:var(--sky-100);transform:translateY(-2px)}
+.nav-tel .tel-no{display:none}
+
 .burger{display:none;width:46px;height:46px;border-radius:14px;border:1px solid var(--sky-200);background:#fff;cursor:pointer;place-items:center}
 .burger span{display:block;width:20px;height:2px;background:var(--sky-700);border-radius:2px;position:relative}
 .burger span::before,.burger span::after{content:'';position:absolute;left:0;width:20px;height:2px;background:var(--sky-700);border-radius:2px}
@@ -377,7 +393,8 @@ footer a:hover{color:#fff}
 .f-bot{border-top:1px solid rgba(255,255,255,.12);padding-top:22px;text-align:center;font-size:.86rem}
 
 /* ---------- ปุ่มลอย ---------- */
-.fab{position:fixed;right:20px;bottom:20px;z-index:90;display:grid;gap:10px}
+.fab{position:fixed;right:20px;bottom:86px;z-index:90;display:grid;gap:10px;transition:.25s}
+.fab.hide{opacity:0;visibility:hidden;transform:translateY(10px)}
 .fab a{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font-size:1.4rem;color:#fff;box-shadow:var(--shadow);transition:.25s}
 .fab a:hover{transform:scale(1.1)}
 .fab .line{background:#06C755}
@@ -393,7 +410,15 @@ footer a:hover{color:#fff}
   .subjects,.levels,.price-grid{grid-template-columns:repeat(2,1fr)}
   .f-grid{grid-template-columns:1fr 1fr}
 }
-@media(max-width:860px){
+/* จอโน้ตบุ๊ก — บีบเมนูให้พอดี ยังไม่ต้องยุบเป็นแฮมเบอร์เกอร์ */
+@media(max-width:1240px){
+  .nav{gap:.5rem}
+  .menu a{padding:.45rem .45rem;font-size:.86rem}
+  .nav-cta .btn{padding:.55rem .9rem;font-size:.85rem}
+  .nav-tel{width:38px;height:38px;font-size:.98rem}
+}
+
+@media(max-width:1080px){
   .menu{
     position:fixed;top:74px;left:0;right:0;background:#fff;flex-direction:column;
     align-items:stretch;padding:14px 22px 22px;gap:.25rem;box-shadow:var(--shadow);
@@ -402,10 +427,16 @@ footer a:hover{color:#fff}
     max-height:calc(100vh - 74px);overflow-y:auto;
   }
   .menu.open{transform:none;opacity:1;visibility:visible;pointer-events:auto}
-  .menu a{padding:.75rem 1rem}
+  .menu a{padding:.8rem 1rem;font-size:1rem}
+  .menu .m-extra{display:block}        /* เมนูครบทุกหัวข้อเมื่อกางแฮมเบอร์เกอร์ */
+  .menu .m-login{
+    display:block;margin-top:.5rem;border-top:1px solid var(--sky-100);
+    padding-top:1rem;color:var(--sky-700);font-weight:700;
+  }
   .burger{display:grid}
-  .nav-cta .btn-ghost{display:none}
-  .nav-cta .btn{padding:.55rem 1rem;font-size:.86rem}
+  .nav-tel{width:42px;height:42px;font-size:1.05rem}
+  .nav-cta .btn{padding:.55rem 1rem;font-size:.88rem}
+  .nav-cta .btn-login{display:none}     /* ย้ายไปอยู่ในเมนูแฮมเบอร์เกอร์แทน */
   .logo-mark{width:40px;height:40px;border-radius:14px;font-size:1.15rem}
   .logo-txt b{font-size:.95rem}
   .logo-txt span{font-size:.6rem;letter-spacing:.1em}
@@ -415,6 +446,22 @@ footer a:hover{color:#fff}
   .about-photo{max-width:360px;margin:0 auto;aspect-ratio:13/20}
   .sec{padding:64px 0}
 }
+/* มือถือ — เหลือแค่ปุ่มสมัคร ปุ่มโทร และแฮมเบอร์เกอร์ */
+@media(max-width:520px){
+  .nav{height:66px;gap:.4rem}
+  .menu{top:66px;max-height:calc(100vh - 66px)}
+  .logo-txt span{display:none}
+  .logo-txt b{font-size:1rem}
+  .nav-cta{gap:.35rem}
+  .nav-cta .btn{padding:.5rem .8rem;font-size:.82rem}
+  .nav-tel{padding:.5rem .6rem}
+  .burger{width:42px;height:42px}
+  .hero{padding:108px 0 56px}
+}
+@media(max-width:360px){
+  .nav-tel{display:none}
+}
+
 @media(max-width:620px){
   .feats,.subjects,.levels,.price-grid,.price-grid.two-up,.f-grid{grid-template-columns:1fr}
   .contact-card{padding:22px}
@@ -440,17 +487,20 @@ footer a:hover{color:#fff}
     </a>
     <nav class="menu" id="menu">
       <a href="#about">เกี่ยวกับเรา</a>
-      <a href="#subjects">วิชาที่เปิดสอน</a>
+      <a href="#subjects">วิชาที่สอน</a>
       <a href="#exam">คอร์สเตรียมสอบ</a>
-      <a href="#levels">ระดับชั้น</a>
-      <a href="#gallery">บรรยากาศห้องเรียน</a>
+      <a href="#levels" class="m-extra">ระดับชั้น</a>
+      <a href="#gallery" class="m-extra">บรรยากาศ</a>
       <a href="#course">ตาราง &amp; ค่าเรียน</a>
-      <a href="#faq">คำถามที่พบบ่อย</a>
+      <a href="#faq">คำถามบ่อย</a>
       <a href="#contact">ติดต่อเรา</a>
-      <a href="/portal" style="color:var(--sky-700);font-weight:600">👤 เข้าสู่ระบบผู้ปกครอง</a>
+      <a href="/login" class="m-login">👤 เข้าสู่ระบบ</a>
     </nav>
     <div class="nav-cta">
-      <a href="tel:0818734996" class="btn btn-ghost">📞 081-873-4996</a>
+      <a href="tel:0818734996" class="nav-tel" aria-label="โทร 081-873-4996">
+        📞 <span class="tel-no">081-873-4996</span>
+      </a>
+      <a href="/login" class="btn btn-ghost btn-login">เข้าสู่ระบบ</a>
       <a href="/register" class="btn btn-primary">สมัครสมาชิก</a>
       <button class="burger" id="burger" aria-label="เมนู"><span></span></button>
     </div>
@@ -717,7 +767,7 @@ footer a:hover{color:#fff}
     <div class="sec-head reveal">
       <span class="eyebrow">FAQ</span>
       <h2>คำถามที่พบบ่อย</h2>
-      <p>ถ้ายังไม่เจอคำตอบที่ต้องการ โทรมาถามครูอ้อยได้เลยค่ะ</p>
+      <p>ถ้ายังไม่เจอคำตอบที่ต้องการ <a href="#" data-open-bot style="color:var(--sky-600);font-weight:600;text-decoration:underline">ถามน้องอ้อยผู้ช่วย</a> หรือโทรมาถามครูอ้อยได้เลยค่ะ</p>
     </div>
     <div class="faq">
       <details class="q reveal"><summary>เปิดสอนตั้งแต่ระดับชั้นไหนถึงไหน</summary><div class="a">ตั้งแต่ระดับอนุบาล 2 จนถึงประถมศึกษาปีที่ 6 ครอบคลุมวิชาคณิตศาสตร์ ภาษาไทย ภาษาอังกฤษ วิทยาศาสตร์ และเชาวน์ปัญญา</div></details>
@@ -725,7 +775,7 @@ footer a:hover{color:#fff}
       <details class="q reveal"><summary>เรียนวันไหน เวลาอะไรบ้าง</summary><div class="a">ปัจจุบันเปิดสอนวันเสาร์ 2 รอบ คือ 09.00 – 12.00 น. และ 13.00 – 15.00 น. ตารางอาจปรับเปลี่ยนตามจำนวนนักเรียน กรุณาโทรสอบถามรอบล่าสุดที่ 081-873-4996</div></details>
       <details class="q reveal"><summary>ใครเป็นผู้สอน</summary><div class="a">ครูอ้อย — นางมัลลิกา ปัญญาวชิรพงษ์ จบปริญญาตรี ครุศาสตร์ มีประสบการณ์สอนเด็กอนุบาลและประถมมากว่า 32 ปี และได้รับรางวัลครูดีเด่นแห่งชาติ สาขาปฐมวัย</div></details>
       <details class="q reveal"><summary>สถานที่เรียนอยู่ที่ไหน</summary><div class="a">บ้านเลขที่ 77/7 ถนนวิริโยธิน ตำบลลำภู อำเภอเมือง จังหวัดหนองบัวลำภู 39000</div></details>
-      <details class="q reveal"><summary>สมัครเรียนอย่างไร</summary><div class="a">โทรมาที่ 081-873-4996 หรือแอดไลน์ ID: kruaoymalika แจ้งชื่อน้อง ระดับชั้น และวิชาที่สนใจ ครูจะแนะนำรอบเรียนที่เหมาะสมให้ค่ะ</div></details>
+      <details class="q reveal"><summary>สมัครเรียนอย่างไร</summary><div class="a">โทรมาที่ 081-873-4996 หรือแอดไลน์ ID: kruaoymallika แจ้งชื่อน้อง ระดับชั้น และวิชาที่สนใจ ครูจะแนะนำรอบเรียนที่เหมาะสมให้ค่ะ</div></details>
     </div>
   </div>
 </section>
@@ -740,7 +790,7 @@ footer a:hover{color:#fff}
       <div class="info-list">
         <div class="info"><i>📍</i><div><b>ที่ตั้ง</b><span>77/7 ถนนวิริโยธิน ตำบลลำภู<br>อำเภอเมือง จังหวัดหนองบัวลำภู 39000</span></div></div>
         <div class="info"><i>📞</i><div><b>โทรศัพท์</b><span><a href="tel:0818734996" style="color:var(--sky-600);font-weight:600">081-873-4996</a> (ครูอ้อย)</span></div></div>
-        <div class="info"><i>💬</i><div><b>LINE ID</b><span>kruaoymalika</span></div></div>
+        <div class="info"><i>💬</i><div><b>LINE ID</b><span>kruaoymallika</span></div></div>
         <div class="info"><i>📘</i><div><b>Facebook</b><span><a href="https://www.facebook.com/100082980602399" target="_blank" rel="noopener" style="color:var(--sky-600);font-weight:600">เรียนพิเศษบ้านครูอ้อย</a></span></div></div>
         <div class="info"><i>🕘</i><div><b>เวลาทำการ</b><span>เสาร์ 09.00 – 15.00 น.<br>สอบถามนอกเวลาได้ทางโทรศัพท์</span></div></div>
       </div>
@@ -757,7 +807,7 @@ footer a:hover{color:#fff}
 
       <div class="big-cta line-id">
         <span class="ico">💬</span>
-        <span><b>kruaoymalika</b><small>LINE ID — ค้นหา ID นี้ในแอป LINE เพื่อแอดครู</small></span>
+        <span><b>kruaoymallika</b><small>LINE ID — ค้นหา ID นี้ในแอป LINE เพื่อแอดครู</small></span>
       </div>
 
       <div class="ready">
@@ -815,7 +865,7 @@ footer a:hover{color:#fff}
         <ul>
           <li>📍 77/7 ถนนวิริโยธิน ต.ลำภู อ.เมือง จ.หนองบัวลำภู 39000</li>
           <li>📞 <a href="tel:0818734996">081-873-4996</a></li>
-          <li>💬 LINE ID: kruaoymalika</li>
+          <li>💬 LINE ID: kruaoymallika</li>
           <li>📘 <a href="https://www.facebook.com/100082980602399" target="_blank" rel="noopener">Facebook: เรียนพิเศษบ้านครูอ้อย</a></li>
         </ul>
       </div>
@@ -824,8 +874,7 @@ footer a:hover{color:#fff}
   </div>
 </footer>
 
-<div class="fab">
-  <a href="#contact" class="line" aria-label="ข้อมูลติดต่อ">💬</a>
+<div class="fab" id="fabStack">
   <a href="tel:0818734996" class="tel" aria-label="โทรหาเรา">📞</a>
 </div>
 
@@ -855,7 +904,7 @@ if(lineBox){
   lineBox.addEventListener('click', function(){
     var small = lineBox.querySelector('small'), original = small.textContent;
     if(navigator.clipboard){
-      navigator.clipboard.writeText('kruaoymalika').then(function(){
+      navigator.clipboard.writeText('kruaoymallika').then(function(){
         small.textContent = '✅ คัดลอก LINE ID แล้ว นำไปค้นหาในแอป LINE ได้เลย';
         setTimeout(function(){ small.textContent = original; }, 2500);
       });
@@ -863,5 +912,7 @@ if(lineBox){
   });
 }
 </script>
+{% include "_chatbot.html" %}
+
 </body>
 </html>

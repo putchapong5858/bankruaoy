@@ -1,0 +1,314 @@
+<!-- ================= บอทถามตอบ "น้องอ้อย" ================= -->
+<style>
+.bot-fab{
+  position:fixed;right:20px;bottom:20px;z-index:200;
+  display:flex;align-items:center;gap:.55rem;
+  background:linear-gradient(140deg,var(--sky-400),var(--sky-600));color:#fff;
+  border:none;border-radius:999px;padding:.85rem 1.25rem;cursor:pointer;
+  font-family:'Prompt',sans-serif;font-size:.95rem;font-weight:600;
+  box-shadow:0 10px 28px rgba(18,135,196,.42);transition:.25s;
+}
+.bot-fab:hover{transform:translateY(-3px);box-shadow:0 14px 34px rgba(18,135,196,.5)}
+.bot-fab .ico{font-size:1.2rem;line-height:1}
+.bot-fab .dot{
+  position:absolute;top:-3px;right:-3px;width:13px;height:13px;border-radius:50%;
+  background:#FF6B57;border:2.5px solid #fff;
+}
+.bot-fab.hide{opacity:0;visibility:hidden;transform:scale(.8)}
+
+.bot-win{
+  position:fixed;right:20px;bottom:20px;z-index:201;width:376px;max-width:calc(100vw - 32px);
+  height:560px;max-height:calc(100vh - 40px);
+  background:#fff;border-radius:24px;box-shadow:0 24px 60px rgba(18,60,90,.28);
+  display:flex;flex-direction:column;overflow:hidden;
+  opacity:0;visibility:hidden;transform:translateY(18px) scale(.97);
+  transition:opacity .22s,transform .22s,visibility .22s;
+}
+.bot-win.open{opacity:1;visibility:visible;transform:none}
+
+.bot-head{
+  background:linear-gradient(140deg,var(--sky-500),var(--sky-700));color:#fff;
+  padding:.95rem 1.1rem;display:flex;align-items:center;gap:.7rem;flex:none;
+}
+.bot-ava{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.22);
+         display:grid;place-items:center;font-size:1.3rem;flex:none}
+.bot-head b{display:block;font-size:1rem;line-height:1.3}
+.bot-head small{display:block;font-size:.76rem;opacity:.9}
+.bot-head .on{display:inline-block;width:7px;height:7px;border-radius:50%;
+              background:#7DE8B0;margin-right:.3rem;vertical-align:middle}
+.bot-x{margin-left:auto;background:rgba(255,255,255,.18);border:none;color:#fff;
+       width:32px;height:32px;border-radius:11px;cursor:pointer;font-size:1rem;flex:none}
+.bot-x:hover{background:rgba(255,255,255,.3)}
+
+.bot-body{flex:1;overflow-y:auto;padding:1.1rem 1rem .5rem;background:var(--sky-50);
+          scroll-behavior:smooth}
+.bot-msg{display:flex;gap:.5rem;margin-bottom:.85rem;animation:botIn .28s ease}
+@keyframes botIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.bot-msg .b{
+  background:#fff;border-radius:18px 18px 18px 6px;padding:.72rem .95rem;
+  font-size:.92rem;line-height:1.65;box-shadow:0 2px 10px rgba(18,60,90,.07);max-width:84%;
+}
+.bot-msg .b a{color:var(--sky-600);font-weight:600;text-decoration:underline}
+.bot-msg .b b{color:var(--sky-700)}
+.bot-msg.me{justify-content:flex-end}
+.bot-msg.me .b{background:var(--sky-600);color:#fff;border-radius:18px 18px 6px 18px}
+.bot-pic{width:30px;height:30px;border-radius:10px;background:var(--sky-100);flex:none;
+         display:grid;place-items:center;font-size:.95rem}
+
+.bot-typing .b{display:flex;gap:4px;padding:.9rem 1rem}
+.bot-typing i{width:7px;height:7px;border-radius:50%;background:var(--sky-300);
+              animation:botDot 1.1s infinite}
+.bot-typing i:nth-child(2){animation-delay:.18s}
+.bot-typing i:nth-child(3){animation-delay:.36s}
+@keyframes botDot{0%,60%,100%{opacity:.35;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+
+.bot-chips{display:flex;flex-wrap:wrap;gap:.4rem;padding:0 1rem .7rem;background:var(--sky-50);flex:none}
+.bot-chip{
+  background:#fff;border:1.5px solid var(--sky-200);color:var(--sky-700);
+  border-radius:999px;padding:.42rem .85rem;font-size:.83rem;font-weight:500;
+  font-family:'Prompt',sans-serif;cursor:pointer;transition:.18s;
+}
+.bot-chip:hover{background:var(--sky-100);border-color:var(--sky-400)}
+
+.bot-foot{display:flex;gap:.5rem;padding:.7rem .8rem;border-top:1px solid var(--sky-100);
+          background:#fff;flex:none}
+.bot-foot input{
+  flex:1;border:1.5px solid var(--sky-200);border-radius:999px;padding:.62rem 1rem;
+  font-family:'Prompt',sans-serif;font-size:.9rem;outline:none;transition:.18s;min-width:0;
+}
+.bot-foot input:focus{border-color:var(--sky-500);box-shadow:0 0 0 3px var(--sky-100)}
+.bot-send{
+  width:42px;height:42px;border-radius:50%;border:none;flex:none;cursor:pointer;color:#fff;
+  background:linear-gradient(140deg,var(--sky-400),var(--sky-600));font-size:1rem;transition:.18s;
+}
+.bot-send:hover{transform:scale(1.06)}
+
+@media(max-width:520px){
+  .bot-win{right:8px;left:8px;bottom:8px;top:8px;width:auto;height:auto}
+  .bot-fab{right:14px;bottom:14px;padding:.75rem 1.05rem;font-size:.88rem}
+  .fab{right:14px;bottom:76px}
+}
+</style>
+
+<button class="bot-fab" id="botFab" aria-label="ถามครูอ้อย">
+  <span class="ico">💬</span> ถามครูอ้อย<span class="dot"></span>
+</button>
+
+<div class="bot-win" id="botWin" role="dialog" aria-label="ผู้ช่วยตอบคำถามบ้านครูอ้อย">
+  <div class="bot-head">
+    <span class="bot-ava">🎈</span>
+    <div>
+      <b>น้องอ้อย ผู้ช่วยครูอ้อย</b>
+      <small><span class="on"></span>ตอบคำถามได้ทันที 24 ชม.</small>
+    </div>
+    <button class="bot-x" id="botX" aria-label="ปิด">✕</button>
+  </div>
+
+  <div class="bot-body" id="botBody"></div>
+  <div class="bot-chips" id="botChips"></div>
+
+  <form class="bot-foot" id="botForm">
+    <input id="botInput" type="text" autocomplete="off" maxlength="200"
+           placeholder="พิมพ์คำถามได้เลยค่ะ...">
+    <button class="bot-send" type="submit" aria-label="ส่ง">➤</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  var TEL = '081-873-4996', LINE = 'kruaoymallika';
+  var callBtn = '<a href="tel:0818734996">📞 โทรหาครูอ้อย</a>';
+
+  /* ── คลังคำตอบ — จับคู่จากคำที่ผู้ปกครองพิมพ์ ── */
+  var KB = [
+    { key: ['ค่าเรียน','ราคา','เท่าไหร่','เท่าไร','กี่บาท','ค่าใช้จ่าย','แพง','ถูก','ค่าเทอม','ค่าคอร์ส'],
+      chip: '💰 ค่าเรียนเท่าไหร่',
+      a: 'ค่าเรียนมี 2 แบบค่ะ<br>• <b>รายชั่วโมง</b> ชั่วโมงละ 150 บาท<br>' +
+         '• <b>คอร์สเหมาจ่าย 24 ชั่วโมง</b> 2,200 บาท (เฉลี่ยถูกกว่าราว 38%)<br><br>' +
+         'คอร์สเตรียมสอบห้องเรียนพิเศษ ปี 2570 ก็ราคาเดียวกันคือ 24 ชั่วโมง 2,200 บาทค่ะ' },
+
+    { key: ['เตรียมสอบ','gifted','mep','ip','ดอนบอสโก','ห้องเรียนพิเศษ','สอบเข้า','ติวสอบ','2570'],
+      chip: '🎯 คอร์สเตรียมสอบ',
+      a: '<b>คอร์สเตรียมสอบห้องเรียนพิเศษ Gifted · MEP · IP ดอนบอสโก ปี 2570</b> เปิดรับสมัครแล้วค่ะ<br><br>' +
+         'ติวเข้มตรงแนวข้อสอบจริง โดยครูอ้อยที่มีประสบการณ์ 32 ปี ปูพื้นฐานให้แน่นและฝึกโจทย์จนคุ้นมือ ' +
+         'รับตั้งแต่ ป.1 – ป.6<br>ราคา 24 ชั่วโมง 2,200 บาท<br><br>' +
+         '<a href="#exam">ดูรายละเอียดคอร์ส</a> · <a href="/register">สมัครเรียน</a>' },
+
+    { key: ['ตาราง','วันไหน','เวลา','กี่โมง','รอบ','เสาร์','อาทิตย์','เรียนวัน'],
+      chip: '📅 เรียนวันไหน',
+      a: 'ตอนนี้เปิดสอน <b>วันเสาร์ 2 รอบ</b> ค่ะ<br>• รอบเช้า 09.00 – 12.00 น.<br>• รอบบ่าย 13.00 – 15.00 น.<br><br>' +
+         'ตารางอาจปรับตามจำนวนนักเรียน สอบถามรอบล่าสุดได้ที่ ' + TEL + ' ค่ะ<br>' + callBtn },
+
+    { key: ['ที่ไหน','สถานที่','ที่ตั้ง','แผนที่','ไปยังไง','ที่อยู่','อยู่ตรงไหน','หนองบัว'],
+      chip: '📍 ที่ตั้งสถาบัน',
+      a: 'บ้านครูอ้อยอยู่ที่ <b>77/7 ถนนวิริโยธิน ตำบลลำภู อำเภอเมือง จังหวัดหนองบัวลำภู 39000</b> ค่ะ<br><br>' +
+         'หาไม่เจอโทรถามทางได้เลยนะคะ<br>' + callBtn },
+
+    { key: ['สมัคร','ลงทะเบียน','สมาชิก','เข้าเรียน','จองที่','อยากเรียน','พาลูก'],
+      chip: '📝 สมัครเรียนยังไง',
+      a: 'สมัครได้ 2 ทางค่ะ<br>• <b>สมัครออนไลน์</b> — เพิ่มเพื่อน LINE บ้านครูอ้อย แล้วกรอกฟอร์มสั้น ๆ ' +
+         'ไม่ถึง 1 นาที <a href="/register">กดสมัครที่นี่</a><br>' +
+         '• <b>โทรหาครูโดยตรง</b> ที่ ' + TEL + ' แจ้งชื่อน้อง ระดับชั้น และวิชาที่สนใจ<br><br>' +
+         'สมัครแล้วผู้ปกครองจะดูชั่วโมงคงเหลือ คะแนนสอบ และการบ้านของลูกได้ในเว็บเลยค่ะ' },
+
+    { key: ['วิชา','สอนอะไร','คณิต','ไทย','อังกฤษ','วิทย','เชาวน','ภาษา'],
+      chip: '📚 สอนวิชาอะไรบ้าง',
+      a: 'สอน <b>คณิตศาสตร์ · ภาษาไทย · ภาษาอังกฤษ · วิทยาศาสตร์ · เชาวน์ปัญญา</b> ค่ะ<br><br>' +
+         'เลือกเน้นเฉพาะวิชาที่น้องอ่อนได้ ครูจะประเมินพื้นฐานให้ก่อนแล้วออกแบบการสอนให้เหมาะกับน้องแต่ละคน' },
+
+    { key: ['ระดับ','อนุบาล','ประถม','ป.1','ป.2','ป.3','ป.4','ป.5','ป.6','อายุ','กี่ขวบ','ชั้นไหน'],
+      chip: '🎒 รับตั้งแต่ชั้นไหน',
+      a: 'รับตั้งแต่ <b>อนุบาล 2 ถึง ประถมศึกษาปีที่ 6</b> ค่ะ<br><br>' +
+         'จัดกลุ่มเรียนตามระดับชั้นและพื้นฐานของน้อง เด็กเล็กกับเด็กโตไม่ได้เรียนรวมกันนะคะ' },
+
+    { key: ['ครู','ใครสอน','ประสบการณ์','มัลลิกา','ผู้สอน','จบอะไร','เก่ง'],
+      chip: '👩‍🏫 ใครเป็นผู้สอน',
+      a: 'ผู้สอนคือ <b>ครูอ้อย — นางมัลลิกา ปัญญาวชิรพงษ์</b> ค่ะ<br>' +
+         '• จบปริญญาตรี ครุศาสตร์<br>• สอนเด็กอนุบาลและประถมมากว่า <b>32 ปี</b><br>' +
+         '• ได้รับ <b>รางวัลครูดีเด่นแห่งชาติ สาขาปฐมวัย</b><br><br>ครูอ้อยสอนเองทุกคาบค่ะ' },
+
+    { key: ['ทดลอง','ลองเรียน','ฟรี','ทดสอบ','ประเมิน'],
+      chip: '🎁 ทดลองเรียนได้ไหม',
+      a: 'โทรมาคุยกับครูอ้อยก่อนได้เลยค่ะ ครูจะช่วยประเมินพื้นฐานของน้องและแนะนำว่าควรเริ่มจากตรงไหน ' +
+         'ไม่มีค่าใช้จ่ายในการปรึกษาค่ะ<br>' + callBtn },
+
+    { key: ['จ่าย','โอน','ชำระ','เงิน','ผ่อน','บัญชี','พร้อมเพย์'],
+      chip: '💳 จ่ายเงินยังไง',
+      a: 'ชำระได้ทั้ง <b>เงินสด</b> และ <b>โอนเข้าบัญชี</b> ค่ะ<br><br>' +
+         'เลือกคอร์สในเว็บได้เลย ระบบจะส่งเป็น "คำขอ" ไปหาครูอ้อยก่อน ยังไม่ต้องจ่ายทันที ' +
+         'ครูจะติดต่อกลับเพื่อยืนยันและแจ้งวิธีชำระเงินค่ะ' },
+
+    { key: ['ชั่วโมง','คงเหลือ','เหลือ','หมดอายุ','ใช้ไป','ดูข้อมูล','ผลการเรียน','คะแนน','การบ้าน','เช็คชื่อ'],
+      chip: '📊 ดูข้อมูลลูกยังไง',
+      a: 'ผู้ปกครองที่สมัครแล้ว <a href="/login">เข้าสู่ระบบด้วย LINE</a> ได้เลยค่ะ จะเห็น<br>' +
+         '• ชั่วโมงคงเหลือ และสถานะการจ่ายเงิน<br>• คะแนนสอบและความเห็นครู<br>' +
+         '• การบ้านและเอกสารประกอบการเรียน<br>• ประวัติการเข้าเรียน<br><br>' +
+         'มีลูกหลายคนก็สลับดูได้ในหน้าเดียวค่ะ' },
+
+    { key: ['ติดต่อ','เบอร์','โทร','ไลน์','line','แอด','คุยกับครู'],
+      chip: '📞 ติดต่อครูอ้อย',
+      a: 'ติดต่อครูอ้อยได้ที่<br>• โทร <b>' + TEL + '</b><br>• LINE ID <b>' + LINE + '</b><br><br>' + callBtn }
+  ];
+
+  var FALLBACK =
+    'ขอโทษค่ะ น้องอ้อยยังตอบคำถามนี้ไม่ได้ 🙏<br><br>' +
+    'ลองกดคำถามที่แนะนำด้านล่างดูนะคะ หรือถามครูอ้อยโดยตรงเลยก็ได้ค่ะ<br>' +
+    '• โทร <b>' + TEL + '</b><br>• LINE ID <b>' + LINE + '</b><br>' + callBtn;
+
+  var GREET = ['สวัสดี','หวัดดี','ดีครับ','ดีค่ะ','hello','hi','ฮัลโหล'];
+  var THANKS = ['ขอบคุณ','ขอบใจ','thank','ครับผม','โอเค','เยี่ยม'];
+
+  var fab = document.getElementById('botFab'), win = document.getElementById('botWin');
+  var body = document.getElementById('botBody'), chips = document.getElementById('botChips');
+  var form = document.getElementById('botForm'), input = document.getElementById('botInput');
+  if (!fab || !win) return;
+  var started = false;
+
+  function bubble(html, mine) {
+    var d = document.createElement('div');
+    d.className = 'bot-msg' + (mine ? ' me' : '');
+    d.innerHTML = (mine ? '' : '<span class="bot-pic">🎈</span>') +
+                  '<div class="b">' + html + '</div>';
+    body.appendChild(d);
+    body.scrollTop = body.scrollHeight;
+    return d;
+  }
+
+  function reply(html) {
+    var t = document.createElement('div');
+    t.className = 'bot-msg bot-typing';
+    t.innerHTML = '<span class="bot-pic">🎈</span><div class="b"><i></i><i></i><i></i></div>';
+    body.appendChild(t);
+    body.scrollTop = body.scrollHeight;
+    setTimeout(function () {
+      t.remove();
+      bubble(html);
+    }, 420 + Math.random() * 260);
+  }
+
+  /* ให้คะแนนความตรง — คำยาวได้แต้มมากกว่า และยิ่งตรงหลายคำยิ่งได้โบนัส
+     เช่น "ชั่วโมงเหลือเท่าไหร่" ตรง 2 คำเรื่องชั่วโมง จึงชนะหัวข้อค่าเรียนที่ตรงแค่ "เท่าไหร่" */
+  function score(text, item) {
+    var n = 0, hits = 0;
+    for (var i = 0; i < item.key.length; i++) {
+      if (text.indexOf(item.key[i]) !== -1) { n += item.key[i].length; hits++; }
+    }
+    return hits ? n + (hits - 1) * 6 : 0;
+  }
+
+  function answer(raw) {
+    var text = (raw || '').toLowerCase().replace(/\s+/g, '');
+    if (!text) return;
+
+    var hitAny = function (list) {
+      for (var i = 0; i < list.length; i++) if (text.indexOf(list[i]) !== -1) return true;
+      return false;
+    };
+    if (text.length <= 12 && hitAny(GREET))
+      return reply('สวัสดีค่ะ 😊 น้องอ้อยยินดีช่วยตอบคำถามเรื่องเรียนพิเศษบ้านครูอ้อยค่ะ<br>อยากทราบเรื่องอะไรดีคะ');
+    if (hitAny(THANKS))
+      return reply('ยินดีค่ะ 💙 ถ้ามีคำถามอื่นถามได้ตลอดเลยนะคะ');
+
+    var best = null, bestScore = 0;
+    for (var i = 0; i < KB.length; i++) {
+      var s = score(text, KB[i]);
+      if (s > bestScore) { bestScore = s; best = KB[i]; }
+    }
+    reply(best ? best.a : FALLBACK);
+  }
+
+  function buildChips() {
+    chips.innerHTML = '';
+    KB.slice(0, 6).forEach(function (item) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'bot-chip'; b.textContent = item.chip;
+      b.onclick = function () {
+        bubble(item.chip.replace(/^\S+\s/, ''), true);
+        reply(item.a);
+      };
+      chips.appendChild(b);
+    });
+  }
+
+  var stack = document.getElementById('fabStack');   // ปุ่มโทรลอย — ซ่อนตอนเปิดบอท
+
+  function open() {
+    win.classList.add('open');
+    fab.classList.add('hide');
+    if (stack) stack.classList.add('hide');
+    if (!started) {
+      started = true;
+      buildChips();
+      reply('สวัสดีค่ะ 😊 น้องอ้อยเป็นผู้ช่วยของครูอ้อยนะคะ<br><br>' +
+            'ถามเรื่องค่าเรียน ตารางเรียน คอร์สเตรียมสอบ หรือวิธีสมัครได้เลยค่ะ ' +
+            'จะพิมพ์เองหรือกดปุ่มคำถามด้านล่างก็ได้นะคะ');
+    }
+    setTimeout(function () { input.focus(); }, 260);
+  }
+  function close() {
+    win.classList.remove('open');
+    fab.classList.remove('hide');
+    if (stack) stack.classList.remove('hide');
+  }
+
+  fab.onclick = open;
+  document.getElementById('botX').onclick = close;
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && win.classList.contains('open')) close();
+  });
+
+  form.onsubmit = function (e) {
+    e.preventDefault();
+    var q = input.value.trim();
+    if (!q) return;
+    bubble(q.replace(/[<>]/g, ''), true);
+    input.value = '';
+    answer(q);
+  };
+
+  // เปิดบอทจากลิงก์อื่นในหน้าเว็บได้ เช่น <a href="#ask">
+  document.querySelectorAll('[data-open-bot]').forEach(function (el) {
+    el.addEventListener('click', function (e) { e.preventDefault(); open(); });
+  });
+})();
+</script>

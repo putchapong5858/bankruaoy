@@ -356,3 +356,77 @@ def confirm_enrollment(enrollment_id: str | int) -> None:
 
 def cancel_enrollment(enrollment_id: str | int) -> None:
     update("enrollments", {"status": "cancelled"}, id=f"eq.{enrollment_id}")
+
+
+# ────────────────────────────────────────────────
+#  จัดการคอร์ส (เฉพาะครูอ้อย)
+# ────────────────────────────────────────────────
+
+def list_all_courses() -> list[dict]:
+    """ทุกคอร์ส รวมที่ปิดขายอยู่ — ใช้ในหน้าจัดการ"""
+    return select("courses", order="sort_order.asc")
+
+
+def _course_fields(data: dict) -> dict:
+    """ทำความสะอาดข้อมูลคอร์สจากฟอร์ม ก่อนเขียนลงฐานข้อมูล"""
+    name = (data.get("name") or "").strip()[:120]
+    if not name:
+        raise SupabaseError("กรุณากรอกชื่อคอร์ส")
+
+    is_hourly = bool(data.get("is_hourly"))
+
+    def num(key, default=0.0):
+        try:
+            return float(str(data.get(key) or default).strip() or default)
+        except (TypeError, ValueError):
+            return float(default)
+
+    price = max(0.0, num("price"))
+    hours = 1.0 if is_hourly else max(0.0, num("hours"))
+
+    return {
+        "name": name,
+        "description": (data.get("description") or "").strip()[:300],
+        "hours": hours,
+        "price": price,
+        "is_hourly": is_hourly,
+        "highlight": bool(data.get("highlight")),
+        "active": bool(data.get("active")),
+        "sort_order": int(num("sort_order", 99)),
+    }
+
+
+def create_course(data: dict) -> dict:
+    fields = _course_fields(data)
+    code = (data.get("code") or "").strip().upper()[:20]
+    if not code:
+        # สร้างรหัสอัตโนมัติ ถ้าครูไม่ได้กรอกมา
+        used = {str(c.get("code") or "").upper() for c in select("courses")}
+        n = 1
+        while f"COURSE{n}" in used:
+            n += 1
+        code = f"COURSE{n}"
+    elif select("courses", code=f"eq.{code}", limit=1):
+        raise SupabaseError(f"รหัสคอร์ส {code} ถูกใช้ไปแล้ว กรุณาใช้รหัสอื่น")
+    fields["code"] = code
+    return insert("courses", fields)[0]
+
+
+def update_course(course_id: str | int, data: dict) -> None:
+    update("courses", _course_fields(data), id=f"eq.{course_id}")
+
+
+def set_course_active(course_id: str | int, active: bool) -> None:
+    update("courses", {"active": bool(active)}, id=f"eq.{course_id}")
+
+
+def delete_course(course_id: str | int) -> None:
+    """ลบคอร์ส — ถ้ามีคนลงเรียนไปแล้วจะปิดขายแทน เพื่อไม่ให้ประวัติหาย"""
+    used = select("enrollments", course_id=f"eq.{course_id}", limit=1)
+    if used:
+        set_course_active(course_id, False)
+        raise SupabaseError(
+            "คอร์สนี้มีผู้ปกครองลงเรียนไปแล้ว ระบบจึงปิดการขายให้แทนการลบ "
+            "(ประวัติการเรียนของนักเรียนจะได้ไม่หาย)"
+        )
+    delete("courses", id=f"eq.{course_id}")

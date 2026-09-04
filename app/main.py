@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 from datetime import date
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -57,6 +58,28 @@ def clean_phone(raw: str) -> str:
 
 def enrolled_flag(request: Request) -> str:
     return request.query_params.get("enrolled", "")
+
+
+def is_admin(user: dict | None) -> bool:
+    return bool(user) and user.get("user_id") in config.ADMIN_LINE_IDS
+
+
+def destination_for(request: Request, user: dict) -> str:
+    """ปุ่ม 'เข้าสู่ระบบ' ปุ่มเดียว — ระบบเลือกหน้าปลายทางให้เอง
+
+    ครูอ้อย (LINE ID ที่ตั้งค่าไว้ใน ADMIN_LINE_IDS) → หน้าจัดการ
+    ผู้ปกครองที่สมัครแล้ว → หน้าข้อมูลลูก
+    คนที่ยังไม่เคยสมัคร → หน้ากรอกใบสมัคร
+    """
+    if is_admin(user):
+        return "/admin"
+    try:
+        if db.get_parent_by_line(user["user_id"]):
+            return "/portal"
+    except Exception:
+        return request.session.pop("after_login", "/portal")
+    request.session.pop("after_login", None)
+    return "/register/form"
 
 
 # ────────────────────────────────────────────────
@@ -124,14 +147,7 @@ def line_callback(request: Request, code: str = "", state: str = "", error: str 
     request.session.pop("oauth_state", None)
     request.session["line_user"] = user
 
-    dest = request.session.pop("after_login", "/portal")
-    # ถ้าเคยสมัครแล้ว ให้ไปหน้าข้อมูลลูกเลย
-    try:
-        if db.get_parent_by_line(user["user_id"]):
-            dest = "/portal"
-    except Exception:
-        pass
-    return RedirectResponse(dest, status_code=303)
+    return RedirectResponse(destination_for(request, user), status_code=303)
 
 
 @app.get("/register/form", response_class=HTMLResponse)
@@ -283,6 +299,11 @@ def portal_enroll(
 
 @app.get("/login")
 def login(request: Request):
+    # ล็อกอินค้างไว้อยู่แล้ว — พาไปหน้าที่ถูกต้องเลย ไม่ต้องผ่าน LINE ซ้ำ
+    user = current_line_user(request)
+    if user:
+        return RedirectResponse(destination_for(request, user), status_code=303)
+
     state = line_auth.make_state()
     request.session["oauth_state"] = state
     request.session["after_login"] = "/portal"
@@ -314,7 +335,7 @@ def require_admin(request: Request):
 
 
 @app.get("/admin", response_class=HTMLResponse)
-def admin(request: Request, saved: str = ""):
+def admin(request: Request, saved: str = "", err: str = ""):
     user, blocked = require_admin(request)
     if blocked:
         return blocked
@@ -325,12 +346,14 @@ def admin(request: Request, saved: str = ""):
         user=user,
         pending=db.list_parents("pending"),
         enroll_requests=db.list_enrollment_requests(),
+        all_courses=db.list_all_courses(),
         students=students,
         levels=config.LEVELS,
         payment_statuses=config.PAYMENT_STATUSES,
         attendance_statuses=config.ATTENDANCE_STATUSES,
         today=date.today().isoformat(),
         saved=saved,
+        err=err,
     )
 
 
@@ -354,6 +377,79 @@ def admin_enrollment(request: Request, enrollment_id: str, action: str):
     elif action == "cancel":
         db.cancel_enrollment(enrollment_id)
     return RedirectResponse(f"/admin?saved={action}", status_code=303)
+
+
+@app.post("/admin/course/new")
+def admin_course_new(
+    request: Request,
+    name: str = Form(""),
+    code: str = Form(""),
+    description: str = Form(""),
+    hours: str = Form("0"),
+    price: str = Form("0"),
+    is_hourly: str = Form(""),
+    highlight: str = Form(""),
+    sort_order: str = Form("99"),
+):
+    """ครูอ้อยเพิ่มคอร์สใหม่"""
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    try:
+        db.create_course({
+            "name": name, "code": code, "description": description,
+            "hours": hours, "price": price,
+            "is_hourly": bool(is_hourly), "highlight": bool(highlight),
+            "active": True, "sort_order": sort_order,
+        })
+    except Exception as exc:
+        return RedirectResponse(f"/admin?err={quote(str(exc)[:200])}#courses",
+                                status_code=303)
+    return RedirectResponse("/admin?saved=course#courses", status_code=303)
+
+
+@app.post("/admin/course/{course_id}")
+def admin_course_edit(
+    request: Request,
+    course_id: str,
+    name: str = Form(""),
+    description: str = Form(""),
+    hours: str = Form("0"),
+    price: str = Form("0"),
+    is_hourly: str = Form(""),
+    highlight: str = Form(""),
+    active: str = Form(""),
+    sort_order: str = Form("99"),
+):
+    """ครูอ้อยแก้ไขคอร์สที่มีอยู่"""
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    try:
+        db.update_course(course_id, {
+            "name": name, "description": description,
+            "hours": hours, "price": price,
+            "is_hourly": bool(is_hourly), "highlight": bool(highlight),
+            "active": bool(active), "sort_order": sort_order,
+        })
+    except Exception as exc:
+        return RedirectResponse(f"/admin?err={quote(str(exc)[:200])}#courses",
+                                status_code=303)
+    return RedirectResponse("/admin?saved=course#courses", status_code=303)
+
+
+@app.post("/admin/course/{course_id}/delete")
+def admin_course_delete(request: Request, course_id: str):
+    """ลบคอร์ส — ถ้ามีคนลงเรียนแล้วระบบจะปิดการขายให้แทน"""
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    try:
+        db.delete_course(course_id)
+    except Exception as exc:
+        return RedirectResponse(f"/admin?err={quote(str(exc)[:200])}#courses",
+                                status_code=303)
+    return RedirectResponse("/admin?saved=deleted#courses", status_code=303)
 
 
 @app.post("/admin/student/{student_id}")

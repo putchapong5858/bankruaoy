@@ -20,6 +20,9 @@
   {% if saved %}
   <div class="flash">✓ บันทึกเรียบร้อยแล้วค่ะ</div>
   {% endif %}
+  {% if err %}
+  <div class="flash warn">⚠ {{ err }}</div>
+  {% endif %}
 
   <!-- ══════ รออนุมัติ ══════ -->
   <section class="panel">
@@ -77,6 +80,102 @@
       {% endfor %}
     </div>
     {% else %}<p class="empty">ยังไม่มีคำขอลงคอร์ส</p>{% endif %}
+  </section>
+
+  <!-- ══════ จัดการคอร์ส ══════ -->
+  <section class="panel" id="courses">
+    <h2><i>🧾</i> คอร์สเรียนทั้งหมด
+      {% if all_courses %}<span class="badge">{{ all_courses | length }}</span>{% endif %}
+    </h2>
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:1rem">
+      คอร์สที่ “เปิดขาย” จะโชว์ให้ผู้ปกครองเลือกในหน้าโปรไฟล์ลูก —
+      แก้ราคาหรือปิดขายได้ตลอด ไม่กระทบชั่วโมงที่นักเรียนซื้อไปแล้ว
+    </p>
+
+    {% for c in all_courses %}
+    <div class="crs {{ 'off' if not c.active }}">
+      <form method="post" action="/admin/course/{{ c.id }}">
+        <div class="crs-head">
+          <b>{{ c.name }}</b>
+          <span class="tag {{ 'green' if c.active else 'grey' }}">
+            {{ 'เปิดขายอยู่' if c.active else 'ปิดขายแล้ว' }}
+          </span>
+          {% if c.highlight %}<span class="tag amber">แนะนำ</span>{% endif %}
+          <span class="muted crs-code">รหัส {{ c.code }}</span>
+        </div>
+
+        <div class="grid4">
+          <label>ชื่อคอร์ส <b class="req">*</b>
+            <input type="text" name="name" value="{{ c.name }}" required maxlength="120">
+          </label>
+          <label>ราคา (บาท)
+            <input type="number" name="price" value="{{ c.price | round(0) | int }}" min="0" step="10">
+          </label>
+          <label>จำนวนชั่วโมง
+            <input type="number" name="hours" value="{{ c.hours | round(0) | int }}" min="0" step="1"
+                   class="hrs" {{ 'readonly' if c.is_hourly }}>
+          </label>
+          <label>ลำดับการแสดง
+            <input type="number" name="sort_order" value="{{ c.sort_order or 99 }}" min="1" step="1">
+          </label>
+        </div>
+        <label>คำอธิบายสั้น ๆ
+          <input type="text" name="description" value="{{ c.description or '' }}" maxlength="300"
+                 placeholder="เช่น ติวเข้มตรงแนวข้อสอบ Gifted / MEP / IP">
+        </label>
+
+        <div class="checks">
+          <label class="chk"><input type="checkbox" name="active" {{ 'checked' if c.active }}>
+            <span>เปิดขาย (ให้ผู้ปกครองเห็น)</span></label>
+          <label class="chk"><input type="checkbox" name="highlight" {{ 'checked' if c.highlight }}>
+            <span>ติดป้าย “แนะนำ”</span></label>
+          <label class="chk"><input type="checkbox" name="is_hourly" {{ 'checked' if c.is_hourly }}>
+            <span>คิดราคาต่อชั่วโมง (ผู้ปกครองเลือกจำนวนชั่วโมงเอง)</span></label>
+        </div>
+
+        <button class="btn btn-primary btn-sm">บันทึกคอร์สนี้</button>
+      </form>
+      <form method="post" action="/admin/course/{{ c.id }}/delete" class="inline"
+            onsubmit="return confirm('ลบคอร์ส “{{ c.name }}” ?\n(ถ้ามีคนลงเรียนแล้ว ระบบจะปิดขายให้แทน)')">
+        <button class="btn btn-ghost btn-sm btn-del">ลบคอร์ส</button>
+      </form>
+    </div>
+    {% else %}
+    <p class="empty">ยังไม่มีคอร์สในระบบ — เพิ่มคอร์สแรกได้ด้านล่างเลยค่ะ</p>
+    {% endfor %}
+
+    <!-- เพิ่มคอร์สใหม่ -->
+    <details class="newcrs">
+      <summary>＋ เพิ่มคอร์สใหม่</summary>
+      <form method="post" action="/admin/course/new">
+        <div class="grid4">
+          <label>ชื่อคอร์ส <b class="req">*</b>
+            <input type="text" name="name" required maxlength="120"
+                   placeholder="เช่น คอร์สติวเข้มปิดเทอม">
+          </label>
+          <label>ราคา (บาท)
+            <input type="number" name="price" value="2200" min="0" step="10">
+          </label>
+          <label>จำนวนชั่วโมง
+            <input type="number" name="hours" value="24" min="0" step="1">
+          </label>
+          <label>รหัสคอร์ส (เว้นว่างได้)
+            <input type="text" name="code" maxlength="20" placeholder="ระบบตั้งให้อัตโนมัติ">
+          </label>
+        </div>
+        <label>คำอธิบายสั้น ๆ
+          <input type="text" name="description" maxlength="300"
+                 placeholder="เช่น เรียนได้ทุกวิชา ยืดหยุ่นตามตารางบ้านครูอ้อย">
+        </label>
+        <div class="checks">
+          <label class="chk"><input type="checkbox" name="highlight">
+            <span>ติดป้าย “แนะนำ”</span></label>
+          <label class="chk"><input type="checkbox" name="is_hourly">
+            <span>คิดราคาต่อชั่วโมง</span></label>
+        </div>
+        <button class="btn btn-primary btn-sm">เพิ่มคอร์ส</button>
+      </form>
+    </details>
   </section>
 
   <!-- ══════ เช็คชื่อ ══════ -->
@@ -208,6 +307,33 @@
 
 <style>
 .flash{background:#E4F7EE;color:#1F8A62;border-radius:16px;padding:.7rem 1.1rem;margin-bottom:1.2rem;font-weight:600}
+.flash.warn{background:#FFF4E0;color:#A6690C}
+
+/* ---- จัดการคอร์ส ---- */
+.crs{border:1.5px solid var(--sky-100);border-radius:18px;padding:1rem 1.15rem;margin-bottom:.9rem;background:#fff;position:relative}
+.crs>form.inline{position:absolute;top:.95rem;right:1.15rem}
+.crs.off{background:#FAFBFC;border-style:dashed;opacity:.85}
+.crs-head{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem;padding-right:6.5rem}
+.crs-head b{font-size:1.05rem}
+.crs-code{font-size:.76rem}
+.crs .btn{width:auto}
+.crs input[readonly]{background:#F1F5F8;color:var(--ink-soft)}
+.btn-del{color:#C2453C;border-color:#F3D2CF}
+@media(max-width:600px){
+  .crs>form.inline{position:static;margin-top:.5rem}
+  .crs-head{padding-right:0}
+}
+.btn-del:hover{background:#FDEDEC}
+.checks{display:flex;flex-wrap:wrap;gap:.4rem 1.1rem;margin:.5rem 0 .8rem}
+.chk{display:flex;align-items:center;gap:.45rem;margin:0;font-size:.9rem;cursor:pointer}
+.chk input{width:17px;height:17px;margin:0;flex:none;accent-color:var(--sky-600)}
+.tag.green{background:#E4F7EE;color:#1F8A62}
+.tag.grey{background:#EEF2F5;color:#7A8894}
+.newcrs{border:1.5px dashed var(--sky-200);border-radius:18px;padding:.2rem .4rem;background:var(--sky-50)}
+.newcrs summary{cursor:pointer;font-weight:700;color:var(--sky-700);padding:.85rem 1rem;list-style:none}
+.newcrs summary::-webkit-details-marker{display:none}
+.newcrs[open] summary{border-bottom:1px solid var(--sky-100);margin-bottom:.9rem}
+.newcrs form{padding:0 1rem 1rem}
 .badge{background:var(--sky-100);color:var(--sky-700);border-radius:999px;
        padding:.05rem .6rem;font-size:.8rem;font-family:'Prompt',sans-serif}
 .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0 14px}
@@ -225,6 +351,18 @@
 .stu-head b{font-size:1.05rem;margin-right:.5rem}
 .panel form .btn{width:auto;margin-top:.4rem}
 </style>
+
+<script>
+// คอร์สรายชั่วโมงไม่ต้องกรอกจำนวนชั่วโมง — ผู้ปกครองเลือกเองตอนซื้อ
+document.querySelectorAll('input[name="is_hourly"]').forEach(function (box) {
+  const form = box.closest('form');
+  const hrs = form && form.querySelector('input[name="hours"]');
+  if (!hrs) return;
+  const sync = function () { hrs.readOnly = box.checked; };
+  box.addEventListener('change', sync);
+  sync();
+});
+</script>
 
 <script>
 (function () {
