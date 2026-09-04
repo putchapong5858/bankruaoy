@@ -219,3 +219,17 @@ table.tbl tr:last-child td{border-bottom:none}
 .c-hours{font-size:.84rem;margin:.3rem 0 0}
 .c-hours input{margin-top:.2rem;padding:.5rem .8rem;font-size:.95rem}
 .course .btn{margin-top:auto;padding-top:.6rem;padding-bottom:.6rem}
+
+/* ── สรุปการเข้าเรียน ── */
+.attsum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
+.attsum div{background:var(--sky-50);border-radius:14px;padding:.7rem .9rem;text-align:center}
+.attsum b{display:block;font-family:'Mali',cursive;font-size:1.5rem;color:var(--sky-600);line-height:1.25}
+.attsum span{font-size:.78rem;color:var(--ink-soft)}
+
+/* ── เส้นค่าเฉลี่ยห้องบนแถบคะแนน ── */
+.score-bar{position:relative}
+.score-bar u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink-soft);
+             opacity:.55;text-decoration:none;border-radius:2px}
+.avg{display:block;margin-top:.35rem;font-size:.8rem;color:var(--ink-soft)}
+.row .body i{font-style:normal;color:var(--sky-700)}
+.tag.red{background:#FDEDEC;color:#C2453C}

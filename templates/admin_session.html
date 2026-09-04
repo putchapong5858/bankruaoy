@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}เช็คชื่อ {{ session.date }} | บ้านครูอ้อย{% endblock %}
+
+{% block topright %}
+<div class="who">
+  <span class="who-name">{{ user.display_name }}</span>
+  <a class="btn btn-ghost btn-sm" href="/admin">← หน้าจัดการ</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<main class="portal">
+
+  <div class="hello">
+    <h1>เช็คชื่อเข้าเรียน</h1>
+    <p class="muted">
+      {{ session.date }} · {{ session.time_range }} ·
+      {{ session.level or 'ทุกระดับชั้น' }}
+      {% if session.subjects %} · {{ session.subjects }}{% endif %}
+      · คาบละ <b>{{ session.hours | round(1) }}</b> ชม.
+    </p>
+  </div>
+
+  {% if saved %}<div class="flash">✓ บันทึกเช็คชื่อแล้ว ชั่วโมงคงเหลือของนักเรียนอัปเดตให้เรียบร้อย</div>{% endif %}
+
+  <section class="panel">
+    <h2><i>✅</i> ติ๊กชื่อน้องที่มาเรียน</h2>
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:1rem">
+      ติ๊กแล้วกดบันทึก — ระบบหัก {{ session.hours | round(1) }} ชม. ให้เฉพาะคนที่ “มาเรียน”
+      ส่วนคนที่ลาหรือขาด ไม่ถูกหักชั่วโมง<br>
+      กลับมาแก้ทีหลังได้ตลอด ชั่วโมงจะคำนวณใหม่ให้ถูกเสมอ ไม่หักซ้ำ
+    </p>
+
+    <form method="post" action="/admin/session/{{ session.id }}/attendance">
+      <div class="checkall">
+        <button type="button" class="btn btn-ghost btn-sm" id="allOn">ติ๊กทุกคน</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="allOff">ล้างทั้งหมด</button>
+      </div>
+
+      <div class="pickgrid">
+        {% for s in students %}
+        {% set mk = marked.get(s.id) %}
+        <div class="pick2 {{ 'on' if mk }}">
+          <label class="pl">
+            <input type="checkbox" name="student_id" value="{{ s.id }}" {{ 'checked' if mk }}>
+            <span><b>{{ s.nickname }}</b><small>{{ s.level }} · เหลือ {{ s.hours_left | round(1) }} ชม.</small></span>
+          </label>
+          <select name="status_{{ s.id }}" class="stsel">
+            {% for st in statuses %}
+            <option {{ 'selected' if mk and mk.status == st }}>{{ st }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endfor %}
+      </div>
+
+      {% if others %}
+      <details class="newbox" style="margin-bottom:1rem">
+        <summary>＋ เพิ่มนักเรียนระดับชั้นอื่นเข้าคาบนี้ ({{ others | length }} คน)</summary>
+        <div class="pickgrid" style="padding:0 1rem 1rem">
+          {% for s in others %}
+          {% set mk = marked.get(s.id) %}
+          <div class="pick2 {{ 'on' if mk }}">
+            <label class="pl">
+              <input type="checkbox" name="student_id" value="{{ s.id }}" {{ 'checked' if mk }}>
+              <span><b>{{ s.nickname }}</b><small>{{ s.level }} · เหลือ {{ s.hours_left | round(1) }} ชม.</small></span>
+            </label>
+            <select name="status_{{ s.id }}" class="stsel">
+              {% for st in statuses %}
+              <option {{ 'selected' if mk and mk.status == st }}>{{ st }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
+
+      <button class="btn btn-primary">บันทึกเช็คชื่อ</button>
+      <a class="btn btn-ghost" href="/admin#sessions">กลับหน้าจัดการ</a>
+    </form>
+  </section>
+
+</main>
+
+<style>
+.flash{background:#E4F7EE;color:#1F8A62;border-radius:16px;padding:.7rem 1.1rem;margin-bottom:1.2rem;font-weight:600}
+.checkall{display:flex;gap:.5rem;margin-bottom:.9rem}
+.checkall .btn{width:auto;margin:0}
+.pickgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-bottom:1.2rem}
+.pick2{background:var(--sky-50);border-radius:14px;padding:.7rem .9rem;border:2px solid transparent;transition:.15s}
+.pick2.on{border-color:var(--sky-500);background:#fff}
+.pick2 .pl{display:flex;align-items:center;gap:.6rem;margin:0;cursor:pointer}
+.pick2 input[type=checkbox]{width:19px;height:19px;margin:0;flex:none;accent-color:var(--sky-600)}
+.pick2 b{display:block;font-size:.97rem}
+.pick2 small{color:var(--ink-soft);font-size:.78rem}
+.stsel{margin-top:.5rem;width:100%;font-size:.85rem;padding:.35rem .6rem}
+.newbox{border:1.5px dashed var(--sky-200);border-radius:18px;background:var(--sky-50);padding:.2rem .4rem}
+.newbox summary{cursor:pointer;font-weight:700;color:var(--sky-700);padding:.85rem 1rem;list-style:none}
+.newbox summary::-webkit-details-marker{display:none}
+.panel form .btn{width:auto;margin-right:.5rem}
+</style>
+
+<script>
+// ติ๊กแล้วให้การ์ดไฮไลต์ทันที
+document.querySelectorAll('.pick2 input[type=checkbox]').forEach(function (box) {
+  var card = box.closest('.pick2');
+  box.addEventListener('change', function () { card.classList.toggle('on', box.checked); });
+});
+function setAll(v) {
+  document.querySelectorAll('.pick2 input[type=checkbox]').forEach(function (b) {
+    b.checked = v; b.closest('.pick2').classList.toggle('on', v);
+  });
+}
+document.getElementById('allOn').onclick = function () { setAll(true); };
+document.getElementById('allOff').onclick = function () { setAll(false); };
+</script>
+{% endblock %}

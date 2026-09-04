@@ -189,7 +189,28 @@ def get_student_detail(student: dict) -> dict:
         reverse=True,
     )[:40]
 
-    return {**student, "attendance": attendance, "scores": scores, "homework": homework}
+    # สถานะการส่งการบ้านของเด็กคนนี้ (ครูเป็นคนกด)
+    subs = {str(s["homework_id"]): s for s in
+            select("homework_submissions", student_id=f"eq.{sid}", limit=200)}
+    for h in homework:
+        sub = subs.get(str(h["id"])) or {}
+        h["sub_status"] = sub.get("status") or "ยังไม่ส่ง"
+        h["sub_comment"] = sub.get("comment") or ""
+
+    # คะแนนเทียบกับค่าเฉลี่ยของห้อง
+    avgs = exam_averages()
+    for s in scores:
+        s["class_average"] = avgs.get(str(s.get("exam_id"))) if s.get("exam_id") else None
+
+    return {
+        **student,
+        "attendance": attendance,
+        "attend_summary": attendance_summary(sid),
+        "scores": scores,
+        "homework": homework,
+        "materials": list_materials(level),
+        "sessions": upcoming_sessions(level),
+    }
 
 
 def get_schedule() -> list[dict]:
@@ -238,20 +259,25 @@ def update_student(student_id: str, values: dict) -> None:
         update("students", clean, id=f"eq.{student_id}")
 
 
+def recalc_hours_used(student_id: str) -> float:
+    """คำนวณชั่วโมงที่ใช้ไปใหม่ทั้งหมด จากประวัติเข้าเรียนจริง
+
+    วิธีนี้แทนการ "บวกเพิ่มทีละครั้ง" ที่ทำให้ชั่วโมงเพี้ยนเวลาครูเช็คชื่อซ้ำ
+    หรือแก้ไขย้อนหลัง — รวมใหม่ทุกครั้งจึงตรงกับความจริงเสมอ
+    """
+    rows = select("attendance", "hours", student_id=f"eq.{student_id}", limit=1000)
+    total = sum(float(r.get("hours") or 0) for r in rows)
+    update("students", {"hours_used": total}, id=f"eq.{student_id}")
+    return total
+
+
 def add_attendance(rows: list[dict]) -> None:
-    """บันทึกเช็คชื่อหลายคนพร้อมกัน แล้วบวกชั่วโมงที่ใช้ไปให้อัตโนมัติ"""
+    """บันทึกเช็คชื่อหลายคนพร้อมกัน แล้วคำนวณชั่วโมงคงเหลือให้ใหม่"""
     if not rows:
         return
     insert("attendance", rows)
-    for r in rows:
-        hours = float(r.get("hours") or 0)
-        if hours <= 0:
-            continue
-        cur = select_one("students", "id,hours_used", id=f"eq.{r['student_id']}")
-        if cur:
-            update("students",
-                   {"hours_used": float(cur.get("hours_used") or 0) + hours},
-                   id=f"eq.{r['student_id']}")
+    for sid in {r["student_id"] for r in rows}:
+        recalc_hours_used(sid)
 
 
 def add_score(row: dict) -> None:
@@ -259,6 +285,9 @@ def add_score(row: dict) -> None:
 
 
 def add_homework(row: dict) -> None:
+    from datetime import date as _date
+    row.setdefault("assigned_date", _date.today().isoformat())
+    row.setdefault("active", True)
     insert("homework", row)
 
 
@@ -430,3 +459,389 @@ def delete_course(course_id: str | int) -> None:
             "(ประวัติการเรียนของนักเรียนจะได้ไม่หาย)"
         )
     delete("courses", id=f"eq.{course_id}")
+
+
+# ════════════════════════════════════════════════════════
+#  1) คาบเรียน + เช็คชื่อ
+# ════════════════════════════════════════════════════════
+
+def list_sessions(limit: int = 40) -> list[dict]:
+    """คาบเรียนทั้งหมด ใหม่สุดอยู่บน พร้อมจำนวนคนที่เช็คชื่อแล้ว"""
+    rows = select("sessions", order="date.desc,time_range.asc", limit=limit)
+    if not rows:
+        return []
+    marked = select("attendance", "session_id,status", limit=2000)
+    for s in rows:
+        mine = [a for a in marked if str(a.get("session_id")) == str(s["id"])]
+        s["checked"] = len(mine)
+        s["present"] = sum(1 for a in mine if a.get("status") == "มาเรียน")
+    return rows
+
+
+def upcoming_sessions(level: str = "", limit: int = 4) -> list[dict]:
+    """คาบเรียนที่กำลังจะถึง — ใช้โชว์ในหน้าผู้ปกครอง"""
+    from datetime import date as _date
+    rows = select("sessions", date=f"gte.{_date.today().isoformat()}",
+                  order="date.asc,time_range.asc", limit=40)
+    return [r for r in rows if r.get("status") == "เปิดเรียน"][:limit]
+
+
+def get_session(session_id: str | int) -> dict | None:
+    return select_one("sessions", id=f"eq.{session_id}")
+
+
+def save_session(data: dict, session_id: str | int | None = None) -> dict | None:
+    """เพิ่มหรือแก้ไขคาบเรียน"""
+    if not (data.get("date") or "").strip():
+        raise SupabaseError("กรุณาเลือกวันที่ของคาบเรียน")
+    try:
+        hours = max(0.0, min(float(data.get("hours") or 0), 12.0))
+    except (TypeError, ValueError):
+        hours = 0.0
+    fields = {
+        "date": data["date"],
+        "time_range": (data.get("time_range") or "").strip()[:60] or "09.00 - 12.00 น.",
+        "level": (data.get("level") or "").strip()[:120],
+        "subjects": (data.get("subjects") or "").strip()[:200],
+        "hours": hours,
+        "status": data.get("status") or "เปิดเรียน",
+        "note": (data.get("note") or "").strip()[:300],
+    }
+    if session_id:
+        update("sessions", fields, id=f"eq.{session_id}")
+        # ถ้าแก้จำนวนชั่วโมง ต้องปรับแถวเช็คชื่อและชั่วโมงคงเหลือตามด้วย
+        taken = select("attendance", "student_id,status", session_id=f"eq.{session_id}", limit=500)
+        if taken:
+            update("attendance", {"hours": hours},
+                   session_id=f"eq.{session_id}", status="eq.มาเรียน")
+            for sid in {t["student_id"] for t in taken}:
+                recalc_hours_used(sid)
+        return get_session(session_id)
+    return insert("sessions", fields)[0]
+
+
+def delete_session(session_id: str | int) -> None:
+    """ลบคาบเรียน — ลบการเช็คชื่อของคาบนี้ด้วย แล้วคืนชั่วโมงให้นักเรียน"""
+    taken = select("attendance", "student_id", session_id=f"eq.{session_id}", limit=500)
+    delete("attendance", session_id=f"eq.{session_id}")   # ลบเองไม่พึ่ง cascade
+    delete("sessions", id=f"eq.{session_id}")
+    for sid in {t["student_id"] for t in taken}:
+        recalc_hours_used(sid)
+
+
+def session_attendance(session_id: str | int) -> dict[str, dict]:
+    """เช็คชื่อของคาบนี้ คืนเป็น {student_id: แถว} เพื่อให้ฟอร์มติ๊กค้างไว้ได้"""
+    rows = select("attendance", session_id=f"eq.{session_id}", limit=500)
+    return {r["student_id"]: r for r in rows}
+
+
+def save_attendance(session_id: str | int, present_ids: list[str],
+                    statuses: dict | None = None) -> None:
+    """บันทึกเช็คชื่อของคาบหนึ่ง — เขียนทับของเดิมได้ ชั่วโมงไม่เพี้ยน
+
+    ติ๊กใหม่ = เพิ่มแถว, เอาติ๊กออก = ลบแถว, แล้วคำนวณชั่วโมงใหม่ทั้งหมด
+    """
+    ses = get_session(session_id)
+    if not ses:
+        raise SupabaseError("ไม่พบคาบเรียนนี้")
+
+    hours = float(ses.get("hours") or 0)
+    statuses = statuses or {}
+    old = session_attendance(session_id)
+    touched = set(old.keys()) | set(present_ids)
+
+    delete("attendance", session_id=f"eq.{session_id}")
+    rows = []
+    for sid in present_ids:
+        st = statuses.get(sid) or "มาเรียน"
+        rows.append({
+            "student_id": sid, "session_id": ses["id"], "date": ses["date"],
+            "session": ses.get("time_range"), "status": st,
+            # มาเรียนเท่านั้นที่หักชั่วโมง — ลา/ขาด ไม่หัก
+            "hours": hours if st == "มาเรียน" else 0,
+        })
+    if rows:
+        insert("attendance", rows)
+    for sid in touched:
+        recalc_hours_used(sid)
+
+
+def attendance_summary(student_id: str) -> dict:
+    """สรุปการเข้าเรียนของนักเรียนคนหนึ่ง"""
+    rows = select("attendance", "status", student_id=f"eq.{student_id}", limit=500)
+    total = len(rows)
+    present = sum(1 for r in rows if r.get("status") == "มาเรียน")
+    return {
+        "total": total, "present": present, "absent": total - present,
+        "percent": round(present / total * 100) if total else 0,
+    }
+
+
+# ════════════════════════════════════════════════════════
+#  2) การบ้าน + การตรวจส่ง
+# ════════════════════════════════════════════════════════
+
+def list_homework(limit: int = 30) -> list[dict]:
+    """การบ้านทั้งหมด พร้อมจำนวนคนที่ส่งแล้ว"""
+    rows = select("homework", active="eq.true", order="assigned_date.desc,id.desc", limit=limit)
+    if not rows:
+        return []
+    subs = select("homework_submissions", "homework_id,student_id,status", limit=2000)
+    students = {s["id"]: s for s in select("students", "id,nickname,level,active")}
+    for h in rows:
+        mine = [s for s in subs if str(s["homework_id"]) == str(h["id"])]
+        h["submitted"] = sum(1 for s in mine if s.get("status") != "ไม่ได้ส่ง")
+        if h.get("student_id"):
+            stu = students.get(h["student_id"]) or {}
+            h["target"] = f"รายคน · {stu.get('nickname', '-')}"
+            h["total"] = 1
+        else:
+            h["target"] = f"ทั้งชั้น · {h.get('level') or 'ทุกระดับ'}"
+            h["total"] = sum(1 for s in students.values()
+                             if s.get("active") and s.get("level") == h.get("level"))
+    return rows
+
+
+def homework_targets(homework_id: str | int) -> list[dict]:
+    """รายชื่อนักเรียนที่ต้องส่งการบ้านชิ้นนี้ พร้อมสถานะการส่ง"""
+    hw = select_one("homework", id=f"eq.{homework_id}")
+    if not hw:
+        return []
+    if hw.get("student_id"):
+        students = select("students", active="eq.true", id=f"eq.{hw['student_id']}")
+    else:
+        students = select("students", active="eq.true",
+                          level=f"eq.{hw.get('level') or ''}", order="nickname.asc")
+    subs = {s["student_id"]: s for s in
+            select("homework_submissions", homework_id=f"eq.{homework_id}", limit=500)}
+    for s in students:
+        sub = subs.get(s["id"]) or {}
+        s["sub_status"] = sub.get("status") or ""
+        s["sub_comment"] = sub.get("comment") or ""
+    return students
+
+
+def save_homework_checks(homework_id: str | int, statuses: dict[str, str]) -> None:
+    """ครูกดว่าใครส่งแล้ว — เขียนทับของเดิมทั้งชุด"""
+    delete("homework_submissions", homework_id=f"eq.{homework_id}")
+    rows = [{"homework_id": int(homework_id), "student_id": sid, "status": st}
+            for sid, st in statuses.items() if st]
+    if rows:
+        insert("homework_submissions", rows)
+
+
+def update_homework(homework_id: str | int, values: dict) -> None:
+    update("homework", values, id=f"eq.{homework_id}")
+
+
+def delete_homework(homework_id: str | int) -> None:
+    """ลบการบ้าน พร้อมประวัติการตรวจส่งของการบ้านชิ้นนั้น"""
+    delete("homework_submissions", homework_id=f"eq.{homework_id}")
+    delete("homework", id=f"eq.{homework_id}")
+
+
+# ════════════════════════════════════════════════════════
+#  3) การสอบ + คะแนน
+# ════════════════════════════════════════════════════════
+
+def list_exams(limit: int = 30) -> list[dict]:
+    """การสอบทั้งหมด พร้อมสถิติของแต่ละครั้ง"""
+    rows = select("exams", order="date.desc,id.desc", limit=limit)
+    if not rows:
+        return []
+    all_scores = select("scores", "exam_id,score", limit=2000)
+    for e in rows:
+        vals = [float(s["score"]) for s in all_scores
+                if str(s.get("exam_id")) == str(e["id"]) and s.get("score") is not None]
+        e["count"] = len(vals)
+        e["average"] = round(sum(vals) / len(vals), 1) if vals else None
+        e["max"] = max(vals) if vals else None
+        e["min"] = min(vals) if vals else None
+    return rows
+
+
+def get_exam(exam_id: str | int) -> dict | None:
+    return select_one("exams", id=f"eq.{exam_id}")
+
+
+def save_exam(data: dict, exam_id: str | int | None = None) -> dict | None:
+    name = (data.get("name") or "").strip()[:120]
+    if not name:
+        raise SupabaseError("กรุณากรอกชื่อการสอบ")
+    try:
+        full = max(1.0, float(data.get("full_score") or 20))
+    except (TypeError, ValueError):
+        full = 20.0
+    fields = {
+        "name": name,
+        "date": data.get("date") or None,
+        "subject": (data.get("subject") or "").strip()[:60],
+        "level": (data.get("level") or "").strip()[:60],
+        "full_score": full,
+        "note": (data.get("note") or "").strip()[:300],
+    }
+    fields = {k: v for k, v in fields.items() if v is not None}
+    if exam_id:
+        update("exams", fields, id=f"eq.{exam_id}")
+        return get_exam(exam_id)
+    return insert("exams", fields)[0]
+
+
+def delete_exam(exam_id: str | int) -> None:
+    """ลบการสอบ พร้อมคะแนนทั้งหมดของครั้งนั้น"""
+    delete("scores", exam_id=f"eq.{exam_id}")
+    delete("exams", id=f"eq.{exam_id}")
+
+
+def exam_sheet(exam_id: str | int) -> list[dict]:
+    """ใบกรอกคะแนน — รายชื่อนักเรียนตามระดับชั้นของการสอบ พร้อมคะแนนที่กรอกไว้"""
+    exam = get_exam(exam_id)
+    if not exam:
+        return []
+    lv = (exam.get("level") or "").strip()
+    students = (select("students", active="eq.true", level=f"eq.{lv}", order="nickname.asc")
+                if lv else select("students", active="eq.true", order="level.asc,nickname.asc"))
+    got = {s["student_id"]: s for s in
+           select("scores", exam_id=f"eq.{exam_id}", limit=500)}
+    for s in students:
+        row = got.get(s["id"]) or {}
+        s["score"] = row.get("score")
+        s["score_comment"] = row.get("comment") or ""
+    return students
+
+
+def save_exam_scores(exam_id: str | int, scores: dict[str, str],
+                     comments: dict[str, str] | None = None) -> int:
+    """กรอกคะแนนทั้งห้องในครั้งเดียว — เว้นว่างไว้ = ยังไม่ได้สอบ ไม่บันทึก"""
+    exam = get_exam(exam_id)
+    if not exam:
+        raise SupabaseError("ไม่พบการสอบนี้")
+    comments = comments or {}
+    delete("scores", exam_id=f"eq.{exam_id}")
+
+    rows = []
+    for sid, raw in scores.items():
+        raw = (raw or "").strip()
+        if raw == "":
+            continue
+        try:
+            val = max(0.0, min(float(raw), float(exam["full_score"])))
+        except (TypeError, ValueError):
+            continue
+        rows.append({
+            "student_id": sid, "exam_id": exam["id"], "date": exam["date"],
+            "subject": exam.get("subject"), "exam_name": exam["name"],
+            "score": val, "full_score": exam["full_score"],
+            "comment": (comments.get(sid) or "").strip()[:200] or None,
+        })
+    if rows:
+        insert("scores", rows)
+    return len(rows)
+
+
+def exam_averages() -> dict[str, float]:
+    """ค่าเฉลี่ยของการสอบแต่ละครั้ง — ใช้ให้ผู้ปกครองเทียบกับคะแนนลูก"""
+    rows = select("scores", "exam_id,score", limit=2000)
+    buckets: dict[str, list[float]] = {}
+    for r in rows:
+        if r.get("exam_id") is None or r.get("score") is None:
+            continue
+        buckets.setdefault(str(r["exam_id"]), []).append(float(r["score"]))
+    return {k: round(sum(v) / len(v), 1) for k, v in buckets.items() if v}
+
+
+# ════════════════════════════════════════════════════════
+#  4) เอกสารประกอบการเรียน
+# ════════════════════════════════════════════════════════
+
+def list_materials(level: str | None = None, limit: int = 60) -> list[dict]:
+    rows = select("materials", active="eq.true", order="created_at.desc", limit=limit)
+    if level is None:
+        return rows
+    # ผู้ปกครองเห็นเอกสารของระดับชั้นลูก + เอกสารที่ให้ทุกระดับ
+    return [m for m in rows if not (m.get("level") or "").strip()
+            or (m.get("level") or "").strip() == level]
+
+
+def add_material(data: dict) -> dict:
+    title = (data.get("title") or "").strip()[:150]
+    url = (data.get("file_url") or "").strip()
+    if not title:
+        raise SupabaseError("กรุณากรอกชื่อเอกสาร")
+    if not url:
+        raise SupabaseError("กรุณาแนบไฟล์ หรือใส่ลิงก์เอกสาร")
+    if not url.startswith(("http://", "https://")):
+        raise SupabaseError("ลิงก์ต้องขึ้นต้นด้วย http:// หรือ https://")
+    return insert("materials", {
+        "title": title,
+        "subject": (data.get("subject") or "").strip()[:60],
+        "level": (data.get("level") or "").strip()[:60],
+        "detail": (data.get("detail") or "").strip()[:300],
+        "file_url": url,
+        "file_name": (data.get("file_name") or "").strip()[:200],
+        "kind": data.get("kind") or "link",
+        "active": True,
+    })[0]
+
+
+def delete_material(material_id: str | int) -> None:
+    delete("materials", id=f"eq.{material_id}")
+
+
+# ════════════════════════════════════════════════════════
+#  ประกาศ — เพิ่มการดูรายการและลบ
+# ════════════════════════════════════════════════════════
+
+def list_announcements(limit: int = 20) -> list[dict]:
+    return select("announcements", order="published_at.desc,id.desc", limit=limit)
+
+
+def delete_announcement(announcement_id: str | int) -> None:
+    delete("announcements", id=f"eq.{announcement_id}")
+
+
+# ════════════════════════════════════════════════════════
+#  อัปโหลดไฟล์เข้า Supabase Storage
+# ════════════════════════════════════════════════════════
+
+STORAGE_BUCKET = "materials"
+MAX_UPLOAD_BYTES = 4 * 1024 * 1024      # 4 MB — เพดานของ Vercel ต่อ 1 คำขอ
+ALLOWED_TYPES = {
+    "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp",
+    "image/gif": ".gif", "application/pdf": ".pdf",
+}
+
+
+def upload_file(data: bytes, filename: str, content_type: str) -> str:
+    """อัปโหลดไฟล์ขึ้น Supabase Storage แล้วคืนลิงก์สาธารณะ"""
+    import re as _re
+    import uuid as _uuid
+    from datetime import date as _date
+
+    if not data:
+        raise SupabaseError("ไฟล์ว่าง กรุณาเลือกไฟล์ใหม่")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise SupabaseError(
+            f"ไฟล์ใหญ่เกินไป ({len(data) / 1024 / 1024:.1f} MB) "
+            "รองรับไม่เกิน 4 MB — ถ้าเป็นไฟล์ใหญ่ให้อัปขึ้น Google Drive แล้วใส่ลิงก์แทนค่ะ"
+        )
+    ext = ALLOWED_TYPES.get((content_type or "").split(";")[0].strip())
+    if not ext:
+        raise SupabaseError("รองรับเฉพาะรูปภาพ (JPG, PNG, WEBP, GIF) และไฟล์ PDF เท่านั้นค่ะ")
+
+    stem = _re.sub(r"[^A-Za-z0-9ก-๙_-]+", "-", (filename or "file").rsplit(".", 1)[0])[:40]
+    key = f"{_date.today():%Y/%m}/{_uuid.uuid4().hex[:10]}-{stem or 'file'}{ext}"
+
+    url = f"{config.SUPABASE_URL.rstrip('/')}/storage/v1/object/{STORAGE_BUCKET}/{key}"
+    headers = {
+        "apikey": config.SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {config.SUPABASE_SERVICE_KEY}",
+        "Content-Type": content_type,
+        "x-upsert": "false",
+    }
+    with httpx.Client(timeout=60) as client:
+        res = client.post(url, headers=headers, content=data)
+    if res.status_code >= 400:
+        raise SupabaseError(f"อัปโหลดไม่สำเร็จ ({res.status_code}) กรุณาลองใหม่อีกครั้ง")
+
+    return f"{config.SUPABASE_URL.rstrip('/')}/storage/v1/object/public/{STORAGE_BUCKET}/{key}"

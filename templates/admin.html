@@ -35,7 +35,7 @@
       <div class="row">
         <div class="body">
           <b>{{ p.full_name }}</b>
-          <span>{{ p.phone }} · LINE: {{ p.line_name }} · สมัคร {{ p.created_at[:10] }}</span>
+          <span>{{ p.phone }} · LINE: {{ p.line_name }} · สมัคร {{ (p.created_at or "")[:10] }}</span>
         </div>
         <form method="post" action="/admin/parent/{{ p.id }}/approve" class="inline">
           <button class="btn btn-primary btn-sm">อนุมัติ</button>
@@ -177,98 +177,289 @@
       </form>
     </details>
   </section>
+  <!-- ══════ คาบเรียน + เช็คชื่อ ══════ -->
+  <section class="panel" id="sessions">
+    <h2><i>📅</i> คาบเรียน &amp; เช็คชื่อ
+      {% if sessions %}<span class="badge">{{ sessions | length }}</span>{% endif %}
+    </h2>
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:1rem">
+      เปิดคาบเรียนของแต่ละวันไว้ก่อน แล้วกด “เช็คชื่อ” เพื่อติ๊กว่าใครมา —
+      ระบบหักชั่วโมงให้อัตโนมัติ เช็คซ้ำหรือแก้ย้อนหลังได้ ชั่วโมงไม่เพี้ยน
+    </p>
 
-  <!-- ══════ เช็คชื่อ ══════ -->
-  <section class="panel">
-    <h2><i>✅</i> เช็คชื่อเข้าเรียน</h2>
-    {% if students %}
-    <form method="post" action="/admin/attendance">
-      <div class="grid4">
-        <label>วันที่<input type="date" name="date" value="{{ today }}" required></label>
-        <label>รอบเรียน<input type="text" name="session" value="09.00 - 12.00 น." placeholder="เช่น 09.00 - 12.00 น."></label>
-        <label>จำนวนชั่วโมง<input type="number" name="hours" value="3" step="0.5" min="0"></label>
-        <label>สถานะ
-          <select name="status">
-            {% for s in attendance_statuses %}<option>{{ s }}</option>{% endfor %}
-          </select>
-        </label>
-      </div>
-      <p class="muted" style="margin:.4rem 0 .7rem">ติ๊กชื่อน้องที่มาเรียน — ระบบจะหักชั่วโมงคงเหลือให้อัตโนมัติ</p>
-      <div class="pickgrid">
-        {% for s in students %}
-        <label class="pick">
-          <input type="checkbox" name="student_id" value="{{ s.id }}">
-          <span><b>{{ s.nickname }}</b><small>{{ s.level }} · เหลือ {{ s.hours_left }} ชม.</small></span>
-        </label>
-        {% endfor %}
-      </div>
-      <button class="btn btn-primary">บันทึกเช็คชื่อ</button>
-    </form>
-    {% else %}<p class="empty">ยังไม่มีนักเรียนในระบบ</p>{% endif %}
+    <details class="newbox" {{ 'open' if not sessions }}>
+      <summary>＋ เปิดคาบเรียนใหม่</summary>
+      <form method="post" action="/admin/session/new">
+        <div class="grid4">
+          <label>วันที่ <b class="req">*</b><input type="date" name="date" value="{{ today }}" required></label>
+          <label>เวลา<input type="text" name="time_range" value="09.00 - 12.00 น."></label>
+          <label>จำนวนชั่วโมง<input type="number" name="hours" value="3" step="0.5" min="0"></label>
+          <label>ระดับชั้น
+            <select name="level">
+              <option value="">— ทุกระดับชั้น —</option>
+              {% for lv in levels %}<option>{{ lv }}</option>{% endfor %}
+            </select>
+          </label>
+        </div>
+        <label>วิชาที่สอนคาบนี้<input type="text" name="subjects" placeholder="คณิต · ไทย · อังกฤษ"></label>
+        <button class="btn btn-primary btn-sm">เปิดคาบเรียน แล้วไปเช็คชื่อ →</button>
+      </form>
+    </details>
+
+    {% for s in sessions %}
+    <div class="crs {{ 'off' if s.status != 'เปิดเรียน' }}">
+      <form method="post" action="/admin/session/{{ s.id }}">
+        <div class="crs-head">
+          <b>{{ s.date }} · {{ s.time_range }}</b>
+          {% if s.status == 'เปิดเรียน' %}
+            <span class="tag {{ 'green' if s.checked else 'grey' }}">
+              {{ 'เช็คชื่อแล้ว ' ~ s.present ~ '/' ~ s.checked ~ ' คน' if s.checked else 'ยังไม่เช็คชื่อ' }}
+            </span>
+          {% else %}<span class="tag grey">งดเรียน</span>{% endif %}
+          <span class="muted crs-code">{{ s.level or 'ทุกระดับชั้น' }}</span>
+        </div>
+        <div class="grid4">
+          <label>วันที่<input type="date" name="date" value="{{ s.date }}" required></label>
+          <label>เวลา<input type="text" name="time_range" value="{{ s.time_range }}"></label>
+          <label>ชั่วโมง<input type="number" name="hours" value="{{ s.hours | round(1) }}" step="0.5" min="0"></label>
+          <label>สถานะ
+            <select name="status">
+              <option {{ 'selected' if s.status == 'เปิดเรียน' }}>เปิดเรียน</option>
+              <option {{ 'selected' if s.status == 'งดเรียน' }}>งดเรียน</option>
+            </select>
+          </label>
+          <label>ระดับชั้น
+            <select name="level">
+              <option value="">— ทุกระดับชั้น —</option>
+              {% for lv in levels %}<option {{ 'selected' if lv == s.level }}>{{ lv }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>วิชา<input type="text" name="subjects" value="{{ s.subjects or '' }}"></label>
+        </div>
+        <a class="btn btn-primary btn-sm" href="/admin/session/{{ s.id }}">✅ เช็คชื่อคาบนี้</a>
+        <button class="btn btn-ghost btn-sm">บันทึกการแก้ไข</button>
+      </form>
+      <form method="post" action="/admin/session/{{ s.id }}/delete" class="inline"
+            onsubmit="return confirm('ลบคาบเรียนวันที่ {{ s.date }} ?\nการเช็คชื่อของคาบนี้จะถูกลบ และคืนชั่วโมงให้นักเรียน')">
+        <button class="btn btn-ghost btn-sm btn-del">ลบคาบ</button>
+      </form>
+    </div>
+    {% else %}
+    <p class="empty">ยังไม่มีคาบเรียน — เปิดคาบแรกด้านบนได้เลยค่ะ</p>
+    {% endfor %}
   </section>
 
-  <!-- ══════ คะแนน ══════ -->
-  <section class="panel">
-    <h2><i>📝</i> บันทึกคะแนนสอบ</h2>
-    {% if students %}
-    <form method="post" action="/admin/score">
-      <div class="grid4">
-        <label>นักเรียน
-          <select name="student_id" required>
-            {% for s in students %}<option value="{{ s.id }}">{{ s.nickname }} ({{ s.level }})</option>{% endfor %}
-          </select>
-        </label>
-        <label>วันที่<input type="date" name="date" value="{{ today }}" required></label>
-        <label>วิชา<input type="text" name="subject" placeholder="คณิตศาสตร์"></label>
-        <label>ชื่อการสอบ<input type="text" name="exam_name" placeholder="ทดสอบบทที่ 1"></label>
-        <label>คะแนนที่ได้<input type="number" name="score" step="0.5" min="0" value="0"></label>
-        <label>คะแนนเต็ม<input type="number" name="full_score" step="0.5" min="0" value="20"></label>
+  <!-- ══════ การสอบ + คะแนน ══════ -->
+  <section class="panel" id="exams">
+    <h2><i>📝</i> การสอบ &amp; คะแนน
+      {% if exams %}<span class="badge">{{ exams | length }}</span>{% endif %}
+    </h2>
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:1rem">
+      สร้างการสอบ 1 ครั้ง แล้วกรอกคะแนนทั้งห้องในหน้าเดียว —
+      ผู้ปกครองจะเห็นคะแนนลูกเทียบกับค่าเฉลี่ยห้อง (ไม่เห็นชื่อหรืออันดับของเด็กคนอื่น)
+    </p>
+
+    <details class="newbox" {{ 'open' if not exams }}>
+      <summary>＋ สร้างการสอบใหม่</summary>
+      <form method="post" action="/admin/exam/new">
+        <div class="grid4">
+          <label>ชื่อการสอบ <b class="req">*</b><input type="text" name="name" required placeholder="ทดสอบบทที่ 3"></label>
+          <label>วันที่<input type="date" name="date" value="{{ today }}"></label>
+          <label>วิชา<input type="text" name="subject" placeholder="คณิตศาสตร์"></label>
+          <label>คะแนนเต็ม<input type="number" name="full_score" value="20" min="1" step="1"></label>
+          <label>ระดับชั้น
+            <select name="level">
+              <option value="">— ทุกระดับชั้น —</option>
+              {% for lv in levels %}<option>{{ lv }}</option>{% endfor %}
+            </select>
+          </label>
+        </div>
+        <button class="btn btn-primary btn-sm">สร้าง แล้วไปกรอกคะแนน →</button>
+      </form>
+    </details>
+
+    {% for e in exams %}
+    <div class="row rowcard">
+      <div class="body">
+        <b>{{ e.name }}{% if e.subject %} · {{ e.subject }}{% endif %}</b>
+        <span>
+          {{ e.date }} · เต็ม {{ e.full_score | round(0) | int }} คะแนน ·
+          {{ e.level or 'ทุกระดับชั้น' }}
+          {% if e.count %}
+            · กรอกแล้ว {{ e.count }} คน · เฉลี่ย <b>{{ e.average }}</b>
+            (สูงสุด {{ e.max | round(1) }} · ต่ำสุด {{ e.min | round(1) }})
+          {% else %}· <span class="tag grey">ยังไม่กรอกคะแนน</span>{% endif %}
+        </span>
       </div>
-      <label>ความเห็นครู<input type="text" name="comment" placeholder="ทำได้ดีมาก คิดเลขเร็วขึ้น"></label>
-      <button class="btn btn-primary">บันทึกคะแนน</button>
-    </form>
-    {% else %}<p class="empty">ยังไม่มีนักเรียนในระบบ</p>{% endif %}
+      <a class="btn btn-primary btn-sm" href="/admin/exam/{{ e.id }}">กรอกคะแนน</a>
+      <form method="post" action="/admin/exam/{{ e.id }}/delete" class="inline"
+            onsubmit="return confirm('ลบการสอบ “{{ e.name }}” และคะแนนทั้งหมดของครั้งนี้?')">
+        <button class="btn btn-ghost btn-sm btn-del">ลบ</button>
+      </form>
+    </div>
+    {% else %}
+    <p class="empty">ยังไม่มีการสอบ</p>
+    {% endfor %}
   </section>
 
   <!-- ══════ การบ้าน ══════ -->
-  <section class="panel">
-    <h2><i>📚</i> สั่งการบ้าน</h2>
-    <form method="post" action="/admin/homework">
-      <div class="grid4">
-        <label>สั่งให้ใคร
-          <select name="target" id="hwTarget">
-            <option value="level">ทั้งระดับชั้น</option>
-            <option value="student">รายคน</option>
-          </select>
-        </label>
-        <label id="hwLevel">ระดับชั้น
-          <select name="level">
-            {% for lv in levels %}<option>{{ lv }}</option>{% endfor %}
-          </select>
-        </label>
-        <label id="hwStudent" style="display:none">นักเรียน
-          <select name="student_id">
-            {% for s in students %}<option value="{{ s.id }}">{{ s.nickname }} ({{ s.level }})</option>{% endfor %}
-          </select>
-        </label>
-        <label>กำหนดส่ง<input type="date" name="due_date"></label>
-        <label>วิชา<input type="text" name="subject" placeholder="คณิตศาสตร์"></label>
+  <section class="panel" id="homework">
+    <h2><i>📚</i> การบ้าน
+      {% if homeworks %}<span class="badge">{{ homeworks | length }}</span>{% endif %}
+    </h2>
+
+    <details class="newbox" {{ 'open' if not homeworks }}>
+      <summary>＋ สั่งการบ้านใหม่</summary>
+      <form method="post" action="/admin/homework" enctype="multipart/form-data" class="upform">
+        <div class="grid4">
+          <label>สั่งให้ใคร
+            <select name="target" id="hwTarget">
+              <option value="level">ทั้งระดับชั้น</option>
+              <option value="student">รายคน</option>
+            </select>
+          </label>
+          <label id="hwLevel">ระดับชั้น
+            <select name="level">
+              {% for lv in levels %}<option>{{ lv }}</option>{% endfor %}
+            </select>
+          </label>
+          <label id="hwStudent" style="display:none">นักเรียน
+            <select name="student_id">
+              {% for s in students %}<option value="{{ s.id }}">{{ s.nickname }} ({{ s.level }})</option>{% endfor %}
+            </select>
+          </label>
+          <label>กำหนดส่ง<input type="date" name="due_date"></label>
+          <label>วิชา<input type="text" name="subject" placeholder="คณิตศาสตร์"></label>
+        </div>
+        <label>เรื่อง <b class="req">*</b><input type="text" name="title" required placeholder="แบบฝึกหัดการคูณ ชุดที่ 3"></label>
+        <label>รายละเอียดเพิ่มเติม<input type="text" name="detail" placeholder="ทำข้อ 1–10 ในสมุด"></label>
+
+        <div class="attach">
+          <b>แนบใบงาน (ถ้ามี)</b>
+          <label class="filepick">📎 เลือกไฟล์จากเครื่อง / ถ่ายรูป
+            <input type="file" name="file" accept="image/*,application/pdf" capture="environment">
+          </label>
+          <span class="fname"></span>
+          <label>หรือใส่ลิงก์ Google Drive<input type="url" name="file_url" placeholder="https://drive.google.com/..."></label>
+        </div>
+
+        <button class="btn btn-primary btn-sm">สั่งการบ้าน</button>
+      </form>
+    </details>
+
+    {% for h in homeworks %}
+    <div class="row rowcard">
+      <div class="body">
+        <b>{{ h.title }}{% if h.subject %} · {{ h.subject }}{% endif %}</b>
+        <span>
+          {{ h.target }} · สั่ง {{ h.assigned_date }}
+          {% if h.due_date %}· กำหนดส่ง {{ h.due_date }}{% endif %}
+          {% if h.total %}
+            · <span class="tag {{ 'green' if h.submitted >= h.total else 'amber' }}">ส่งแล้ว {{ h.submitted }}/{{ h.total }}</span>
+          {% endif %}
+          {% if h.file_url %}· <a href="{{ h.file_url }}" target="_blank" rel="noopener">📎 ใบงาน</a>{% endif %}
+        </span>
       </div>
-      <label>เรื่อง <b class="req">*</b><input type="text" name="title" required placeholder="แบบฝึกหัดการคูณ ชุดที่ 3"></label>
-      <label>ลิงก์ไฟล์ (ถ้ามี)<input type="url" name="file_url" placeholder="https://drive.google.com/..."></label>
-      <button class="btn btn-primary">สั่งการบ้าน</button>
-    </form>
+      <a class="btn btn-primary btn-sm" href="/admin/homework/{{ h.id }}">ตรวจการส่ง</a>
+      <form method="post" action="/admin/homework/{{ h.id }}/delete" class="inline"
+            onsubmit="return confirm('ลบการบ้าน “{{ h.title }}” ?')">
+        <button class="btn btn-ghost btn-sm btn-del">ลบ</button>
+      </form>
+    </div>
+    {% else %}
+    <p class="empty">ยังไม่มีการบ้าน</p>
+    {% endfor %}
+  </section>
+
+  <!-- ══════ เอกสารประกอบการเรียน ══════ -->
+  <section class="panel" id="materials">
+    <h2><i>📎</i> เอกสารประกอบการเรียน
+      {% if materials %}<span class="badge">{{ materials | length }}</span>{% endif %}
+    </h2>
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:1rem">
+      เอกสารที่ใส่ตรงนี้ ผู้ปกครองจะเห็นและดาวน์โหลดได้ในหน้าข้อมูลลูก
+      (เว้นระดับชั้นว่างไว้ = ให้ทุกระดับชั้นเห็น)
+    </p>
+
+    <details class="newbox" {{ 'open' if not materials }}>
+      <summary>＋ เพิ่มเอกสาร</summary>
+      <form method="post" action="/admin/material" enctype="multipart/form-data" class="upform">
+        <div class="grid4">
+          <label>ชื่อเอกสาร <b class="req">*</b><input type="text" name="title" required placeholder="ใบงานคณิต บทที่ 3"></label>
+          <label>วิชา<input type="text" name="subject" placeholder="คณิตศาสตร์"></label>
+          <label>ระดับชั้น
+            <select name="level">
+              <option value="">— ทุกระดับชั้น —</option>
+              {% for lv in levels %}<option>{{ lv }}</option>{% endfor %}
+            </select>
+          </label>
+        </div>
+        <label>คำอธิบายสั้น ๆ<input type="text" name="detail" placeholder="ใช้ทบทวนก่อนสอบ"></label>
+
+        <div class="attach">
+          <b>ไฟล์เอกสาร <span class="req">*</span></b>
+          <label class="filepick">📎 เลือกไฟล์จากเครื่อง / ถ่ายรูป
+            <input type="file" name="file" accept="image/*,application/pdf" capture="environment">
+          </label>
+          <span class="fname"></span>
+          <label>หรือใส่ลิงก์ Google Drive<input type="url" name="file_url" placeholder="https://drive.google.com/..."></label>
+          <small class="muted">รูปภาพและ PDF ไม่เกิน 4 MB · ไฟล์ใหญ่กว่านั้นให้ใช้ลิงก์ Drive แทน</small>
+        </div>
+
+        <button class="btn btn-primary btn-sm">เพิ่มเอกสาร</button>
+      </form>
+    </details>
+
+    {% for m in materials %}
+    <div class="row rowcard">
+      <div class="body">
+        <b>{{ m.title }}{% if m.subject %} · {{ m.subject }}{% endif %}</b>
+        <span>
+          {{ m.level or 'ทุกระดับชั้น' }} · {{ (m.created_at or "")[:10] }} ·
+          <span class="tag grey">{{ 'ไฟล์อัปโหลด' if m.kind == 'upload' else 'ลิงก์' }}</span>
+          {% if m.detail %}· {{ m.detail }}{% endif %}
+        </span>
+      </div>
+      <a class="btn btn-ghost btn-sm" href="{{ m.file_url }}" target="_blank" rel="noopener">เปิดดู</a>
+      <form method="post" action="/admin/material/{{ m.id }}/delete" class="inline"
+            onsubmit="return confirm('ลบเอกสาร “{{ m.title }}” ?')">
+        <button class="btn btn-ghost btn-sm btn-del">ลบ</button>
+      </form>
+    </div>
+    {% else %}
+    <p class="empty">ยังไม่มีเอกสาร</p>
+    {% endfor %}
   </section>
 
   <!-- ══════ ประกาศ ══════ -->
-  <section class="panel">
-    <h2><i>📣</i> ประกาศถึงผู้ปกครอง</h2>
+  <section class="panel" id="news">
+    <h2><i>📣</i> ประกาศถึงผู้ปกครอง
+      {% if announcements %}<span class="badge">{{ announcements | length }}</span>{% endif %}
+    </h2>
     <form method="post" action="/admin/announcement">
       <label>หัวข้อ <b class="req">*</b><input type="text" name="title" required placeholder="งดเรียนวันเสาร์ที่ 12"></label>
       <label>รายละเอียด<input type="text" name="body" placeholder="เนื่องจากครูติดอบรม จะสอนชดเชยวันอาทิตย์"></label>
       <label>แสดงถึงวันที่<input type="date" name="show_until"></label>
-      <button class="btn btn-primary">ประกาศ</button>
+      <button class="btn btn-primary btn-sm">ประกาศ</button>
     </form>
+
+    {% if announcements %}
+    <div class="rows" style="margin-top:1.1rem">
+      {% for a in announcements %}
+      <div class="row">
+        <div class="body">
+          <b>{{ a.title }}</b>
+          <span>{{ a.published_at }}{% if a.show_until %} · แสดงถึง {{ a.show_until }}{% endif %}
+            {% if a.body %}· {{ a.body }}{% endif %}</span>
+        </div>
+        <form method="post" action="/admin/announcement/{{ a.id }}/delete" class="inline"
+              onsubmit="return confirm('ลบประกาศ “{{ a.title }}” ?')">
+          <button class="btn btn-ghost btn-sm btn-del">ลบ</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   </section>
 
   <!-- ══════ นักเรียนทั้งหมด ══════ -->
@@ -329,11 +520,29 @@
 .chk input{width:17px;height:17px;margin:0;flex:none;accent-color:var(--sky-600)}
 .tag.green{background:#E4F7EE;color:#1F8A62}
 .tag.grey{background:#EEF2F5;color:#7A8894}
-.newcrs{border:1.5px dashed var(--sky-200);border-radius:18px;padding:.2rem .4rem;background:var(--sky-50)}
-.newcrs summary{cursor:pointer;font-weight:700;color:var(--sky-700);padding:.85rem 1rem;list-style:none}
-.newcrs summary::-webkit-details-marker{display:none}
-.newcrs[open] summary{border-bottom:1px solid var(--sky-100);margin-bottom:.9rem}
-.newcrs form{padding:0 1rem 1rem}
+.newcrs,.newbox{border:1.5px dashed var(--sky-200);border-radius:18px;padding:.2rem .4rem;background:var(--sky-50);margin-bottom:1rem}
+.newcrs summary,.newbox summary{cursor:pointer;font-weight:700;color:var(--sky-700);padding:.85rem 1rem;list-style:none}
+.newcrs summary::-webkit-details-marker,.newbox summary::-webkit-details-marker{display:none}
+.newcrs[open] summary,.newbox[open] summary{border-bottom:1px solid var(--sky-100);margin-bottom:.9rem}
+.newcrs form,.newbox form{padding:0 1rem 1rem}
+
+/* แถวรายการ (คาบเรียน/การสอบ/การบ้าน/เอกสาร) */
+.rowcard{border:1.5px solid var(--sky-100);border-radius:16px;padding:.85rem 1.05rem;margin-bottom:.6rem;background:#fff}
+.rowcard .body b{font-size:1rem}
+.rowcard .btn{width:auto}
+.rowcard a[target=_blank]{color:var(--sky-600);font-weight:600}
+
+/* กล่องแนบไฟล์ */
+.attach{background:var(--sky-50);border-radius:14px;padding:.85rem 1rem;margin:.6rem 0 .9rem}
+.attach > b{display:block;margin-bottom:.55rem;font-size:.92rem}
+.filepick{display:inline-flex;align-items:center;gap:.5rem;background:#fff;border:1.5px solid var(--sky-200);
+          border-radius:12px;padding:.6rem 1rem;cursor:pointer;font-weight:600;color:var(--sky-700);
+          font-size:.9rem;width:auto;margin:0}
+.filepick:hover{background:var(--sky-100)}
+.filepick input[type=file]{display:none}
+.fname{display:inline-block;margin-left:.6rem;font-size:.85rem;color:var(--sky-700);font-weight:600}
+.attach label:not(.filepick){margin-top:.7rem}
+.attach small{display:block;margin-top:.4rem;font-size:.8rem}
 .badge{background:var(--sky-100);color:var(--sky-700);border-radius:999px;
        padding:.05rem .6rem;font-size:.8rem;font-family:'Prompt',sans-serif}
 .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0 14px}
@@ -376,4 +585,48 @@ document.querySelectorAll('input[name="is_hourly"]').forEach(function (box) {
   });
 })();
 </script>
+
+<script>
+/* ── แนบไฟล์: โชว์ชื่อไฟล์ และย่อรูปก่อนอัปโหลด ──
+   รูปจากมือถือมักใหญ่ 3–8 MB ซึ่งเกินเพดานของเซิร์ฟเวอร์
+   จึงย่อเหลือด้านยาวสุด 1600px ก่อนส่ง — ครูไม่ต้องทำอะไรเพิ่ม */
+document.querySelectorAll('.upform').forEach(function (form) {
+  var input = form.querySelector('input[type=file]');
+  var label = form.querySelector('.fname');
+  if (!input) return;
+
+  input.addEventListener('change', function () {
+    var f = input.files && input.files[0];
+    if (!f) { label.textContent = ''; return; }
+    label.textContent = f.name + ' (' + (f.size / 1024 / 1024).toFixed(1) + ' MB)';
+    if (f.type.indexOf('image/') !== 0 || f.size < 900 * 1024) return;
+
+    label.textContent = f.name + ' — กำลังย่อรูป...';
+    var img = new Image(), url = URL.createObjectURL(f);
+    img.onload = function () {
+      var max = 1600, w = img.width, h = img.height;
+      if (w > max || h > max) {
+        if (w > h) { h = Math.round(h * max / w); w = max; }
+        else       { w = Math.round(w * max / h); h = max; }
+      }
+      var cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      cv.toBlob(function (blob) {
+        URL.revokeObjectURL(url);
+        if (!blob || blob.size >= f.size) { label.textContent = f.name; return; }
+        var dt = new DataTransfer();
+        dt.items.add(new File([blob], f.name.replace(/\.[^.]+$/, '') + '.jpg',
+                              {type: 'image/jpeg'}));
+        input.files = dt.files;
+        label.textContent = f.name + ' → ย่อเหลือ ' +
+                            (blob.size / 1024 / 1024).toFixed(1) + ' MB ✓';
+      }, 'image/jpeg', 0.82);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); label.textContent = f.name; };
+    img.src = url;
+  });
+});
+</script>
+
 {% endblock %}

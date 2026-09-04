@@ -123,9 +123,29 @@
   </section>
   {% endif %}
 
-  <!-- ตารางเรียน -->
+  <!-- คาบเรียนที่กำลังจะถึง -->
+  {% if s.sessions %}
   <section class="panel">
-    <h2><i>🗓️</i> ตารางเรียน</h2>
+    <h2><i>📅</i> คาบเรียนที่กำลังจะถึง</h2>
+    <div class="rows">
+      {% for ses in s.sessions %}
+      <div class="row">
+        <div class="date">{{ ses.date }}</div>
+        <div class="body">
+          <b>{{ ses.time_range }}</b>
+          <span>{{ ses.subjects or ses.level or 'ทุกวิชา' }} · {{ ses.hours | round(1) }} ชม.
+            {%- if ses.note %} · {{ ses.note }}{% endif %}</span>
+        </div>
+        <span class="tag green">เปิดเรียน</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- ตารางเรียนประจำ -->
+  <section class="panel">
+    <h2><i>🗓️</i> ตารางเรียนประจำ</h2>
     {% if schedule %}
     <div class="scroll-x">
       <table class="tbl">
@@ -140,7 +160,7 @@
 
   <!-- การบ้าน -->
   <section class="panel">
-    <h2><i>📚</i> การบ้าน &amp; เอกสารประกอบการเรียน</h2>
+    <h2><i>📚</i> การบ้าน</h2>
     {% if s.homework %}
     <div class="rows">
       {% for h in s.homework %}
@@ -148,14 +168,39 @@
         <div class="date">{% if h.due_date %}ส่ง {{ h.due_date }}{% else %}—{% endif %}</div>
         <div class="body">
           <b>{{ h.title }}</b>
-          <span>{{ h.subject or '' }}{% if h.file_url %} · <a href="{{ h.file_url }}" target="_blank" rel="noopener" class="lnk">เปิดไฟล์</a>{% endif %}</span>
+          <span>
+            {{ h.subject or '' }}{% if h.detail %} · {{ h.detail }}{% endif %}
+            {%- if h.file_url %} · <a href="{{ h.file_url }}" target="_blank" rel="noopener" class="lnk">📎 เปิดใบงาน</a>{% endif %}
+            {%- if h.sub_comment %}<br><i>ครู: {{ h.sub_comment }}</i>{% endif %}
+          </span>
         </div>
-        <span class="tag {{ 'green' if 'ส่งแล้ว' in (h.status or '') else 'amber' }}">{{ h.status }}</span>
+        <span class="tag {% if h.sub_status == 'ส่งแล้ว' %}green{% elif h.sub_status == 'ไม่ได้ส่ง' %}red{% else %}amber{% endif %}">{{ h.sub_status }}</span>
       </div>
       {% endfor %}
     </div>
     {% else %}<p class="empty">ยังไม่มีการบ้านที่ต้องส่ง</p>{% endif %}
   </section>
+
+  <!-- เอกสารประกอบการเรียน -->
+  {% if s.materials %}
+  <section class="panel">
+    <h2><i>📎</i> เอกสารประกอบการเรียน</h2>
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:.9rem">
+      กดเปิดเพื่อดูหรือดาวน์โหลดเก็บไว้ให้น้องทบทวนได้เลยค่ะ
+    </p>
+    <div class="rows">
+      {% for m in s.materials %}
+      <div class="row">
+        <div class="body">
+          <b>{{ m.title }}</b>
+          <span>{{ m.subject or '' }}{% if m.detail %} · {{ m.detail }}{% endif %}</span>
+        </div>
+        <a class="btn btn-ghost btn-sm" href="{{ m.file_url }}" target="_blank" rel="noopener">เปิดดู</a>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
 
   <!-- คะแนน -->
   <section class="panel">
@@ -169,7 +214,21 @@
           <b>{{ x.exam_name or 'ทดสอบ' }}</b>
           <span>{{ x.subject or '' }}{% if x.comment %} · {{ x.comment }}{% endif %}</span>
           {% if x.full_score and x.full_score|float > 0 %}
-          <div class="score-bar"><i style="width:{{ ((x.score|float / x.full_score|float) * 100) | round | int }}%"></i></div>
+          <div class="score-bar">
+            <i style="width:{{ ((x.score|float / x.full_score|float) * 100) | round | int }}%"></i>
+            {% if x.class_average is not none %}
+            <u style="left:{{ ((x.class_average|float / x.full_score|float) * 100) | round | int }}%"
+               title="ค่าเฉลี่ยห้อง {{ x.class_average }}"></u>
+            {% endif %}
+          </div>
+          {% if x.class_average is not none %}
+          <span class="avg">
+            เฉลี่ยทั้งห้อง {{ x.class_average }} —
+            {% if x.score|float > x.class_average|float %}น้องทำได้สูงกว่าค่าเฉลี่ย 🎉
+            {% elif x.score|float == x.class_average|float %}น้องทำได้เท่าค่าเฉลี่ยพอดี
+            {% else %}ยังต่ำกว่าค่าเฉลี่ยอยู่นิดหน่อย{% endif %}
+          </span>
+          {% endif %}
           {% endif %}
         </div>
         <span class="tag">{{ x.score | round(0) | int }}/{{ x.full_score | round(0) | int }}</span>
@@ -182,6 +241,13 @@
   <!-- เช็คชื่อ -->
   <section class="panel">
     <h2><i>✅</i> ประวัติการเข้าเรียน</h2>
+    {% if s.attend_summary and s.attend_summary.total %}
+    <div class="attsum">
+      <div><b>{{ s.attend_summary.present }}</b><span>ครั้งที่มาเรียน</span></div>
+      <div><b>{{ s.attend_summary.absent }}</b><span>ลา / ขาด</span></div>
+      <div><b>{{ s.attend_summary.percent }}%</b><span>อัตราการมาเรียน</span></div>
+    </div>
+    {% endif %}
     {% if s.attendance %}
     <div class="rows">
       {% for a in s.attendance %}

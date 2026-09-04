@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}ตรวจการส่ง {{ hw.title }} | บ้านครูอ้อย{% endblock %}
+
+{% block topright %}
+<div class="who">
+  <span class="who-name">{{ user.display_name }}</span>
+  <a class="btn btn-ghost btn-sm" href="/admin">← หน้าจัดการ</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<main class="portal">
+
+  <div class="hello">
+    <h1>{{ hw.title }}</h1>
+    <p class="muted">
+      {% if hw.subject %}{{ hw.subject }} · {% endif %}
+      สั่งเมื่อ {{ hw.assigned_date }}
+      {% if hw.due_date %} · กำหนดส่ง <b>{{ hw.due_date }}</b>{% endif %}
+      {% if hw.file_url %} · <a href="{{ hw.file_url }}" target="_blank" rel="noopener">📎 เปิดใบงาน</a>{% endif %}
+    </p>
+    {% if hw.detail %}<p class="muted">{{ hw.detail }}</p>{% endif %}
+  </div>
+
+  {% if saved %}<div class="flash">✓ บันทึกแล้ว ผู้ปกครองเห็นสถานะการส่งของลูกได้ทันที</div>{% endif %}
+
+  <section class="panel">
+    <h2><i>📋</i> ตรวจว่าใครส่งแล้ว</h2>
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:1rem">
+      เลือกสถานะของแต่ละคน แล้วกดบันทึก — ผู้ปกครองจะเห็นเฉพาะสถานะของลูกตัวเอง
+    </p>
+
+    {% if students %}
+    <form method="post" action="/admin/homework/{{ hw.id }}/check">
+      <div class="checkall">
+        <button type="button" class="btn btn-ghost btn-sm" data-set="ส่งแล้ว">ทุกคนส่งแล้ว</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-set="">ล้างทั้งหมด</button>
+      </div>
+
+      <div class="sheet">
+        {% for s in students %}
+        <div class="hrow">
+          <div class="sname">
+            <b>{{ s.nickname }}</b>
+            <small>{{ s.level }} · {{ s.code }}</small>
+          </div>
+          <div class="picks">
+            {% for st in ['ส่งแล้ว', 'ส่งช้า', 'ไม่ได้ส่ง'] %}
+            <label class="rb rb-{{ loop.index }}">
+              <input type="radio" name="st_{{ s.id }}" value="{{ st }}"
+                     {{ 'checked' if s.sub_status == st }}>
+              <span>{{ st }}</span>
+            </label>
+            {% endfor %}
+            <label class="rb rb-0">
+              <input type="radio" name="st_{{ s.id }}" value="" {{ 'checked' if not s.sub_status }}>
+              <span>ยังไม่ตรวจ</span>
+            </label>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <button class="btn btn-primary">บันทึกการตรวจ</button>
+      <a class="btn btn-ghost" href="/admin#homework">กลับหน้าจัดการ</a>
+    </form>
+    {% else %}
+    <p class="empty">ยังไม่มีนักเรียนในระดับชั้น “{{ hw.level }}”</p>
+    {% endif %}
+  </section>
+
+</main>
+
+<style>
+.flash{background:#E4F7EE;color:#1F8A62;border-radius:16px;padding:.7rem 1.1rem;margin-bottom:1.2rem;font-weight:600}
+.checkall{display:flex;gap:.5rem;margin-bottom:.9rem;flex-wrap:wrap}
+.checkall .btn{width:auto;margin:0}
+.sheet{margin-bottom:1.1rem}
+.hrow{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;
+      border-top:1px solid var(--sky-100);padding:.8rem 0}
+.hrow:first-child{border-top:none}
+.sname b{display:block;font-size:1rem}
+.sname small{color:var(--ink-soft);font-size:.8rem}
+.picks{display:flex;gap:.4rem;flex-wrap:wrap}
+.rb{margin:0;cursor:pointer}
+.rb input{position:absolute;opacity:0;width:0;height:0}
+.rb span{display:inline-block;border:1.5px solid var(--sky-200);background:#fff;color:var(--ink-soft);
+         border-radius:999px;padding:.4rem .85rem;font-size:.85rem;transition:.15s}
+.rb input:checked + span{border-color:var(--sky-500);background:var(--sky-500);color:#fff;font-weight:600}
+.rb-2 input:checked + span{border-color:#D99400;background:#D99400}
+.rb-3 input:checked + span{border-color:#C2453C;background:#C2453C}
+.rb-0 input:checked + span{border-color:var(--sky-300);background:var(--sky-100);color:var(--sky-700)}
+.panel form .btn{width:auto;margin-right:.5rem}
+</style>
+
+<script>
+document.querySelectorAll('.checkall [data-set]').forEach(function (btn) {
+  btn.onclick = function () {
+    var want = btn.dataset.set;
+    document.querySelectorAll('.hrow').forEach(function (row) {
+      row.querySelectorAll('input[type=radio]').forEach(function (r) {
+        if (r.value === want) r.checked = true;
+      });
+    });
+  };
+});
+</script>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}กรอกคะแนน {{ exam.name }} | บ้านครูอ้อย{% endblock %}
+
+{% block topright %}
+<div class="who">
+  <span class="who-name">{{ user.display_name }}</span>
+  <a class="btn btn-ghost btn-sm" href="/admin">← หน้าจัดการ</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<main class="portal">
+
+  <div class="hello">
+    <h1>{{ exam.name }}</h1>
+    <p class="muted">
+      {{ exam.date }}{% if exam.subject %} · {{ exam.subject }}{% endif %} ·
+      {{ exam.level or 'ทุกระดับชั้น' }} · เต็ม <b>{{ exam.full_score | round(0) | int }}</b> คะแนน
+    </p>
+  </div>
+
+  {% if saved %}<div class="flash">✓ บันทึกคะแนนแล้ว ผู้ปกครองเห็นได้ทันที</div>{% endif %}
+
+  {% if stat.count %}
+  <div class="stats">
+    <div><span>กรอกแล้ว</span><b>{{ stat.count }}</b><small>คน</small></div>
+    <div><span>คะแนนเฉลี่ย</span><b>{{ stat.average }}</b><small>จาก {{ exam.full_score | round(0) | int }}</small></div>
+    <div><span>สูงสุด</span><b>{{ stat.max | round(1) }}</b><small>คะแนน</small></div>
+    <div><span>ต่ำสุด</span><b>{{ stat.min | round(1) }}</b><small>คะแนน</small></div>
+  </div>
+  {% endif %}
+
+  <section class="panel">
+    <h2><i>📝</i> กรอกคะแนนทั้งห้อง</h2>
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:1rem">
+      กรอกเฉพาะคนที่สอบ — เว้นว่างไว้ = ยังไม่ได้สอบ ระบบจะไม่บันทึกและผู้ปกครองจะไม่เห็น<br>
+      กลับมาแก้คะแนนทีหลังได้ตลอด
+    </p>
+
+    {% if students %}
+    <form method="post" action="/admin/exam/{{ exam.id }}/scores">
+      <div class="sheet">
+        {% for s in students %}
+        <div class="srow">
+          <div class="sname">
+            <b>{{ s.nickname }}</b>
+            <small>{{ s.level }} · {{ s.code }}</small>
+          </div>
+          <label class="sscore">คะแนน
+            <input type="number" name="sc_{{ s.id }}" step="0.5" min="0"
+                   max="{{ exam.full_score }}" value="{{ s.score if s.score is not none else '' }}"
+                   placeholder="—">
+            <span class="of">/ {{ exam.full_score | round(0) | int }}</span>
+          </label>
+          <label class="scmt">ความเห็นครู
+            <input type="text" name="cm_{{ s.id }}" maxlength="200"
+                   value="{{ s.score_comment }}" placeholder="เช่น คิดเลขเร็วขึ้นมาก">
+          </label>
+        </div>
+        {% endfor %}
+      </div>
+      <button class="btn btn-primary">บันทึกคะแนนทั้งหมด</button>
+      <a class="btn btn-ghost" href="/admin#exams">กลับหน้าจัดการ</a>
+    </form>
+    {% else %}
+    <p class="empty">
+      ยังไม่มีนักเรียนในระดับชั้น “{{ exam.level }}”<br>
+      ลองแก้ระดับชั้นของการสอบ หรือเว้นว่างไว้เพื่อกรอกให้ทุกคน
+    </p>
+    {% endif %}
+  </section>
+
+</main>
+
+<style>
+.flash{background:#E4F7EE;color:#1F8A62;border-radius:16px;padding:.7rem 1.1rem;margin-bottom:1.2rem;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.2rem}
+.stats div{background:#fff;border-radius:18px;padding:.9rem 1.1rem;box-shadow:var(--shadow-sm)}
+.stats span{display:block;font-size:.8rem;color:var(--ink-soft)}
+.stats b{font-family:'Mali',cursive;font-size:1.7rem;color:var(--sky-600);line-height:1.25}
+.stats small{color:var(--ink-soft);font-size:.78rem}
+.sheet{margin-bottom:1.1rem}
+.srow{display:grid;grid-template-columns:minmax(140px,1fr) 150px 2fr;gap:12px;align-items:end;
+      border-top:1px solid var(--sky-100);padding:.75rem 0}
+.srow:first-child{border-top:none}
+.sname b{display:block;font-size:1rem}
+.sname small{color:var(--ink-soft);font-size:.8rem}
+.sscore{position:relative;margin:0}
+.sscore input{padding-right:3.2rem;font-weight:700;font-size:1.05rem;text-align:center}
+.sscore .of{position:absolute;right:.9rem;bottom:.72rem;color:var(--ink-soft);font-size:.85rem}
+.scmt{margin:0}
+.panel form .btn{width:auto;margin-right:.5rem}
+@media(max-width:700px){
+  .srow{grid-template-columns:1fr 130px;gap:8px}
+  .scmt{grid-column:1 / -1}
+}
+</style>
+{% endblock %}
