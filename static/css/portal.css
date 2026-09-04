@@ -181,3 +181,20 @@ table.tbl tr:last-child td{border-bottom:none}
   .tag{align-self:flex-start}
   .who-name{display:none}
 }
+
+/* ---------- ขั้นเพิ่มเพื่อน: รองรับทุกอุปกรณ์ ---------- */
+.ways{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.3rem}
+.way{background:var(--sky-50);border:2px solid var(--sky-100);border-radius:var(--r);
+     padding:1.1rem 1rem;text-align:center;display:flex;flex-direction:column;
+     align-items:center;justify-content:flex-start;gap:.35rem}
+.way-ico{font-size:1.7rem;line-height:1}
+.way b{font-size:.98rem}
+.way small{color:var(--ink-soft);font-size:.8rem;line-height:1.5;margin-bottom:.5rem}
+.way .btn{margin-top:auto;padding-left:1rem;padding-right:1rem;white-space:nowrap}
+.way .qr{border-radius:12px;background:#fff;padding:6px;max-width:100%;height:auto}
+.way .oaid{font-size:.9rem;font-weight:600;color:var(--sky-700);margin-top:.35rem}
+.way.dim{opacity:.55}
+@media(max-width:560px){
+  .ways{grid-template-columns:1fr}
+  .way .qr{width:150px;height:150px}
+}
