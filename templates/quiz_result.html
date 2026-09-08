@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}ผลคะแนน {{ quiz.title }} | บ้านครูอ้อย{% endblock %}
+
+{% block topright %}
+<div class="who">
+  <a class="btn btn-ghost btn-sm" href="/portal?child={{ child }}#quizzes">กลับหน้าข้อมูลการเรียน</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<main class="play">
+
+  <div class="card result-card">
+    <div class="cheer">{{ '🏆' if percent >= 80 else ('🎉' if percent >= 50 else '💪') }}</div>
+
+    <h1>
+      {% if percent >= 80 %}เยี่ยมมาก {{ student.nickname }}!
+      {% elif percent >= 50 %}เก่งมาก {{ student.nickname }}!
+      {% else %}พยายามได้ดีมาก {{ student.nickname }}!
+      {% endif %}
+    </h1>
+    <p class="sub">{{ quiz.title }} · รอบที่ {{ attempt.attempt_no }}</p>
+
+    <div class="stars">
+      {% for i in range(5) %}<span class="{{ 'on' if i < stars }}">★</span>{% endfor %}
+    </div>
+
+    <p class="bigscore">
+      ตอบถูก <b>{{ attempt.correct_count }}</b> จาก {{ attempt.total_count }} ข้อ
+    </p>
+    <p class="sub">คิดเป็น {{ percent }}%
+      {%- if attempt.seconds_used %} · ใช้เวลา
+        {{ (attempt.seconds_used // 60) }} นาที {{ (attempt.seconds_used % 60) }} วินาที
+      {%- endif %}
+    </p>
+
+    {% if percent >= (quiz.pass_percent or 60) %}
+    <p class="passline good">ผ่านเกณฑ์แล้วค่ะ 🎊</p>
+    {% else %}
+    <p class="passline">ลองอีกสักรอบนะคะ เดี๋ยวก็ทำได้แล้ว</p>
+    {% endif %}
+
+    <div class="acts">
+      <form method="post" action="/portal/quiz/{{ quiz.id }}/start" class="inline">
+        <input type="hidden" name="student_id" value="{{ attempt.student_id }}">
+        <input type="hidden" name="child" value="{{ child }}">
+        <input type="hidden" name="mode" value="all">
+        <button class="btn btn-primary big">ทำใหม่อีกรอบ</button>
+      </form>
+
+      {% if wrong_count %}
+      <form method="post" action="/portal/quiz/{{ quiz.id }}/start" class="inline">
+        <input type="hidden" name="student_id" value="{{ attempt.student_id }}">
+        <input type="hidden" name="child" value="{{ child }}">
+        <input type="hidden" name="mode" value="wrong">
+        <button class="btn btn-ghost big">ทบทวนเฉพาะ {{ wrong_count }} ข้อที่ผิด</button>
+      </form>
+      {% endif %}
+
+      <a class="btn btn-ghost big" href="/portal?child={{ child }}#quizzes">กลับหน้าหลัก</a>
+    </div>
+  </div>
+
+  {% if history | length > 1 %}
+  <div class="card hist">
+    <h2>ทำไปแล้ว {{ history | length }} รอบ</h2>
+    <p class="muted" style="font-size:.9rem;margin:-.3rem 0 .8rem">
+      ทำซ้ำได้เรื่อย ๆ ค่ะ ยิ่งทำยิ่งแม่น
+    </p>
+    <div class="bars">
+      {% for h in history | reverse %}
+      <div class="bar">
+        <div class="fill" style="height:{{ [h.percent, 4] | max }}%"></div>
+        <span class="pct">{{ h.percent }}%</span>
+        <span class="no">{{ h.attempt_no }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="muted" style="font-size:.85rem;text-align:center;margin:.6rem 0 0">
+      ตัวเลขล่างคือรอบที่เท่าไร
+    </p>
+  </div>
+  {% endif %}
+
+</main>
+
+<style>
+.play{max-width:720px;margin:0 auto;padding:18px 16px 60px}
+.result-card{background:#fff;border:1px solid #e1f3fe;border-radius:26px;padding:30px 22px;
+             text-align:center;box-shadow:0 12px 30px rgba(14,59,87,.09)}
+.cheer{font-size:4rem;line-height:1}
+.result-card h1{font-family:'Mali',cursive;font-size:1.6rem;margin:.4rem 0 .2rem;color:#0c6b9e}
+.result-card .sub{color:#3e6b85;font-size:.95rem;margin:.15rem 0}
+.stars{font-size:2.3rem;letter-spacing:.15rem;margin:.6rem 0 .3rem;color:#dbeefc}
+.stars .on{color:#ffc94d}
+.bigscore{font-size:1.3rem;margin:.5rem 0 .1rem}
+.bigscore b{color:#12844b;font-size:1.7rem;font-family:'Mali',cursive}
+.passline{margin:.9rem 0 .2rem;font-weight:600;color:#3e6b85}
+.passline.good{color:#12844b}
+.acts{display:grid;gap:.6rem;margin-top:1.3rem}
+.acts .btn.big{width:100%;padding:1rem;font-size:1.05rem;border-radius:999px}
+.acts form{display:block}
+
+.hist{background:#fff;border:1px solid #e1f3fe;border-radius:22px;padding:20px;margin-top:16px}
+.hist h2{font-family:'Mali',cursive;font-size:1.15rem;margin:0 0 .3rem}
+.bars{display:flex;gap:10px;align-items:flex-end;height:140px;overflow-x:auto;padding-top:8px}
+.bar{flex:0 0 46px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;
+     align-items:center;gap:4px;position:relative}
+.bar .fill{width:100%;background:linear-gradient(180deg,#7dd3fc,#26a5e0);border-radius:10px 10px 4px 4px;
+           min-height:6px}
+.bar .pct{font-size:.75rem;color:#0c6b9e;font-weight:600}
+.bar .no{font-size:.75rem;color:#3e6b85}
+</style>
+{% endblock %}

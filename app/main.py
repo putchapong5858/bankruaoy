@@ -302,6 +302,9 @@ def portal(request: Request, child: int = 0):
         courses=db.list_courses(),
         enrollments=db.get_enrollments(detail["id"]),
         enrolled=enrolled,
+        quizzes=quiz.quizzes_for_student(detail),
+        quiz_history=quiz.attempt_history(detail["id"], limit=8),
+        quizerr=request.query_params.get("quizerr", ""),
     )
 
 
@@ -1050,3 +1053,164 @@ def admin_question_move(request: Request, question_id: str, direction: str):
     if direction in ("up", "down"):
         quiz.move_question(question_id, direction)
     return _quiz_page(existing["quiz_id"], "1")
+
+
+# ════════════════════════════════════════════════════════
+#  6) เด็กทำแบบฝึกหัด — ฝั่งผู้ปกครอง
+# ════════════════════════════════════════════════════════
+
+def _parent_scope(request: Request):
+    """คืน (parent, children, response) — ถ้า response ไม่ใช่ None ให้ส่งกลับทันที"""
+    user = current_line_user(request)
+    if not user:
+        return None, [], page(request, "login.html")
+    try:
+        parent = db.get_parent_by_line(user["user_id"])
+    except Exception:
+        return None, [], RedirectResponse("/portal", status_code=303)
+    if not parent or parent.get("status") != "active":
+        return None, [], RedirectResponse("/portal", status_code=303)
+    return parent, db.get_children(parent["id"]), None
+
+
+def _attempt_scope(request: Request, attempt_id: str):
+    """ดึงรอบการทำ พร้อมตรวจว่าเป็นของลูกตัวเองจริง"""
+    parent, children, blocked = _parent_scope(request)
+    if blocked:
+        return None, None, blocked
+    attempt = quiz.get_attempt(attempt_id)
+    if not attempt or attempt["student_id"] not in {c["id"] for c in children}:
+        return None, None, RedirectResponse("/portal", status_code=303)
+    student = next(c for c in children if c["id"] == attempt["student_id"])
+    return attempt, student, None
+
+
+@app.post("/portal/quiz/{quiz_id}/start")
+def quiz_start(
+    request: Request,
+    quiz_id: str,
+    student_id: str = Form(...),
+    child: int = Form(0),
+    mode: str = Form("all"),
+):
+    """เริ่มทำแบบฝึกหัดรอบใหม่ — mode=wrong คือทบทวนเฉพาะข้อที่เคยผิด"""
+    _, children, blocked = _parent_scope(request)
+    if blocked:
+        return blocked
+    if student_id not in {c["id"] for c in children}:
+        return RedirectResponse("/portal", status_code=303)
+    try:
+        started = quiz.start_attempt(quiz_id, student_id, only_wrong=(mode == "wrong"))
+    except Exception as exc:
+        return RedirectResponse(
+            f"/portal?child={child}&quizerr={quote(str(exc)[:150])}#quizzes",
+            status_code=303)
+    return RedirectResponse(f"/quiz/{started['attempt']['id']}?child={child}",
+                            status_code=303)
+
+
+@app.get("/quiz/{attempt_id}", response_class=HTMLResponse)
+def quiz_play(request: Request, attempt_id: str, child: int = 0):
+    """หน้าทำแบบฝึกหัด — ทีละข้อ ไม่มีเฉลยฝังอยู่ในหน้า"""
+    attempt, student, blocked = _attempt_scope(request, attempt_id)
+    if blocked:
+        return blocked
+    if attempt.get("finished"):
+        return RedirectResponse(f"/quiz/{attempt_id}/result?child={child}",
+                                status_code=303)
+
+    item = quiz.get_quiz(attempt["quiz_id"])
+    questions = quiz.attempt_questions(attempt)
+    if not item or not questions:
+        return RedirectResponse(f"/portal?child={child}", status_code=303)
+
+    return page(request, "quiz_play.html",
+                quiz=item, attempt=attempt, student=student, child=child,
+                questions=quiz.public_questions(questions))
+
+
+@app.post("/quiz/{attempt_id}/answer")
+async def quiz_answer(request: Request, attempt_id: str):
+    """ตรวจคำตอบ 1 ข้อที่เซิร์ฟเวอร์ แล้วบันทึกผล — เฉลยไม่เคยถูกส่งไปล่วงหน้า"""
+    attempt, _, blocked = _attempt_scope(request, attempt_id)
+    if blocked:
+        return JSONResponse({"error": "no-access"}, status_code=403)
+    if attempt.get("finished"):
+        return JSONResponse({"error": "finished"}, status_code=409)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "bad-json"}, status_code=400)
+
+    question = quiz.question_in_attempt(attempt, body.get("question_id"))
+    if not question:
+        return JSONResponse({"error": "no-question"}, status_code=404)
+
+    given = body.get("given")
+    correct = quiz.check_answer(question, given)
+    quiz.record_answer(attempt["id"], question["id"],
+                       given if not isinstance(given, dict) else str(given), correct)
+
+    item = quiz.get_quiz(attempt["quiz_id"]) or {}
+    reveal = bool(item.get("show_answer_on_wrong")) and not correct
+    return JSONResponse({
+        "correct": correct,
+        "answer": quiz.correct_answer_text(question) if reveal else "",
+        "explanation": (question.get("explanation") or "") if reveal else "",
+    })
+
+
+@app.post("/quiz/{attempt_id}/finish")
+async def quiz_finish(request: Request, attempt_id: str):
+    """ปิดรอบ แล้วคืนสรุปคะแนน"""
+    attempt, _, blocked = _attempt_scope(request, attempt_id)
+    if blocked:
+        return JSONResponse({"error": "no-access"}, status_code=403)
+
+    seconds = None
+    try:
+        seconds = int((await request.json()).get("seconds") or 0)
+    except Exception:
+        seconds = None
+
+    if attempt.get("finished"):
+        done = attempt
+    else:
+        try:
+            done = quiz.finish_attempt(attempt_id, seconds)
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)[:150]}, status_code=400)
+
+    full = float(done.get("full_score") or 0)
+    percent = round(float(done["score"]) / full * 100) if full else 0
+    return JSONResponse({
+        "score": float(done["score"]),
+        "full_score": full,
+        "correct_count": done.get("correct_count", 0),
+        "total_count": done.get("total_count", 0),
+        "percent": percent,
+        "stars": quiz.stars_for(percent),
+    })
+
+
+@app.get("/quiz/{attempt_id}/result", response_class=HTMLResponse)
+def quiz_result(request: Request, attempt_id: str, child: int = 0):
+    """หน้าสรุปผลหลังทำเสร็จ"""
+    attempt, student, blocked = _attempt_scope(request, attempt_id)
+    if blocked:
+        return blocked
+    if not attempt.get("finished"):
+        return RedirectResponse(f"/quiz/{attempt_id}?child={child}", status_code=303)
+
+    item = quiz.get_quiz(attempt["quiz_id"]) or {}
+    full = float(attempt.get("full_score") or 0)
+    percent = round(float(attempt["score"]) / full * 100) if full else 0
+    wrong = quiz.last_wrong_question_ids(attempt["quiz_id"], attempt["student_id"])
+
+    return page(request, "quiz_result.html",
+                quiz=item, attempt=attempt, student=student, child=child,
+                percent=percent, stars=quiz.stars_for(percent),
+                wrong_count=len(wrong),
+                history=quiz.attempt_history(attempt["student_id"],
+                                             attempt["quiz_id"], limit=12))

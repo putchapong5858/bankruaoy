@@ -158,6 +158,85 @@
     {% else %}<p class="empty">ยังไม่มีตารางเรียน</p>{% endif %}
   </section>
 
+  <!-- แบบฝึกหัดออนไลน์ -->
+  <section class="panel" id="quizzes">
+    <h2><i>🧩</i> แบบฝึกหัดของ{{ s.nickname }}
+      {% if quizzes %}<span class="badge">{{ quizzes | length }}</span>{% endif %}
+    </h2>
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:.9rem">
+      เปิดให้น้องทำได้ทุกเมื่อ ทำซ้ำได้ไม่จำกัดรอบ — คะแนนทุกรอบครูอ้อยเห็นหมด
+      ระบบไม่มีการจัดอันดับเทียบกับเพื่อน
+    </p>
+
+    {% if quizerr %}<div class="flash warn">⚠ {{ quizerr }}</div>{% endif %}
+
+    {% if quizzes %}
+    <div class="rows">
+      {% for qz in quizzes %}
+      <div class="row">
+        <div class="body">
+          <b>{{ qz.title }}</b>
+          <span>
+            {{ qz.subject or 'ทั่วไป' }} · {{ qz.question_count }} ข้อ
+            {%- if qz.time_limit_sec %} · ประมาณ {{ (qz.time_limit_sec // 60) }} นาที{% endif %}
+            {%- if qz.description %}<br>{{ qz.description }}{% endif %}
+            {%- if qz.times_done %}
+              <br>ทำไปแล้ว {{ qz.times_done }} รอบ · คะแนนดีที่สุด <b>{{ qz.best_percent }}%</b>
+            {% endif %}
+          </span>
+        </div>
+
+        {% if qz.times_done %}
+        <span class="tag green">
+          {%- for i in range(5) %}{{ '⭐' if i < (qz.best_percent // 20 + (1 if qz.best_percent % 20 else 0)) else '' }}{% endfor -%}
+        </span>
+        {% endif %}
+
+        <form method="post" action="/portal/quiz/{{ qz.id }}/start" class="inline">
+          <input type="hidden" name="student_id" value="{{ s.id }}">
+          <input type="hidden" name="child" value="{{ index }}">
+          <input type="hidden" name="mode" value="all">
+          <button class="btn btn-primary btn-sm">
+            {{ 'ทำอีกรอบ' if qz.times_done else 'เริ่มทำ' }}
+          </button>
+        </form>
+
+        {% if qz.times_done and qz.best_percent is not none and qz.best_percent < 100 %}
+        <form method="post" action="/portal/quiz/{{ qz.id }}/start" class="inline">
+          <input type="hidden" name="student_id" value="{{ s.id }}">
+          <input type="hidden" name="child" value="{{ index }}">
+          <input type="hidden" name="mode" value="wrong">
+          <button class="btn btn-ghost btn-sm">ทบทวนข้อที่ผิด</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">ยังไม่มีแบบฝึกหัดสำหรับระดับชั้นนี้</p>
+    {% endif %}
+
+    {% if quiz_history %}
+    <details style="margin-top:.9rem">
+      <summary class="lnk" style="cursor:pointer">ดูประวัติการทำย้อนหลัง</summary>
+      <div class="rows" style="margin-top:.6rem">
+        {% for h in quiz_history %}
+        <div class="row">
+          <div class="date">{{ (h.finished_at or '')[:10] }}</div>
+          <div class="body">
+            <b>{{ h.quiz_title }}</b>
+            <span>รอบที่ {{ h.attempt_no }} · ตอบถูก {{ h.correct_count }}/{{ h.total_count }} ข้อ</span>
+          </div>
+          <span class="tag {% if h.percent >= 80 %}green{% elif h.percent >= 50 %}amber{% else %}red{% endif %}">
+            {{ h.percent }}%
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
+  </section>
+
   <!-- การบ้าน -->
   <section class="panel">
     <h2><i>📚</i> การบ้าน</h2>

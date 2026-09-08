@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+{% block title %}{{ quiz.title }} | แบบฝึกหัดบ้านครูอ้อย{% endblock %}
+
+{% block topright %}
+<div class="who">
+  <a class="btn btn-ghost btn-sm" href="/portal?child={{ child }}#quizzes"
+     onclick="return confirm('ออกจากแบบฝึกหัด? ข้อที่ทำไปแล้วยังถูกบันทึกไว้นะคะ')">ออก</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<main class="play">
+
+  <div class="play-head">
+    <h1>{{ quiz.title }}</h1>
+    <p class="who-line">{{ student.nickname }} · รอบที่ {{ attempt.attempt_no }}</p>
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <div class="card q-card" id="card">
+    <div class="q-top">
+      <span class="q-no" id="qno">ข้อ 1</span>
+      {% if quiz.read_aloud %}
+      <button type="button" class="speak" id="speak" title="ฟังเสียงอ่านโจทย์">🔊 ฟังโจทย์</button>
+      {% endif %}
+    </div>
+
+    <img id="qimg" class="q-img" alt="" hidden>
+    <p class="q-prompt" id="prompt"></p>
+
+    <div id="answers"></div>
+
+    <button class="btn btn-primary big" id="submit" disabled>ตอบ</button>
+    <p class="hintline" id="hint"></p>
+  </div>
+
+</main>
+
+<!-- ป๊อปอัพผลของแต่ละข้อ -->
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-in">
+    <div class="face" id="face">🎉</div>
+    <h2 id="verdict">เก่งมาก!</h2>
+    <p id="reveal" class="reveal"></p>
+    <p id="explain" class="explain"></p>
+    <button class="btn btn-primary big" id="next">ข้อต่อไป →</button>
+  </div>
+</div>
+
+<script id="quiz-data" type="application/json">{{ questions | tojson }}</script>
+<script>
+(function () {
+  "use strict";
+
+  var QS       = JSON.parse(document.getElementById("quiz-data").textContent);
+  var ATTEMPT  = {{ attempt.id }};
+  var CHILD    = {{ child }};
+  var READ     = {{ 'true' if quiz.read_aloud else 'false' }};
+  var started  = Date.now();
+  var i        = 0;         // ข้อที่กำลังทำ
+  var picked   = null;      // คำตอบที่เลือกไว้
+  var busy     = false;
+
+  var el = function (id) { return document.getElementById(id); };
+
+  // ── จุดบอกความคืบหน้า ──
+  var dots = el("dots");
+  QS.forEach(function () {
+    var d = document.createElement("span");
+    d.className = "dot";
+    dots.appendChild(d);
+  });
+  function paintDots(state) {
+    var all = dots.children;
+    if (state) all[i].className = "dot " + state;
+    for (var k = 0; k < all.length; k++) {
+      all[k].classList.toggle("now", k === i && !state);
+    }
+  }
+
+  // ── อ่านโจทย์ให้ฟัง (เด็กเล็กยังอ่านไม่คล่อง) ──
+  function speak(text) {
+    if (!READ || !window.speechSynthesis || !text) return;
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = "th-TH";
+      u.rate = 0.9;
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* เบราว์เซอร์ไม่รองรับก็ข้ามไป */ }
+  }
+  if (el("speak")) {
+    el("speak").addEventListener("click", function () {
+      speak(QS[i].prompt || "");
+    });
+  }
+
+  // ── วาดข้อปัจจุบัน ──
+  function render() {
+    var q = QS[i];
+    picked = null;
+    el("qno").textContent = "ข้อ " + (i + 1) + " / " + QS.length;
+    el("prompt").textContent = q.prompt || "";
+    el("hint").textContent = q.hint || "";
+
+    var img = el("qimg");
+    if (q.image_url) { img.src = q.image_url; img.hidden = false; }
+    else { img.hidden = true; img.removeAttribute("src"); }
+
+    var box = el("answers");
+    box.innerHTML = "";
+
+    if (q.kind === "fill") {
+      var input = document.createElement("input");
+      input.type = "text";
+      input.className = "fill";
+      input.placeholder = "พิมพ์คำตอบตรงนี้";
+      input.autocomplete = "off";
+      input.addEventListener("input", function () {
+        picked = input.value;
+        el("submit").disabled = !input.value.trim();
+      });
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !el("submit").disabled) send();
+      });
+      box.appendChild(input);
+      setTimeout(function () { input.focus(); }, 80);
+
+    } else if (q.kind === "match") {
+      picked = {};
+      q.options.forEach(function (o) {
+        var row = document.createElement("div");
+        row.className = "matchrow";
+        var left = document.createElement("span");
+        left.className = "mleft";
+        left.textContent = o.label;
+        var sel = document.createElement("select");
+        sel.className = "mright";
+        sel.innerHTML = '<option value="">— เลือก —</option>';
+        q.match_choices.forEach(function (c) {
+          var op = document.createElement("option");
+          op.value = c; op.textContent = c;
+          sel.appendChild(op);
+        });
+        sel.addEventListener("change", function () {
+          picked[o.id] = sel.value;
+          var done = q.options.every(function (x) { return picked[x.id]; });
+          el("submit").disabled = !done;
+        });
+        row.appendChild(left);
+        row.appendChild(sel);
+        box.appendChild(row);
+      });
+
+    } else {
+      q.options.forEach(function (o) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "opt";
+        b.innerHTML = "";
+        if (o.image_url) {
+          var im = document.createElement("img");
+          im.src = o.image_url; im.alt = "";
+          b.appendChild(im);
+        }
+        var sp = document.createElement("span");
+        sp.textContent = o.label;
+        b.appendChild(sp);
+        b.addEventListener("click", function () {
+          Array.prototype.forEach.call(box.children, function (c) {
+            c.classList.remove("on");
+          });
+          b.classList.add("on");
+          picked = o.id;
+          el("submit").disabled = false;
+        });
+        box.appendChild(b);
+      });
+    }
+
+    el("submit").disabled = true;
+    paintDots(null);
+    speak(q.prompt || "");
+  }
+
+  // ── ส่งคำตอบไปตรวจที่เซิร์ฟเวอร์ ──
+  function send() {
+    if (busy) return;
+    busy = true;
+    el("submit").disabled = true;
+
+    fetch("/quiz/" + ATTEMPT + "/answer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question_id: QS[i].id, given: picked })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        busy = false;
+        if (res.error) { alert("ส่งคำตอบไม่สำเร็จ ลองใหม่อีกครั้งนะคะ"); return; }
+        showResult(res);
+      })
+      .catch(function () {
+        busy = false;
+        el("submit").disabled = false;
+        alert("อินเทอร์เน็ตขัดข้อง ลองกดตอบอีกครั้งค่ะ");
+      });
+  }
+  el("submit").addEventListener("click", send);
+
+  // ── ป๊อปอัพบอกผลรายข้อ ──
+  function showResult(res) {
+    paintDots(res.correct ? "ok" : "no");
+    el("face").textContent = res.correct ? "🎉" : "💪";
+    el("verdict").textContent = res.correct ? "เก่งมาก! ตอบถูกค่ะ" : "ยังไม่ถูกนะ ไม่เป็นไรค่ะ";
+    el("verdict").className = res.correct ? "good" : "bad";
+    el("reveal").textContent = res.answer ? "คำตอบที่ถูกคือ " + res.answer : "";
+    el("explain").textContent = res.explanation || "";
+    el("next").textContent = (i + 1 >= QS.length) ? "ดูคะแนนของหนู →" : "ข้อต่อไป →";
+    el("sheet").hidden = false;
+    speak(res.correct ? "เก่งมาก ตอบถูกค่ะ"
+                      : (res.answer ? "คำตอบที่ถูกคือ " + res.answer : "ยังไม่ถูกนะคะ"));
+  }
+
+  el("next").addEventListener("click", function () {
+    el("sheet").hidden = true;
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    i += 1;
+    if (i < QS.length) { render(); return; }
+    finish();
+  });
+
+  // ── จบรอบ ──
+  function finish() {
+    el("card").innerHTML = '<p class="waiting">กำลังรวมคะแนน…</p>';
+    fetch("/quiz/" + ATTEMPT + "/finish", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seconds: Math.round((Date.now() - started) / 1000) })
+    })
+      .then(function () {
+        location.href = "/quiz/" + ATTEMPT + "/result?child=" + CHILD;
+      })
+      .catch(function () {
+        location.href = "/quiz/" + ATTEMPT + "/result?child=" + CHILD;
+      });
+  }
+
+  render();
+})();
+</script>
+
+<style>
+.play{max-width:720px;margin:0 auto;padding:18px 16px 60px}
+.play-head h1{font-family:'Mali',cursive;font-size:1.35rem;margin:0 0 .1rem}
+.play-head .who-line{color:#3e6b85;font-size:.9rem;margin:0 0 .7rem}
+.dots{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.dot{width:12px;height:12px;border-radius:50%;background:#dbeefc;transition:.2s}
+.dot.now{background:#26a5e0;transform:scale(1.25)}
+.dot.ok{background:#3cc98a}
+.dot.no{background:#ffb1a0}
+
+.q-card{background:#fff;border:1px solid #e1f3fe;border-radius:24px;padding:22px 20px;
+        box-shadow:0 10px 28px rgba(14,59,87,.08)}
+.q-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+.q-no{font-weight:700;color:#0c6b9e;font-size:.95rem}
+.speak{border:2px solid #bfe6fc;background:#f2faff;color:#0c6b9e;border-radius:999px;
+       padding:.45rem 1rem;font:inherit;font-size:.92rem;cursor:pointer}
+.speak:active{transform:scale(.96)}
+.q-img{max-width:100%;border-radius:16px;margin:.4rem 0 .6rem;display:block}
+.q-prompt{font-size:1.35rem;line-height:1.6;font-weight:600;margin:.2rem 0 1rem;white-space:pre-wrap}
+
+.opt{display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;
+     background:#f8fcff;border:2.5px solid #dbeefc;border-radius:18px;
+     padding:1rem 1.1rem;margin-bottom:.7rem;font:inherit;font-size:1.15rem;cursor:pointer;
+     transition:.15s}
+.opt img{height:52px;border-radius:10px}
+.opt:active{transform:scale(.985)}
+.opt.on{border-color:#26a5e0;background:#e8f6ff;box-shadow:0 0 0 4px rgba(38,165,224,.15)}
+
+.fill{width:100%;padding:1rem 1.1rem;border:2.5px solid #dbeefc;border-radius:18px;
+      font:inherit;font-size:1.25rem;background:#f8fcff;text-align:center}
+.fill:focus{outline:none;border-color:#26a5e0;background:#fff}
+
+.matchrow{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;align-items:center;margin-bottom:.6rem}
+.mleft{background:#f2faff;border:2px solid #dbeefc;border-radius:14px;padding:.8rem;font-size:1.1rem;text-align:center}
+.mright{padding:.8rem;border:2.5px solid #dbeefc;border-radius:14px;font:inherit;font-size:1rem;background:#fff}
+
+.btn.big{width:100%;padding:1.05rem;font-size:1.15rem;border-radius:999px;margin-top:.5rem}
+.btn.big:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.hintline{color:#3e6b85;font-size:.9rem;text-align:center;margin:.5rem 0 0}
+.waiting{text-align:center;font-size:1.1rem;color:#3e6b85;padding:2rem 0}
+
+.sheet{position:fixed;inset:0;background:rgba(14,59,87,.45);display:grid;place-items:end center;
+       z-index:60;padding:0}
+.sheet-in{background:#fff;border-radius:28px 28px 0 0;padding:26px 22px 30px;width:100%;
+          max-width:720px;text-align:center;animation:up .25s ease-out}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}
+.face{font-size:3.4rem;line-height:1}
+.sheet h2{font-family:'Mali',cursive;font-size:1.45rem;margin:.3rem 0 .5rem}
+.sheet h2.good{color:#12844b}
+.sheet h2.bad{color:#c2410c}
+.reveal{font-size:1.15rem;font-weight:600;color:#0c6b9e;margin:.2rem 0}
+.explain{color:#3e6b85;font-size:.98rem;margin:.4rem 0 .2rem}
+
+@media(max-width:480px){
+  .q-prompt{font-size:1.2rem}
+  .matchrow{grid-template-columns:1fr}
+}
+</style>
+{% endblock %}

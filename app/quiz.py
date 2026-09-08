@@ -443,9 +443,62 @@ def start_attempt(quiz_id: str | int, student_id: str,
         "attempt_no": attempt_no,
         "total_count": len(questions),
         "full_score": sum(float(q.get("points") or 1) for q in questions),
+        # เก็บลำดับที่สลับแล้ว เพื่อให้เซิร์ฟเวอร์รู้ว่ารอบนี้มีข้อไหนบ้าง
+        "question_ids": [int(q["id"]) for q in questions],
     })[0]
 
     return {"quiz": quiz, "attempt": attempt, "questions": questions}
+
+
+def public_questions(questions: list[dict]) -> list[dict]:
+    """
+    ตัดเฉลยออกก่อนส่งให้เบราว์เซอร์
+
+    สำคัญมาก — ถ้าส่งเฉลยไปด้วย เด็ก (หรือผู้ปกครอง) กด View Source ก็เห็นคำตอบหมด
+    การตรวจคำตอบจึงทำที่เซิร์ฟเวอร์ทีละข้อแทน
+    """
+    out = []
+    for q in questions:
+        out.append({
+            "id": q["id"],
+            "kind": q.get("kind") or "choice",
+            "prompt": q.get("prompt") or "",
+            "image_url": q.get("image_url"),
+            "hint": q.get("hint"),
+            "points": float(q.get("points") or 1),
+            "options": [
+                {"id": o["id"], "label": o["label"], "image_url": o.get("image_url")}
+                for o in (q.get("options") or [])
+            ],
+            # ข้อจับคู่ต้องส่งตัวเลือกฝั่งขวาไปให้เลือก (สลับลำดับแล้ว)
+            "match_choices": (
+                random.sample([o.get("match_value") or "" for o in (q.get("options") or [])],
+                              len(q.get("options") or []))
+                if (q.get("kind") == "match") else []
+            ),
+        })
+    return out
+
+
+def get_attempt(attempt_id: str | int) -> dict | None:
+    return select_one("quiz_attempts", id=f"eq.{attempt_id}")
+
+
+def attempt_questions(attempt: dict) -> list[dict]:
+    """คำถามของรอบนี้ เรียงตามลำดับที่สลับไว้ตอนเริ่ม (มีเฉลยติดมาด้วย)"""
+    ids = [str(i) for i in (attempt.get("question_ids") or [])]
+    if not ids:
+        return []
+    all_q = list_questions(attempt["quiz_id"], with_answers=True)
+    by_id = {str(q["id"]): q for q in all_q}
+    return [by_id[i] for i in ids if i in by_id]
+
+
+def question_in_attempt(attempt: dict, question_id: str | int) -> dict | None:
+    """หาคำถาม 1 ข้อของรอบนี้ — กันไม่ให้ส่งคำตอบของข้อที่ไม่ได้อยู่ในรอบ"""
+    if int(question_id) not in [int(i) for i in (attempt.get("question_ids") or [])]:
+        return None
+    return get_question(question_id)
 
 
 def last_wrong_question_ids(quiz_id: str | int, student_id: str) -> set[str]:
