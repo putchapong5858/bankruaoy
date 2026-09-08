@@ -5,3 +5,4 @@ python-multipart==0.0.20
 itsdangerous==2.2.0
 httpx==0.28.1
 segno==1.6.1
+pypdf==5.1.0

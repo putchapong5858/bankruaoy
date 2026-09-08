@@ -22,7 +22,19 @@
     </p>
   </div>
 
-  {% if saved %}<div class="flash">✓ บันทึกเรียบร้อยแล้วค่ะ</div>{% endif %}
+  {% if saved %}
+    {% if saved.startswith('notified-') %}
+      <div class="flash">✓ ส่งแจ้งเตือนเข้าไลน์ผู้ปกครองแล้ว {{ saved.split('-')[1] }} คนค่ะ</div>
+    {% elif saved.startswith('imported-') %}
+      {% set parts = saved.split('-') %}
+      <div class="flash">
+        ✓ นำเข้าสำเร็จ {{ parts[1] }} ข้อ
+        {%- if parts[2] | int %} · ข้าม {{ parts[2] }} ข้อที่ยังไม่ครบ{% endif %}
+      </div>
+    {% else %}
+      <div class="flash">✓ บันทึกเรียบร้อยแล้วค่ะ</div>
+    {% endif %}
+  {% endif %}
   {% if err %}<div class="flash warn">⚠ {{ err }}</div>{% endif %}
 
   <!-- ══════ ตั้งค่าชุด ══════ -->
@@ -103,6 +115,62 @@
       </form>
       {% endif %}
     </div>
+
+    <div class="actbar">
+      <form method="post" action="/admin/quiz/{{ quiz.id }}/notify" class="inline"
+            onsubmit="return confirm('ส่งข้อความเข้าไลน์ผู้ปกครองว่ามีแบบฝึกหัดใหม่?')">
+        <button class="btn btn-ghost btn-sm" {{ 'disabled' if quiz.status != 'published' }}>
+          💬 แจ้งเตือนผู้ปกครองทาง LINE
+        </button>
+      </form>
+      <a class="btn btn-ghost btn-sm" href="/admin/quiz/{{ quiz.id }}/report">📊 ดูรายงานผล</a>
+      {% if quiz.notified_at %}
+      <span class="muted" style="font-size:.85rem">
+        แจ้งเตือนล่าสุด {{ quiz.notified_at[:10] }}
+      </span>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- ══════ นำเข้าจากไฟล์ ══════ -->
+  <section class="panel">
+    <h2><i>📥</i> นำเข้าข้อสอบจากไฟล์</h2>
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:.9rem">
+      อัปโหลดไฟล์ข้อสอบที่มีอยู่แล้ว ระบบจะอ่านแยกเป็นข้อ ๆ ให้ แล้วพาไปหน้าตรวจทานก่อนบันทึก
+    </p>
+
+    <form method="post" action="/admin/quiz/{{ quiz.id }}/import"
+          enctype="multipart/form-data" class="upform">
+      <label style="display:block;margin-bottom:.6rem">เลือกไฟล์
+        <input type="file" name="file" accept=".pdf,.docx,.pptx,.txt" required>
+      </label>
+      <button class="btn btn-primary btn-sm">อ่านไฟล์ แล้วไปตรวจทาน →</button>
+    </form>
+
+    <details class="newbox" style="margin-top:.9rem">
+      <summary>ไฟล์ควรจัดหน้าอย่างไรให้ระบบอ่านออก</summary>
+      <p class="muted" style="font-size:.9rem;margin:.5rem 0">
+        รองรับ <b>.pdf .docx .pptx .txt</b> (ไฟล์ .doc และ .ppt รุ่นเก่า
+        ให้ Save As เป็น .docx / .pptx ก่อน) — ขนาดไม่เกิน 4 MB
+      </p>
+      <pre class="sample">1. 12 + 9 เท่ากับเท่าไร
+ก. 20
+ข. 21
+ค. 22
+ง. 23
+เฉลย ข
+
+2. ข้อใดคือจำนวนคู่
+ก. 7   ข. 9   ค. 12   ง. 15
+ตอบ: ค</pre>
+      <ul class="muted" style="font-size:.88rem;padding-left:1.1rem;margin:.5rem 0">
+        <li>ขึ้นต้นแต่ละข้อด้วยเลขข้อ เช่น <b>1.</b> หรือ <b>1)</b> หรือ <b>ข้อ 1)</b></li>
+        <li>ตัวเลือกขึ้นต้นด้วย <b>ก. ข. ค. ง.</b> หรือ <b>a) b) c)</b> — วางบรรทัดเดียวหรือแยกบรรทัดก็ได้</li>
+        <li>บอกเฉลยด้วยคำว่า <b>เฉลย</b> / <b>ตอบ</b> / <b>Answer</b> ถ้าไม่มีก็เลือกเองในหน้าตรวจทานได้</li>
+        <li>PDF ที่มาจากการ<b>สแกน</b>เป็นรูปภาพล้วน ระบบอ่านตัวอักษรไม่ได้ —
+            กรณีนี้ให้ใช้วิธีแนบรูปเป็นโจทย์รายข้อแทน</li>
+      </ul>
+    </details>
   </section>
 
   <!-- ══════ รายการข้อ ══════ -->
@@ -199,6 +267,10 @@
 .optrow{display:grid;grid-template-columns:34px 1fr 1fr;gap:.5rem;align-items:center;margin-bottom:.4rem}
 .kindbox{display:none}
 .kindbox.on{display:block}
+.actbar{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-top:.8rem;
+        padding-top:.8rem;border-top:1px dashed #e1f3fe}
+.sample{background:#f2faff;border:1px solid #e1f3fe;border-radius:12px;padding:.9rem 1rem;
+        font-size:.86rem;line-height:1.7;overflow-x:auto;white-space:pre;margin:.4rem 0}
 </style>
 
 <script>

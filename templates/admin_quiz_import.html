@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}ตรวจทานข้อที่นำเข้า | {{ quiz.title }}{% endblock %}
+
+{% block topright %}
+<div class="who">
+  <a class="btn btn-ghost btn-sm" href="/admin/quiz/{{ quiz.id }}">← ยกเลิก กลับหน้าจัดการข้อ</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<main class="portal">
+
+  <div class="hello">
+    <h1>ตรวจทานก่อนบันทึก</h1>
+    <p class="muted">
+      อ่านจากไฟล์ <b>{{ filename }}</b> เข้าชุด “{{ quiz.title }}”
+    </p>
+  </div>
+
+  <div class="flash">
+    อ่านได้ทั้งหมด <b>{{ stat.total }}</b> ข้อ ·
+    พร้อมบันทึกทันที <b>{{ stat.ready }}</b> ข้อ
+    {%- if stat.need_answer %} · รอเลือกเฉลย <b>{{ stat.need_answer }}</b> ข้อ{% endif %}
+    {%- if stat.need_options %} · ตัวเลือกไม่ครบ <b>{{ stat.need_options }}</b> ข้อ{% endif %}
+  </div>
+
+  <p class="muted" style="margin:-.4rem 0 1rem">
+    ระบบอ่านให้เป็นฉบับร่างเท่านั้น กรุณาตรวจข้อความและเลือกเฉลยให้ครบก่อนกดบันทึกค่ะ —
+    ข้อที่ไม่ติ๊ก “นำเข้า” จะถูกข้ามไป และแก้ข้อความในช่องได้เลย
+  </p>
+
+  <form method="post" action="/admin/quiz/{{ quiz.id }}/import/save">
+    {% for q in parsed %}
+    {% set idx = loop.index0 %}
+    <section class="panel imp {{ 'warn' if q.note }}">
+      <input type="hidden" name="qindex" value="{{ idx }}">
+
+      <div class="imp-head">
+        <label class="chk">
+          <input type="checkbox" name="use_{{ idx }}" value="1"
+                 {{ 'checked' if q.options | length >= 2 }}>
+          <b>นำเข้าข้อ {{ loop.index }}</b>
+        </label>
+        {% if q.note %}<span class="tag amber">{{ q.note }}</span>{% endif %}
+      </div>
+
+      <label style="display:block;margin:.5rem 0">โจทย์
+        <textarea name="prompt_{{ idx }}" rows="2">{{ q.prompt }}</textarea>
+      </label>
+
+      <p class="muted" style="font-size:.87rem;margin:.2rem 0 .4rem">
+        กดวงกลมหน้าข้อที่เป็นคำตอบที่ถูก
+      </p>
+
+      {% for opt in q.options %}
+      <div class="optrow">
+        <input type="radio" name="correct_{{ idx }}" value="{{ loop.index0 }}"
+               {{ 'checked' if q.correct_index == loop.index0 }}>
+        <input type="text" name="opt_{{ idx }}" value="{{ opt }}">
+      </div>
+      {% endfor %}
+
+      {# เผื่อช่องว่างไว้ให้เพิ่มตัวเลือกเอง กรณีไฟล์อ่านมาไม่ครบ #}
+      {% for i in range(q.options | length, 4) %}
+      <div class="optrow">
+        <input type="radio" name="correct_{{ idx }}" value="{{ i }}">
+        <input type="text" name="opt_{{ idx }}" value="" placeholder="ตัวเลือกเพิ่มเติม (ไม่บังคับ)">
+      </div>
+      {% endfor %}
+    </section>
+    {% endfor %}
+
+    <div class="savebar">
+      <button class="btn btn-primary">บันทึกข้อที่ติ๊กไว้เข้าชุด</button>
+      <a class="btn btn-ghost" href="/admin/quiz/{{ quiz.id }}">ยกเลิก</a>
+    </div>
+  </form>
+
+</main>
+
+<style>
+.imp{border-left:5px solid #bfe6fc}
+.imp.warn{border-left-color:#ffc94d;background:#fffdf5}
+.imp-head{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+.chk{display:flex;align-items:center;gap:.45rem}
+.chk input{width:auto}
+.optrow{display:grid;grid-template-columns:34px 1fr;gap:.5rem;align-items:center;margin-bottom:.4rem}
+.optrow input[type=radio]{width:auto;justify-self:center}
+.savebar{position:sticky;bottom:0;background:#fff;border-top:1px solid #e1f3fe;
+         padding:14px 0;display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap}
+</style>
+{% endblock %}

@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import config, content, db, line_auth, quiz
+from . import config, content, db, line_auth, line_push, quiz, quiz_import
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -1053,6 +1053,134 @@ def admin_question_move(request: Request, question_id: str, direction: str):
     if direction in ("up", "down"):
         quiz.move_question(question_id, direction)
     return _quiz_page(existing["quiz_id"], "1")
+
+
+# ─── แจ้งเตือนผู้ปกครองทาง LINE ───
+
+@app.post("/admin/quiz/{quiz_id}/notify")
+def admin_quiz_notify(request: Request, quiz_id: str):
+    """ส่งข้อความเข้าไลน์ผู้ปกครองว่ามีแบบฝึกหัดใหม่"""
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+
+    item = quiz.get_quiz(quiz_id)
+    if not item:
+        return _back("quizzes", err="ไม่พบแบบฝึกหัดชุดนี้")
+    if item.get("status") != "published":
+        return _quiz_page(quiz_id, err="ต้องกดเผยแพร่ก่อนถึงจะแจ้งเตือนได้ค่ะ")
+
+    questions = quiz.list_questions(quiz_id)
+    parents = quiz.parents_to_notify(item.get("level") or "")
+    if not parents:
+        return _quiz_page(quiz_id, err="ยังไม่มีผู้ปกครองที่ตรงกับระดับชั้นของแบบฝึกหัดชุดนี้")
+
+    try:
+        sent = line_push.multicast(
+            [p["line_user_id"] for p in parents],
+            line_push.new_quiz_message(item, len(questions)),
+        )
+    except line_push.LinePushError as exc:
+        return _quiz_page(quiz_id, err=str(exc))
+    except Exception as exc:
+        return _quiz_page(quiz_id, err=f"ส่งไม่สำเร็จ ({str(exc)[:120]})")
+
+    quiz.mark_notified(quiz_id)
+    return _quiz_page(quiz_id, f"notified-{sent}")
+
+
+# ─── นำเข้าข้อสอบจากไฟล์ ───
+
+@app.post("/admin/quiz/{quiz_id}/import", response_class=HTMLResponse)
+async def admin_quiz_import(request: Request, quiz_id: str,
+                            file: UploadFile | None = File(None)):
+    """อ่านไฟล์ แล้วพาไปหน้าตรวจทานก่อนบันทึก — ยังไม่เขียนลงฐานข้อมูล"""
+    user, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    item = quiz.get_quiz(quiz_id)
+    if not item:
+        return _back("quizzes", err="ไม่พบแบบฝึกหัดชุดนี้")
+    if file is None or not file.filename:
+        return _quiz_page(quiz_id, err="กรุณาเลือกไฟล์ก่อนค่ะ")
+
+    try:
+        text = quiz_import.extract_text(file.filename, await file.read())
+        parsed = quiz_import.parse_questions(text)
+    except quiz_import.ImportError_ as exc:
+        return _quiz_page(quiz_id, err=str(exc))
+    except Exception as exc:
+        return _quiz_page(quiz_id, err=f"อ่านไฟล์ไม่สำเร็จ ({str(exc)[:120]})")
+
+    if not parsed:
+        return _quiz_page(
+            quiz_id,
+            err="อ่านไฟล์ได้ แต่แยกเป็นข้อ ๆ ไม่ได้ — "
+                "ไฟล์ควรขึ้นต้นแต่ละข้อด้วยเลขข้อ เช่น “1.” และตัวเลือกด้วย “ก.” “ข.”")
+
+    return page(request, "admin_quiz_import.html",
+                user=user, quiz=item, parsed=parsed,
+                stat=quiz_import.summarize(parsed),
+                filename=file.filename)
+
+
+@app.post("/admin/quiz/{quiz_id}/import/save")
+async def admin_quiz_import_save(request: Request, quiz_id: str):
+    """บันทึกข้อที่ครูตรวจแล้วลงชุด"""
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    if not quiz.get_quiz(quiz_id):
+        return _back("quizzes", err="ไม่พบแบบฝึกหัดชุดนี้")
+
+    form = await request.form()
+    added, skipped = 0, 0
+
+    for index in form.getlist("qindex"):
+        if not form.get(f"use_{index}"):
+            skipped += 1
+            continue
+
+        labels = [v for v in form.getlist(f"opt_{index}") if (v or "").strip()]
+        try:
+            correct = int(form.get(f"correct_{index}") or -1)
+        except (TypeError, ValueError):
+            correct = -1
+
+        payload = {
+            "kind": "choice",
+            "prompt": form.get(f"prompt_{index}") or "",
+            "points": 1,
+            "explanation": "",
+            "options": [
+                {"label": label, "is_correct": (i == correct)}
+                for i, label in enumerate(labels)
+            ],
+        }
+        try:
+            quiz.save_question(quiz_id, payload)
+            added += 1
+        except Exception:
+            skipped += 1          # ข้อที่ยังไม่ครบ ข้ามไปก่อน ครูค่อยเพิ่มเอง
+
+    if not added:
+        return _quiz_page(quiz_id, err="ยังไม่มีข้อไหนบันทึกได้ — "
+                                       "ตรวจว่าเลือกเฉลยและมีตัวเลือกอย่างน้อย 2 ตัวแล้วหรือยัง")
+    return _quiz_page(quiz_id, f"imported-{added}-{skipped}")
+
+
+# ─── รายงานผลของแบบฝึกหัด ───
+
+@app.get("/admin/quiz/{quiz_id}/report", response_class=HTMLResponse)
+def admin_quiz_report(request: Request, quiz_id: str):
+    """ใครทำแล้ว กี่รอบ ได้กี่คะแนน และข้อไหนเด็กผิดเยอะ"""
+    user, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    report = quiz.quiz_report(quiz_id)
+    if not report:
+        return _back("quizzes", err="ไม่พบแบบฝึกหัดชุดนี้")
+    return page(request, "admin_quiz_report.html", user=user, **report)
 
 
 # ════════════════════════════════════════════════════════

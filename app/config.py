@@ -15,6 +15,11 @@ LINE_REDIRECT_PATH = "/auth/line/callback"
 # ─── LINE Official Account (ให้ผู้ปกครองเพิ่มเพื่อน) ───
 LINE_OA_ID = os.environ.get("LINE_OA_ID", "@178bogmt")   # บัญชีทางการบ้านครูอ้อย
 
+# ─── LINE Messaging API (ใช้ส่งแจ้งเตือนหาผู้ปกครอง) ───
+# เอา Channel access token (long-lived) จาก LINE Developers → แช็นเนล Messaging API
+# ถ้ายังไม่ได้ตั้ง ปุ่มแจ้งเตือนจะบอกวิธีตั้งค่าแทนการส่ง
+LINE_MESSAGING_TOKEN = os.environ.get("LINE_MESSAGING_TOKEN", "")
+
 # ─── Supabase ───
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://ncpretfileknkhpfvfif.supabase.co")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")

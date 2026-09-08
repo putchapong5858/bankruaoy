@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}รายงานผล {{ quiz.title }}{% endblock %}
+
+{% block topright %}
+<div class="who">
+  <a class="btn btn-ghost btn-sm" href="/admin/quiz/{{ quiz.id }}">← กลับหน้าจัดการข้อ</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<main class="portal">
+
+  <div class="hello">
+    <h1>รายงานผล · {{ quiz.title }}</h1>
+    <p class="muted">
+      {{ quiz.subject or 'ไม่ระบุวิชา' }} · {{ quiz.level or 'ทุกระดับชั้น' }} ·
+      นักเรียนทำแล้ว {{ students | length }} คน · รวม {{ attempt_total }} รอบ
+    </p>
+  </div>
+
+  <!-- ══════ ผลรายคน ══════ -->
+  <section class="panel">
+    <h2><i>👧</i> ผลของนักเรียนแต่ละคน</h2>
+    {% if students %}
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:.9rem">
+      เรียงตามระดับชั้น — “ดีที่สุด” คือคะแนนสูงสุดจากทุกรอบที่ทำมา
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>นักเรียน</th><th>ระดับชั้น</th><th>ทำไปกี่รอบ</th>
+            <th>ดีที่สุด</th><th>รอบล่าสุด</th><th>ทำล่าสุดเมื่อ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in students %}
+          <tr>
+            <td><b>{{ s.nickname }}</b> <span class="muted">{{ s.code }}</span></td>
+            <td>{{ s.level }}</td>
+            <td>{{ s.times }} รอบ</td>
+            <td>
+              <span class="tag {% if s.best >= 80 %}green{% elif s.best >= 50 %}amber{% else %}red{% endif %}">
+                {{ s.best }}%
+              </span>
+              <span class="stars">{% for i in range(5) %}{{ '★' if i < s.stars else '☆' }}{% endfor %}</span>
+            </td>
+            <td>{{ s.last_percent }}%</td>
+            <td>{{ (s.last_at or '')[:10] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="empty">ยังไม่มีนักเรียนคนไหนทำแบบฝึกหัดชุดนี้</p>
+    {% endif %}
+  </section>
+
+  <!-- ══════ ข้อที่เด็กผิดเยอะ ══════ -->
+  <section class="panel">
+    <h2><i>🔍</i> ข้อที่เด็กตอบผิดเยอะที่สุด</h2>
+    {% if hard_questions %}
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:.9rem">
+      ใช้ดูว่าควรกลับไปสอนซ้ำเรื่องไหน — นับจากทุกรอบที่เด็กทำมา
+    </p>
+    <div class="rows">
+      {% for h in hard_questions %}
+      <div class="row">
+        <div class="body">
+          <b>ข้อ {{ h.sort_order }} · {{ h.prompt }}</b>
+          <span>ตอบมาแล้ว {{ h.answered }} ครั้ง · ผิด {{ h.wrong }} ครั้ง</span>
+          <div class="meter"><span style="width:{{ h.wrong_percent }}%"></span></div>
+        </div>
+        <span class="tag {% if h.wrong_percent >= 50 %}red{% elif h.wrong_percent >= 25 %}amber{% else %}green{% endif %}">
+          ผิด {{ h.wrong_percent }}%
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">ยังไม่มีข้อมูล — รอให้เด็กเริ่มทำก่อนค่ะ</p>
+    {% endif %}
+  </section>
+
+</main>
+
+<style>
+.table-wrap{overflow-x:auto}
+.table-wrap table{width:100%;border-collapse:collapse;min-width:620px;font-size:.94rem}
+.table-wrap th,.table-wrap td{padding:.7rem .8rem;text-align:left;border-bottom:1px solid #e1f3fe}
+.table-wrap th{background:#f2faff;color:#0c6b9e;font-weight:600;white-space:nowrap}
+.stars{color:#ffc94d;font-size:.85rem;letter-spacing:.05em}
+.meter{height:7px;background:#eef7fd;border-radius:99px;margin-top:.4rem;overflow:hidden;max-width:280px}
+.meter span{display:block;height:100%;background:linear-gradient(90deg,#ffc94d,#ff8f6b);border-radius:99px}
+</style>
+{% endblock %}

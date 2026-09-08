@@ -588,6 +588,33 @@ def stars_for(percent: float) -> int:
 
 
 # ════════════════════════════════════════════════════════
+#  แจ้งเตือนผู้ปกครอง
+# ════════════════════════════════════════════════════════
+
+def parents_to_notify(level: str = "") -> list[dict]:
+    """
+    ผู้ปกครองที่ควรได้รับแจ้งเตือนของแบบฝึกหัดชุดนี้
+
+    ระดับชั้นว่าง = ส่งหาทุกคนที่อนุมัติแล้ว
+    ระบุระดับชั้น = ส่งเฉพาะคนที่มีลูกเรียนอยู่ระดับนั้นและยัง active
+    """
+    parents = [p for p in select("parents", limit=1000)
+               if p.get("status") == "active" and p.get("line_user_id")]
+    level = (level or "").strip()
+    if not level:
+        return parents
+
+    students = select("students", "parent_id,level,active", limit=2000)
+    wanted = {s["parent_id"] for s in students
+              if s.get("active") and (s.get("level") or "").strip() == level}
+    return [p for p in parents if p["id"] in wanted]
+
+
+def mark_notified(quiz_id: str | int) -> None:
+    update("quizzes", {"notified_at": _now()}, id=f"eq.{quiz_id}")
+
+
+# ════════════════════════════════════════════════════════
 #  รายงานสำหรับครูอ้อย
 # ════════════════════════════════════════════════════════
 
