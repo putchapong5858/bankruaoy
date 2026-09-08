@@ -153,10 +153,29 @@
       });
 
     } else {
+      // โจทย์นับจำนวน — วางรูปให้เด็กนับก่อน แล้วค่อยเป็นปุ่มตัวเลข
+      if (q.kind === "count" && q.icon && q.icon_count) {
+        var strip = document.createElement("div");
+        strip.className = "countstrip";
+        for (var n = 0; n < q.icon_count; n++) {
+          if (/^https?:\/\//.test(q.icon)) {
+            var pic = document.createElement("img");
+            pic.src = q.icon; pic.alt = "";
+            strip.appendChild(pic);
+          } else {
+            var sp2 = document.createElement("span");
+            sp2.textContent = q.icon;
+            strip.appendChild(sp2);
+          }
+        }
+        box.appendChild(strip);
+      }
+
+      var numbers = (q.kind === "count");
       q.options.forEach(function (o) {
         var b = document.createElement("button");
         b.type = "button";
-        b.className = "opt";
+        b.className = numbers ? "opt num" : "opt";
         b.innerHTML = "";
         if (o.image_url) {
           var im = document.createElement("img");
@@ -167,7 +186,7 @@
         sp.textContent = o.label;
         b.appendChild(sp);
         b.addEventListener("click", function () {
-          Array.prototype.forEach.call(box.children, function (c) {
+          Array.prototype.forEach.call(box.querySelectorAll(".opt"), function (c) {
             c.classList.remove("on");
           });
           b.classList.add("on");
@@ -176,6 +195,10 @@
         });
         box.appendChild(b);
       });
+
+      // ปุ่มตัวเลขวางเรียงแนวนอนเหมือนใบงาน
+      if (numbers) box.classList.add("numrow");
+      else box.classList.remove("numrow");
     }
 
     el("submit").disabled = true;
@@ -268,6 +291,7 @@
        padding:.45rem 1rem;font:inherit;font-size:.92rem;cursor:pointer}
 .speak:active{transform:scale(.96)}
 .q-img{max-width:100%;border-radius:16px;margin:.4rem 0 .6rem;display:block}
+.q-img[hidden]{display:none}          /* เหตุผลเดียวกับ .sheet[hidden] ด้านล่าง */
 .q-prompt{font-size:1.35rem;line-height:1.6;font-weight:600;margin:.2rem 0 1rem;white-space:pre-wrap}
 
 .opt{display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;
@@ -277,6 +301,22 @@
 .opt img{height:52px;border-radius:10px}
 .opt:active{transform:scale(.985)}
 .opt.on{border-color:#26a5e0;background:#e8f6ff;box-shadow:0 0 0 4px rgba(38,165,224,.15)}
+
+/* ── โจทย์นับจำนวน (Count and Match) ── */
+.countstrip{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;justify-content:center;
+            background:#f8fcff;border:3px solid #bfe6fc;border-radius:20px;
+            padding:1rem .9rem;margin-bottom:1rem}
+.countstrip span{font-size:2.4rem;line-height:1.1}
+.countstrip img{height:46px;width:auto}
+#answers.numrow{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap}
+.opt.num{width:auto;flex:0 0 88px;justify-content:center;font-family:'Mali',cursive;
+         font-size:2.1rem;font-weight:700;color:#0c6b9e;padding:.9rem .4rem;border-radius:20px}
+.opt.num.on{color:#1187c4}
+@media(max-width:480px){
+  .countstrip span{font-size:2rem}
+  .countstrip img{height:38px}
+  .opt.num{flex:0 0 74px;font-size:1.8rem}
+}
 
 .fill{width:100%;padding:1rem 1.1rem;border:2.5px solid #dbeefc;border-radius:18px;
       font:inherit;font-size:1.25rem;background:#f8fcff;text-align:center}
@@ -293,6 +333,9 @@
 
 .sheet{position:fixed;inset:0;background:rgba(14,59,87,.45);display:grid;place-items:end center;
        z-index:60;padding:0}
+/* สำคัญ: ถ้าไม่เขียนบรรทัดนี้ display:grid ด้านบนจะชนะ [hidden] ของเบราว์เซอร์
+   ทำให้ป๊อปอัพค้างบังหน้าจอตั้งแต่เปิดหน้า จนกดทำข้อสอบไม่ได้ */
+.sheet[hidden]{display:none}
 .sheet-in{background:#fff;border-radius:28px 28px 0 0;padding:26px 22px 30px;width:100%;
           max-width:720px;text-align:center;animation:up .25s ease-out}
 @keyframes up{from{transform:translateY(100%)}to{transform:none}}

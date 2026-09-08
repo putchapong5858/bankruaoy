@@ -867,6 +867,9 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
         "explanation": form.get("explanation") or "",
         # ไม่ได้แนบรูปใหม่ = ใช้รูปเดิม (ยกเว้นกดลบรูป)
         "image_url": "" if form.get("remove_image") else current_image,
+        # ใช้เฉพาะโจทย์นับจำนวน
+        "icon": form.get("icon") or "",
+        "icon_count": form.get("icon_count") or 0,
     }
 
     upload = form.get("image")
@@ -940,6 +943,7 @@ def admin_quiz_edit(request: Request, quiz_id: str, saved: str = "", err: str = 
                 user=user, quiz=item,
                 questions=quiz.list_questions(quiz_id),
                 levels=config.LEVELS,
+                icon_sets=quiz.ICON_SETS,
                 saved=saved, err=err)
 
 

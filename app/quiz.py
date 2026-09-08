@@ -28,6 +28,19 @@ KINDS = {
     "truefalse": "ถูก / ผิด",
     "fill":      "เติมคำตอบ",
     "match":     "จับคู่",
+    "count":     "นับจำนวน",
+}
+
+# รูปแบบที่ตรวจคำตอบเหมือนกัน คือเลือกตัวเลือกที่ถูก 1 ตัว
+PICK_KINDS = ("choice", "truefalse", "count")
+
+# อีโมจิยอดนิยมสำหรับโจทย์นับจำนวน — ครูกดเลือกได้เลยไม่ต้องพิมพ์
+ICON_SETS = {
+    "เครื่องมือช่าง": ["🔧", "🔨", "🪛", "🪚", "📏", "🧰", "🔩", "⚙️"],
+    "ผลไม้":        ["🍎", "🍌", "🍇", "🍓", "🍉", "🍊", "🥭", "🍍"],
+    "สัตว์":         ["🐶", "🐱", "🐰", "🐦", "🐟", "🦋", "🐘", "🐢"],
+    "ของใช้":       ["✏️", "📕", "🎒", "✂️", "🖍️", "📐", "🧴", "🪁"],
+    "รูปทรง/ดาว":    ["⭐", "❤️", "🔵", "🔺", "🟩", "🌸", "🎈", "🍬"],
 }
 
 STATUSES = {
@@ -216,6 +229,9 @@ def save_question(quiz_id: str | int, data: dict,
     except (TypeError, ValueError):
         points = 1.0
 
+    icon = _txt(data.get("icon"), 200)
+    icon_count = _int(data.get("icon_count"), 0)
+
     fields = {
         "kind": kind,
         "prompt": prompt,
@@ -223,10 +239,23 @@ def save_question(quiz_id: str | int, data: dict,
         "hint": _txt(data.get("hint"), 300) or None,
         "explanation": _txt(data.get("explanation"), 500) or None,
         "points": points,
+        "icon": icon or None,
+        "icon_count": icon_count if kind == "count" else None,
     }
 
-    options = _clean_options(kind, data.get("options") or [])
-    accepted = [_txt(v, 200) for v in (data.get("accepted") or []) if _txt(v, 200)]
+    if kind == "count":
+        # โจทย์นับจำนวน — ระบบสร้างตัวเลือกตัวเลขให้เอง ครูแค่บอกรูปกับจำนวน
+        if not icon:
+            raise SupabaseError("กรุณาเลือกรูปหรืออีโมจิที่จะให้เด็กนับ")
+        if not 1 <= icon_count <= 20:
+            raise SupabaseError("จำนวนที่ให้นับต้องอยู่ระหว่าง 1 ถึง 20")
+        options = _number_choices(icon_count)
+        accepted = []
+        if not prompt:
+            fields["prompt"] = f"นับดูสิว่ามีทั้งหมดกี่ชิ้น แล้วเลือกตัวเลขที่ถูก"
+    else:
+        options = _clean_options(kind, data.get("options") or [])
+        accepted = [_txt(v, 200) for v in (data.get("accepted") or []) if _txt(v, 200)]
 
     if kind == "fill" and not accepted:
         raise SupabaseError("ข้อเติมคำต้องมีคำตอบที่ถูกต้องอย่างน้อย 1 คำตอบ")
@@ -256,6 +285,24 @@ def save_question(quiz_id: str | int, data: dict,
                [{"question_id": int(qid), "value": v} for v in accepted])
 
     return get_question(qid)
+
+
+def _number_choices(answer: int) -> list[dict]:
+    """
+    สร้างตัวเลือกตัวเลข 3 ตัวรอบ ๆ คำตอบ แบบเดียวกับใบงาน Count and Match
+    เช่น คำตอบ 5 จะได้ 4 5 6 · คำตอบ 1 จะได้ 1 2 3
+    """
+    start = max(1, answer - 1)
+    if answer <= 1:
+        start = 1
+    numbers = [start, start + 1, start + 2]
+    if answer not in numbers:              # กันกรณีขอบ
+        numbers = [answer, answer + 1, answer + 2]
+    return [
+        {"sort_order": i + 1, "label": str(n), "image_url": None,
+         "is_correct": n == answer, "match_value": None}
+        for i, n in enumerate(numbers)
+    ]
 
 
 def _clean_options(kind: str, raw: list[dict]) -> list[dict]:
@@ -336,7 +383,7 @@ def check_answer(question: dict, given) -> bool:
     kind = question.get("kind") or "choice"
     options = question.get("options") or []
 
-    if kind in ("choice", "truefalse"):
+    if kind in PICK_KINDS:
         correct = {str(o["id"]) for o in options if o.get("is_correct")}
         return str(given) in correct
 
@@ -360,7 +407,7 @@ def correct_answer_text(question: dict) -> str:
     kind = question.get("kind") or "choice"
     options = question.get("options") or []
 
-    if kind in ("choice", "truefalse"):
+    if kind in PICK_KINDS:
         right = [o["label"] for o in options if o.get("is_correct")]
         return " หรือ ".join(right)
     if kind == "fill":
@@ -466,6 +513,9 @@ def public_questions(questions: list[dict]) -> list[dict]:
             "image_url": q.get("image_url"),
             "hint": q.get("hint"),
             "points": float(q.get("points") or 1),
+            # โจทย์นับจำนวน — ส่งรูปกับจำนวนไปให้หน้าเว็บวาดแถวรูปเอง
+            "icon": q.get("icon") if q.get("kind") == "count" else None,
+            "icon_count": q.get("icon_count") if q.get("kind") == "count" else None,
             "options": [
                 {"id": o["id"], "label": o["label"], "image_url": o.get("image_url")}
                 for o in (q.get("options") or [])

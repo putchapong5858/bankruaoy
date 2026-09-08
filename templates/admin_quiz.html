@@ -204,7 +204,17 @@
         {% endif %}
         <p class="qprompt">{{ q.prompt or '(โจทย์เป็นรูปภาพ)' }}</p>
 
-        {% if q.kind in ('choice', 'truefalse') %}
+        {% if q.kind == 'count' and q.icon %}
+        <div class="countrow">
+          {% for i in range(q.icon_count or 0) %}
+            {% if q.icon.startswith('http') %}<img class="cico" src="{{ q.icon }}" alt="">
+            {% else %}<span class="cico">{{ q.icon }}</span>{% endif %}
+          {% endfor %}
+          <span class="muted">= {{ q.icon_count }}</span>
+        </div>
+        {% endif %}
+
+        {% if q.kind in ('choice', 'truefalse', 'count') %}
         <ul class="qopts">
           {% for o in q.options %}
           <li class="{{ 'right' if o.is_correct }}">
@@ -230,7 +240,7 @@
 
       <details class="editbox">
         <summary>แก้ไขข้อนี้</summary>
-        {{ question_form(quiz, q) }}
+        {{ question_form(quiz, q, icon_sets) }}
       </details>
     </div>
     {% else %}
@@ -241,7 +251,7 @@
   <!-- ══════ เพิ่มข้อใหม่ ══════ -->
   <section class="panel" id="add">
     <h2><i>➕</i> เพิ่มคำถามใหม่</h2>
-    {{ question_form(quiz, none) }}
+    {{ question_form(quiz, none, icon_sets) }}
   </section>
 
 </main>
@@ -271,6 +281,15 @@
         padding-top:.8rem;border-top:1px dashed #e1f3fe}
 .sample{background:#f2faff;border:1px solid #e1f3fe;border-radius:12px;padding:.9rem 1rem;
         font-size:.86rem;line-height:1.7;overflow-x:auto;white-space:pre;margin:.4rem 0}
+.countrow{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;background:#f8fcff;
+          border:2px solid #e1f3fe;border-radius:14px;padding:.6rem .8rem;margin:.4rem 0}
+.cico{font-size:1.6rem;line-height:1}
+img.cico{height:28px;width:auto}
+.iconrow{display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;margin-bottom:.35rem}
+.iconlabel{font-size:.82rem;color:#3e6b85;min-width:88px}
+.iconbtn{font-size:1.3rem;line-height:1;background:#f8fcff;border:2px solid #dbeefc;
+         border-radius:12px;padding:.25rem .45rem;cursor:pointer}
+.iconbtn:hover{border-color:#26a5e0;background:#e8f6ff}
 </style>
 
 <script>
@@ -285,6 +304,14 @@ function bindKind(form){
   }
   sel.addEventListener('change', show);
   show();
+
+  // ปุ่มอีโมจิ — กดแล้วเติมลงช่อง "รูปที่ให้นับ" ให้เลย ไม่ต้องพิมพ์เอง
+  var iconInput = form.querySelector('input[name=icon]');
+  form.querySelectorAll('.iconbtn').forEach(function(b){
+    b.addEventListener('click', function(){
+      if(iconInput){ iconInput.value = b.dataset.icon; iconInput.focus(); }
+    });
+  });
 }
 document.querySelectorAll('form.qform').forEach(bindKind);
 </script>

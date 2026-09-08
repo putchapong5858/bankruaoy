@@ -2,7 +2,7 @@
    ฟอร์มเพิ่ม/แก้ไขคำถาม 1 ข้อ — ใช้ร่วมกันทั้งตอนเพิ่มและตอนแก้
    q = None คือเพิ่มข้อใหม่
    ───────────────────────────────────────────────────────── #}
-{% macro question_form(quiz, q) %}
+{% macro question_form(quiz, q, icon_sets={}) %}
 {% set opts = (q.options if q else []) %}
 {% set kind = (q.kind if q else 'choice') %}
 <form class="qform" method="post" enctype="multipart/form-data"
@@ -15,6 +15,7 @@
         <option value="truefalse" {{ 'selected' if kind == 'truefalse' }}>ถูก / ผิด</option>
         <option value="fill"      {{ 'selected' if kind == 'fill' }}>เติมคำตอบ</option>
         <option value="match"     {{ 'selected' if kind == 'match' }}>จับคู่</option>
+        <option value="count"     {{ 'selected' if kind == 'count' }}>นับจำนวน (Count &amp; Match)</option>
       </select>
     </label>
     <label>คะแนนของข้อนี้
@@ -70,6 +71,42 @@
     <p class="muted" style="font-size:.85rem">
       ระบบตรวจแบบใจกว้าง — ไม่สนตัวพิมพ์เล็กใหญ่ ช่องว่างเกิน และเครื่องหมายวรรคตอน
       ใส่หลายบรรทัดเผื่อเด็กตอบคนละแบบได้
+    </p>
+  </div>
+
+  {# ───── นับจำนวน (แบบใบงาน Count and Match) ───── #}
+  <div class="kindbox" data-for="count">
+    <p class="muted" style="font-size:.88rem;margin:.3rem 0">
+      เลือกรูปแล้วบอกจำนวน — ระบบจะวางรูปให้เด็กนับ
+      แล้วสร้างตัวเลือกตัวเลข 3 ตัวรอบคำตอบให้เอง (เช่น ตอบ 5 จะได้ 4 5 6)
+    </p>
+
+    <div class="grid4">
+      <label>รูป / อีโมจิที่ให้นับ
+        <input type="text" name="icon" class="iconin" maxlength="8"
+               value="{{ q.icon or '' if q and q.kind == 'count' else '' }}"
+               placeholder="เช่น 🔧">
+      </label>
+      <label>จำนวนที่ถูกต้อง (1–20)
+        <input type="number" name="icon_count" min="1" max="20" step="1"
+               value="{{ q.icon_count if q and q.kind == 'count' and q.icon_count else 5 }}">
+      </label>
+    </div>
+
+    {% if icon_sets %}
+    <p class="muted" style="font-size:.85rem;margin:.5rem 0 .2rem">กดเลือกรูปได้เลย</p>
+    {% for group, icons in icon_sets.items() %}
+    <div class="iconrow">
+      <span class="iconlabel">{{ group }}</span>
+      {% for ic in icons %}
+      <button type="button" class="iconbtn" data-icon="{{ ic }}">{{ ic }}</button>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <p class="muted" style="font-size:.85rem;margin:.6rem 0 0">
+      ถ้าอยากใช้รูปของตัวเอง ให้วางลิงก์รูป (ขึ้นต้นด้วย https://) ในช่องรูปแทนอีโมจิได้
     </p>
   </div>
 
