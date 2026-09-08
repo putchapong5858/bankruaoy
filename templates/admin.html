@@ -302,6 +302,67 @@
     {% endfor %}
   </section>
 
+  <!-- ══════ แบบฝึกหัดออนไลน์ ══════ -->
+  <section class="panel" id="quizzes">
+    <h2><i>🧩</i> แบบฝึกหัดออนไลน์
+      {% if quizzes %}<span class="badge">{{ quizzes | length }}</span>{% endif %}
+    </h2>
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:1rem">
+      สร้างชุดแบบฝึกหัดให้เด็กทำเองที่บ้าน — ทำซ้ำได้ไม่จำกัด ระบบเก็บคะแนนทุกรอบ
+      ผู้ปกครองเปิดให้ลูกทำจากหน้าข้อมูลการเรียนได้เลย
+    </p>
+
+    <details class="newbox" {{ 'open' if not quizzes }}>
+      <summary>＋ สร้างแบบฝึกหัดใหม่</summary>
+      <form method="post" action="/admin/quiz/new">
+        <div class="grid4">
+          <label>ชื่อแบบฝึกหัด <b class="req">*</b>
+            <input type="text" name="title" required placeholder="ทบทวนบวกลบเลขสองหลัก">
+          </label>
+          <label>วิชา<input type="text" name="subject" placeholder="คณิตศาสตร์"></label>
+          <label>ระดับชั้น
+            <select name="level">
+              <option value="">— ทุกระดับชั้น —</option>
+              {% for lv in levels %}<option>{{ lv }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>เวลาทำ (นาที)
+            <input type="number" name="time_limit_min" value="0" min="0" step="1">
+          </label>
+        </div>
+        <p class="muted" style="font-size:.85rem;margin:.2rem 0 .7rem">
+          ใส่เวลา 0 = ไม่จำกัดเวลา · เด็กจะไม่เห็นนาฬิกานับถอยหลัง
+        </p>
+        <button class="btn btn-primary btn-sm">สร้าง แล้วไปใส่คำถาม →</button>
+      </form>
+    </details>
+
+    {% for qz in quizzes %}
+    <div class="row rowcard">
+      <div class="body">
+        <b>{{ qz.title }}{% if qz.subject %} · {{ qz.subject }}{% endif %}</b>
+        <span>
+          {{ qz.level or 'ทุกระดับชั้น' }} · {{ qz.question_count }} ข้อ ·
+          {% if qz.status == 'published' %}<span class="tag green">เผยแพร่แล้ว</span>
+          {% elif qz.status == 'closed' %}<span class="tag grey">ปิดแล้ว</span>
+          {% else %}<span class="tag grey">ฉบับร่าง</span>{% endif %}
+          {% if qz.attempt_count %}
+            · เด็กทำแล้ว {{ qz.student_count }} คน / {{ qz.attempt_count }} รอบ
+            · เฉลี่ย <b>{{ qz.average_percent }}%</b>
+          {% endif %}
+        </span>
+      </div>
+      <a class="btn btn-primary btn-sm" href="/admin/quiz/{{ qz.id }}">จัดการข้อ</a>
+      <form method="post" action="/admin/quiz/{{ qz.id }}/delete" class="inline"
+            onsubmit="return confirm('ลบแบบฝึกหัด “{{ qz.title }}” ทั้งชุด?')">
+        <button class="btn btn-ghost btn-sm btn-del">ลบ</button>
+      </form>
+    </div>
+    {% else %}
+    <p class="empty">ยังไม่มีแบบฝึกหัด</p>
+    {% endfor %}
+  </section>
+
   <!-- ══════ การบ้าน ══════ -->
   <section class="panel" id="homework">
     <h2><i>📚</i> การบ้าน

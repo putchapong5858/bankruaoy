@@ -1,0 +1,97 @@
+{# ─────────────────────────────────────────────────────────
+   ฟอร์มเพิ่ม/แก้ไขคำถาม 1 ข้อ — ใช้ร่วมกันทั้งตอนเพิ่มและตอนแก้
+   q = None คือเพิ่มข้อใหม่
+   ───────────────────────────────────────────────────────── #}
+{% macro question_form(quiz, q) %}
+{% set opts = (q.options if q else []) %}
+{% set kind = (q.kind if q else 'choice') %}
+<form class="qform" method="post" enctype="multipart/form-data"
+      action="{{ ('/admin/question/' ~ q.id) if q else ('/admin/quiz/' ~ quiz.id ~ '/question') }}">
+
+  <div class="grid4">
+    <label>รูปแบบคำถาม
+      <select name="kind">
+        <option value="choice"    {{ 'selected' if kind == 'choice' }}>เลือกตอบ</option>
+        <option value="truefalse" {{ 'selected' if kind == 'truefalse' }}>ถูก / ผิด</option>
+        <option value="fill"      {{ 'selected' if kind == 'fill' }}>เติมคำตอบ</option>
+        <option value="match"     {{ 'selected' if kind == 'match' }}>จับคู่</option>
+      </select>
+    </label>
+    <label>คะแนนของข้อนี้
+      <input type="number" name="points" min="0.5" max="100" step="0.5"
+             value="{{ q.points | round(1) if q else 1 }}">
+    </label>
+    <label>รูปประกอบโจทย์ (ไม่บังคับ)
+      <input type="file" name="image" accept="image/*">
+    </label>
+  </div>
+
+  {% if q and q.image_url %}
+  <p class="muted" style="font-size:.85rem">
+    รูปปัจจุบัน: <a href="{{ q.image_url }}" target="_blank" rel="noopener">เปิดดู</a> ·
+    <label class="chk" style="display:inline-flex">
+      <input type="checkbox" name="remove_image" value="1"> ลบรูปนี้ออก
+    </label>
+  </p>
+  {% endif %}
+
+  <label style="display:block;margin:.5rem 0">โจทย์
+    <textarea name="prompt" rows="2"
+              placeholder="เช่น 12 + 9 เท่ากับเท่าไร">{{ q.prompt if q else '' }}</textarea>
+  </label>
+
+  {# ───── เลือกตอบ / ถูกผิด ───── #}
+  <div class="kindbox" data-for="choice,truefalse">
+    <p class="muted" style="font-size:.88rem;margin:.3rem 0">
+      กรอกตัวเลือกแล้วกดวงกลมหน้าข้อที่เป็นคำตอบที่ถูก (เว้นว่างไว้ = ไม่ใช้ตัวเลือกนั้น)
+    </p>
+    {% for i in range(4) %}
+    {% set o = opts[i] if opts | length > i else None %}
+    <div class="optrow">
+      <input type="radio" name="correct_index" value="{{ i }}"
+             {{ 'checked' if (o and o.is_correct) or (not q and i == 0) }}>
+      <input type="text" name="opt_label" placeholder="ตัวเลือกที่ {{ i + 1 }}"
+             value="{{ o.label if o and kind != 'match' else '' }}">
+      <input type="url" name="opt_image" placeholder="ลิงก์รูปตัวเลือก (ไม่บังคับ)"
+             value="{{ o.image_url or '' if o and kind != 'match' else '' }}">
+    </div>
+    {% endfor %}
+    <p class="muted" style="font-size:.85rem">
+      แบบ “ถูก / ผิด” ให้กรอกแค่ 2 ช่องแรกว่า <b>ถูก</b> และ <b>ผิด</b>
+    </p>
+  </div>
+
+  {# ───── เติมคำ ───── #}
+  <div class="kindbox" data-for="fill">
+    <label style="display:block">คำตอบที่ยอมรับได้ (บรรทัดละ 1 คำตอบ)
+      <textarea name="accepted" rows="3"
+                placeholder="21&#10;ยี่สิบเอ็ด">{{ (q.accepted | join('\n')) if q and q.accepted else '' }}</textarea>
+    </label>
+    <p class="muted" style="font-size:.85rem">
+      ระบบตรวจแบบใจกว้าง — ไม่สนตัวพิมพ์เล็กใหญ่ ช่องว่างเกิน และเครื่องหมายวรรคตอน
+      ใส่หลายบรรทัดเผื่อเด็กตอบคนละแบบได้
+    </p>
+  </div>
+
+  {# ───── จับคู่ ───── #}
+  <div class="kindbox" data-for="match">
+    <p class="muted" style="font-size:.88rem;margin:.3rem 0">กรอกเป็นคู่ ๆ ฝั่งซ้ายคู่กับฝั่งขวา</p>
+    {% for i in range(4) %}
+    {% set o = opts[i] if opts | length > i else None %}
+    <div class="optrow" style="grid-template-columns:1fr 1fr">
+      <input type="text" name="match_left" placeholder="ฝั่งซ้าย {{ i + 1 }}"
+             value="{{ o.label if o and kind == 'match' else '' }}">
+      <input type="text" name="match_right" placeholder="คู่กับ"
+             value="{{ o.match_value or '' if o and kind == 'match' else '' }}">
+    </div>
+    {% endfor %}
+  </div>
+
+  <label style="display:block;margin:.5rem 0">คำอธิบายเฉลย (แสดงเมื่อเด็กตอบผิด)
+    <input type="text" name="explanation" value="{{ q.explanation or '' if q else '' }}"
+           placeholder="เช่น 12 + 9 ให้บวกหลักหน่วยก่อน 2+9=11 ทดไป 1">
+  </label>
+
+  <button class="btn btn-primary btn-sm">{{ 'บันทึกการแก้ไข' if q else 'เพิ่มข้อนี้' }}</button>
+</form>
+{% endmacro %}

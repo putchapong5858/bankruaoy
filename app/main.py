@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import config, content, db, line_auth
+from . import config, content, db, line_auth, quiz
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -389,6 +389,7 @@ def admin(request: Request, saved: str = "", err: str = ""):
         sessions=db.list_sessions(),
         homeworks=db.list_homework(),
         exams=db.list_exams(),
+        quizzes=quiz.list_quizzes(),
         materials=db.list_materials(),
         announcements=db.list_announcements(),
         students=students,
@@ -839,3 +840,213 @@ def admin_material_delete(request: Request, material_id: str):
         return blocked
     db.delete_material(material_id)
     return _back("materials", "deleted")
+
+
+# ════════════════════════════════════════════════════════
+#  5) แบบฝึกหัด / ข้อสอบออนไลน์
+# ════════════════════════════════════════════════════════
+
+def _quiz_page(quiz_id: str | int, saved: str = "", err: str = "") -> RedirectResponse:
+    """กลับไปหน้าจัดการข้อของชุดนั้น"""
+    q = f"err={quote(err[:200])}" if err else (f"saved={saved}" if saved else "")
+    return RedirectResponse(f"/admin/quiz/{quiz_id}?{q}", status_code=303)
+
+
+async def _question_payload(request: Request, current_image: str = "") -> dict:
+    """อ่านฟอร์มคำถาม 1 ข้อ — รองรับทั้ง 4 รูปแบบในฟอร์มเดียว"""
+    form = await request.form()
+    kind = form.get("kind") or "choice"
+
+    data: dict = {
+        "kind": kind,
+        "prompt": form.get("prompt") or "",
+        "points": form.get("points") or 1,
+        "explanation": form.get("explanation") or "",
+        # ไม่ได้แนบรูปใหม่ = ใช้รูปเดิม (ยกเว้นกดลบรูป)
+        "image_url": "" if form.get("remove_image") else current_image,
+    }
+
+    upload = form.get("image")
+    if upload is not None and getattr(upload, "filename", ""):
+        data["image_url"] = db.upload_file(
+            await upload.read(), upload.filename, upload.content_type or ""
+        )
+
+    if kind in ("choice", "truefalse"):
+        labels = form.getlist("opt_label")
+        images = form.getlist("opt_image")
+        try:
+            correct = int(form.get("correct_index") or 0)
+        except (TypeError, ValueError):
+            correct = 0
+        data["options"] = [
+            {
+                "label": label,
+                "image_url": images[i] if i < len(images) else "",
+                "is_correct": i == correct,
+            }
+            for i, label in enumerate(labels)
+        ]
+    elif kind == "fill":
+        data["accepted"] = (form.get("accepted") or "").splitlines()
+    elif kind == "match":
+        lefts = form.getlist("match_left")
+        rights = form.getlist("match_right")
+        data["options"] = [
+            {"label": label, "match_value": rights[i] if i < len(rights) else ""}
+            for i, label in enumerate(lefts)
+        ]
+    return data
+
+
+@app.post("/admin/quiz/new")
+def admin_quiz_new(
+    request: Request,
+    title: str = Form(""),
+    subject: str = Form(""),
+    level: str = Form(""),
+    time_limit_min: str = Form("0"),
+):
+    """สร้างชุดแบบฝึกหัดใหม่ แล้วเข้าหน้าใส่คำถามเลย"""
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    try:
+        created = quiz.save_quiz({
+            "title": title, "subject": subject, "level": level,
+            "time_limit_min": time_limit_min,
+            # ค่าเริ่มต้นที่เหมาะกับเด็กเล็ก — แก้ทีหลังได้ในหน้าจัดการข้อ
+            "shuffle_questions": True, "shuffle_options": True,
+            "show_answer_on_wrong": True, "read_aloud": True,
+        })
+    except Exception as exc:
+        return _back("quizzes", err=str(exc))
+    return RedirectResponse(f"/admin/quiz/{created['id']}", status_code=303)
+
+
+@app.get("/admin/quiz/{quiz_id}", response_class=HTMLResponse)
+def admin_quiz_edit(request: Request, quiz_id: str, saved: str = "", err: str = ""):
+    """หน้าจัดการคำถามของชุดหนึ่ง"""
+    user, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    item = quiz.get_quiz(quiz_id)
+    if not item:
+        return _back("quizzes", err="ไม่พบแบบฝึกหัดชุดนี้")
+    return page(request, "admin_quiz.html",
+                user=user, quiz=item,
+                questions=quiz.list_questions(quiz_id),
+                levels=config.LEVELS,
+                saved=saved, err=err)
+
+
+@app.post("/admin/quiz/{quiz_id}")
+def admin_quiz_save(
+    request: Request,
+    quiz_id: str,
+    title: str = Form(""),
+    subject: str = Form(""),
+    level: str = Form(""),
+    description: str = Form(""),
+    time_limit_min: str = Form("0"),
+    pass_percent: str = Form("60"),
+    shuffle_questions: str = Form(""),
+    shuffle_options: str = Form(""),
+    show_answer_on_wrong: str = Form(""),
+    read_aloud: str = Form(""),
+):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    try:
+        quiz.save_quiz({
+            "title": title, "subject": subject, "level": level,
+            "description": description,
+            "time_limit_min": time_limit_min, "pass_percent": pass_percent,
+            "shuffle_questions": bool(shuffle_questions),
+            "shuffle_options": bool(shuffle_options),
+            "show_answer_on_wrong": bool(show_answer_on_wrong),
+            "read_aloud": bool(read_aloud),
+        }, quiz_id)
+    except Exception as exc:
+        return _quiz_page(quiz_id, err=str(exc))
+    return _quiz_page(quiz_id, "1")
+
+
+@app.post("/admin/quiz/{quiz_id}/status/{status}")
+def admin_quiz_status(request: Request, quiz_id: str, status: str):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    try:
+        quiz.set_quiz_status(quiz_id, status)
+    except Exception as exc:
+        return _quiz_page(quiz_id, err=str(exc))
+    return _quiz_page(quiz_id, "1")
+
+
+@app.post("/admin/quiz/{quiz_id}/delete")
+def admin_quiz_delete(request: Request, quiz_id: str):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    try:
+        quiz.delete_quiz(quiz_id)
+    except Exception as exc:
+        return _back("quizzes", err=str(exc))
+    return _back("quizzes", "deleted")
+
+
+@app.post("/admin/quiz/{quiz_id}/question")
+async def admin_question_new(request: Request, quiz_id: str):
+    """เพิ่มคำถามใหม่เข้าชุด"""
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    try:
+        quiz.save_question(quiz_id, await _question_payload(request))
+    except Exception as exc:
+        return _quiz_page(quiz_id, err=str(exc))
+    return _quiz_page(quiz_id, "1")
+
+
+@app.post("/admin/question/{question_id}")
+async def admin_question_save(request: Request, question_id: str):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    existing = quiz.get_question(question_id)
+    if not existing:
+        return _back("quizzes", err="ไม่พบคำถามข้อนี้")
+    try:
+        payload = await _question_payload(request, existing.get("image_url") or "")
+        quiz.save_question(existing["quiz_id"], payload, question_id)
+    except Exception as exc:
+        return _quiz_page(existing["quiz_id"], err=str(exc))
+    return _quiz_page(existing["quiz_id"], "1")
+
+
+@app.post("/admin/question/{question_id}/delete")
+def admin_question_delete(request: Request, question_id: str):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    existing = quiz.get_question(question_id)
+    if not existing:
+        return _back("quizzes", err="ไม่พบคำถามข้อนี้")
+    quiz.delete_question(question_id)
+    quiz.renumber(existing["quiz_id"])
+    return _quiz_page(existing["quiz_id"], "1")
+
+
+@app.post("/admin/question/{question_id}/move/{direction}")
+def admin_question_move(request: Request, question_id: str, direction: str):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    existing = quiz.get_question(question_id)
+    if not existing:
+        return _back("quizzes", err="ไม่พบคำถามข้อนี้")
+    if direction in ("up", "down"):
+        quiz.move_question(question_id, direction)
+    return _quiz_page(existing["quiz_id"], "1")

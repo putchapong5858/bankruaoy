@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% from "_question_form.html" import question_form %}
+{% block title %}{{ quiz.title }} | จัดการแบบฝึกหัด{% endblock %}
+
+{% block topright %}
+<div class="who">
+  <a class="btn btn-ghost btn-sm" href="/admin#quizzes">← กลับหน้าจัดการ</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<main class="portal">
+
+  <div class="hello">
+    <h1>{{ quiz.title }}</h1>
+    <p class="muted">
+      {{ quiz.subject or 'ไม่ระบุวิชา' }} · {{ quiz.level or 'ทุกระดับชั้น' }} ·
+      {{ questions | length }} ข้อ ·
+      {% if quiz.status == 'published' %}<span class="tag green">เผยแพร่แล้ว</span>
+      {% elif quiz.status == 'closed' %}<span class="tag grey">ปิดแล้ว</span>
+      {% else %}<span class="tag grey">ฉบับร่าง</span>{% endif %}
+    </p>
+  </div>
+
+  {% if saved %}<div class="flash">✓ บันทึกเรียบร้อยแล้วค่ะ</div>{% endif %}
+  {% if err %}<div class="flash warn">⚠ {{ err }}</div>{% endif %}
+
+  <!-- ══════ ตั้งค่าชุด ══════ -->
+  <section class="panel">
+    <h2><i>⚙️</i> ตั้งค่าแบบฝึกหัด</h2>
+
+    <details class="newbox">
+      <summary>แก้ไขชื่อ ระดับชั้น เวลา และตัวเลือกการทำ</summary>
+      <form method="post" action="/admin/quiz/{{ quiz.id }}">
+        <div class="grid4">
+          <label>ชื่อแบบฝึกหัด <b class="req">*</b>
+            <input type="text" name="title" required value="{{ quiz.title }}">
+          </label>
+          <label>วิชา
+            <input type="text" name="subject" value="{{ quiz.subject or '' }}" placeholder="คณิตศาสตร์">
+          </label>
+          <label>ระดับชั้น
+            <select name="level">
+              <option value="">— ทุกระดับชั้น —</option>
+              {% for lv in levels %}
+              <option {{ 'selected' if quiz.level == lv }}>{{ lv }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>เวลาทำ (นาที)
+            <input type="number" name="time_limit_min" min="0" step="1"
+                   value="{{ (quiz.time_limit_sec // 60) if quiz.time_limit_sec else 0 }}">
+          </label>
+          <label>เกณฑ์ผ่าน (%)
+            <input type="number" name="pass_percent" min="0" max="100" step="5"
+                   value="{{ quiz.pass_percent }}">
+          </label>
+        </div>
+
+        <label style="display:block;margin:.6rem 0">คำอธิบายสั้น ๆ (ผู้ปกครองเห็น)
+          <input type="text" name="description" value="{{ quiz.description or '' }}"
+                 placeholder="ทบทวนการบวกลบเลขสองหลัก">
+        </label>
+
+        <div class="checks">
+          <label class="chk"><input type="checkbox" name="shuffle_questions" value="1"
+            {{ 'checked' if quiz.shuffle_questions }}> สลับลำดับข้อทุกรอบ</label>
+          <label class="chk"><input type="checkbox" name="shuffle_options" value="1"
+            {{ 'checked' if quiz.shuffle_options }}> สลับลำดับตัวเลือกทุกรอบ</label>
+          <label class="chk"><input type="checkbox" name="show_answer_on_wrong" value="1"
+            {{ 'checked' if quiz.show_answer_on_wrong }}> ตอบผิดแล้วเฉลยให้ดู</label>
+          <label class="chk"><input type="checkbox" name="read_aloud" value="1"
+            {{ 'checked' if quiz.read_aloud }}> มีปุ่มฟังเสียงอ่านโจทย์</label>
+        </div>
+
+        <p class="muted" style="font-size:.85rem;margin:.5rem 0 .8rem">
+          เวลาทำใส่ 0 = ไม่จำกัดเวลา · เด็กจะไม่เห็นนาฬิกานับถอยหลัง
+          ระบบเก็บเวลาไว้ให้ครูดูเท่านั้น เพื่อไม่ให้เด็กกดดัน
+        </p>
+
+        <button class="btn btn-primary btn-sm">บันทึกการตั้งค่า</button>
+      </form>
+    </details>
+
+    <div class="rowcard row" style="margin-top:.8rem">
+      <div class="body">
+        <b>สถานะตอนนี้:
+          {% if quiz.status == 'published' %}เผยแพร่แล้ว — เด็กทำได้
+          {% elif quiz.status == 'closed' %}ปิดแล้ว — เด็กทำไม่ได้
+          {% else %}ฉบับร่าง — ยังไม่มีใครเห็น{% endif %}</b>
+        <span>
+          {% if questions %}มี {{ questions | length }} ข้อ
+          {% else %}ต้องมีอย่างน้อย 1 ข้อจึงจะเผยแพร่ได้{% endif %}
+        </span>
+      </div>
+      {% if quiz.status != 'published' %}
+      <form method="post" action="/admin/quiz/{{ quiz.id }}/status/published" class="inline">
+        <button class="btn btn-primary btn-sm" {{ 'disabled' if not questions }}>เผยแพร่ให้เด็กทำ</button>
+      </form>
+      {% else %}
+      <form method="post" action="/admin/quiz/{{ quiz.id }}/status/closed" class="inline">
+        <button class="btn btn-ghost btn-sm">ปิดชุดนี้</button>
+      </form>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- ══════ รายการข้อ ══════ -->
+  <section class="panel">
+    <h2><i>📋</i> คำถามในชุดนี้
+      {% if questions %}<span class="badge">{{ questions | length }}</span>{% endif %}
+    </h2>
+
+    {% for q in questions %}
+    <div class="qcard">
+      <div class="qhead">
+        <span class="qno">ข้อ {{ loop.index }}</span>
+        <span class="tag grey">{{ q.kind_label }}</span>
+        <span class="muted">{{ q.points | round(1) }} คะแนน</span>
+        <span class="spacer"></span>
+        <form method="post" action="/admin/question/{{ q.id }}/move/up" class="inline">
+          <button class="btn btn-ghost btn-sm" {{ 'disabled' if loop.first }} title="เลื่อนขึ้น">↑</button>
+        </form>
+        <form method="post" action="/admin/question/{{ q.id }}/move/down" class="inline">
+          <button class="btn btn-ghost btn-sm" {{ 'disabled' if loop.last }} title="เลื่อนลง">↓</button>
+        </form>
+        <form method="post" action="/admin/question/{{ q.id }}/delete" class="inline"
+              onsubmit="return confirm('ลบข้อนี้ออกจากแบบฝึกหัด?')">
+          <button class="btn btn-ghost btn-sm btn-del">ลบ</button>
+        </form>
+      </div>
+
+      <div class="qbody">
+        {% if q.image_url %}
+        <img class="qimg" src="{{ q.image_url }}" alt="รูปประกอบโจทย์">
+        {% endif %}
+        <p class="qprompt">{{ q.prompt or '(โจทย์เป็นรูปภาพ)' }}</p>
+
+        {% if q.kind in ('choice', 'truefalse') %}
+        <ul class="qopts">
+          {% for o in q.options %}
+          <li class="{{ 'right' if o.is_correct }}">
+            {{ '✓' if o.is_correct else '·' }} {{ o.label }}
+            {% if o.image_url %}<img class="optimg" src="{{ o.image_url }}" alt="">{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% elif q.kind == 'fill' %}
+        <p class="qans">คำตอบที่ถูก: <b>{{ q.accepted | join(' / ') }}</b></p>
+        {% elif q.kind == 'match' %}
+        <ul class="qopts">
+          {% for o in q.options %}
+          <li class="right">{{ o.label }} &nbsp;↔&nbsp; {{ o.match_value }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if q.explanation %}
+        <p class="qexp">💡 เฉลยอธิบาย: {{ q.explanation }}</p>
+        {% endif %}
+      </div>
+
+      <details class="editbox">
+        <summary>แก้ไขข้อนี้</summary>
+        {{ question_form(quiz, q) }}
+      </details>
+    </div>
+    {% else %}
+    <p class="empty">ยังไม่มีคำถาม — เพิ่มข้อแรกได้จากด้านล่างเลยค่ะ</p>
+    {% endfor %}
+  </section>
+
+  <!-- ══════ เพิ่มข้อใหม่ ══════ -->
+  <section class="panel" id="add">
+    <h2><i>➕</i> เพิ่มคำถามใหม่</h2>
+    {{ question_form(quiz, none) }}
+  </section>
+
+</main>
+
+<style>
+.qcard{border:1px solid var(--line,#e1f3fe);border-radius:16px;padding:14px 16px;margin-bottom:12px;background:#fff}
+.qhead{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem}
+.qhead .spacer{flex:1}
+.qno{font-weight:700;color:#0c6b9e}
+.qbody .qprompt{margin:.3rem 0 .5rem;font-weight:600;white-space:pre-wrap}
+.qimg{max-width:min(100%,340px);border-radius:12px;display:block;margin:.4rem 0}
+.optimg{height:34px;vertical-align:middle;border-radius:6px;margin-left:.4rem}
+.qopts{list-style:none;margin:.2rem 0;padding:0;display:grid;gap:.25rem}
+.qopts li{font-size:.94rem;color:#3e6b85}
+.qopts li.right{color:#12844b;font-weight:600}
+.qans{font-size:.94rem;color:#12844b}
+.qexp{font-size:.88rem;color:#3e6b85;margin-top:.4rem}
+.editbox{margin-top:.7rem;border-top:1px dashed #e1f3fe;padding-top:.6rem}
+.editbox>summary{cursor:pointer;font-size:.9rem;color:#1187c4}
+.checks{display:flex;flex-wrap:wrap;gap:.9rem;margin:.4rem 0}
+.chk{display:flex;align-items:center;gap:.4rem;font-size:.92rem}
+.chk input{width:auto}
+.optrow{display:grid;grid-template-columns:34px 1fr 1fr;gap:.5rem;align-items:center;margin-bottom:.4rem}
+.kindbox{display:none}
+.kindbox.on{display:block}
+</style>
+
+<script>
+// สลับช่องกรอกตามรูปแบบคำถามที่เลือก
+function bindKind(form){
+  var sel = form.querySelector('[name=kind]');
+  if(!sel) return;
+  function show(){
+    form.querySelectorAll('.kindbox').forEach(function(box){
+      box.classList.toggle('on', box.dataset.for.split(',').indexOf(sel.value) >= 0);
+    });
+  }
+  sel.addEventListener('change', show);
+  show();
+}
+document.querySelectorAll('form.qform').forEach(bindKind);
+</script>
+{% endblock %}
