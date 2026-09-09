@@ -29,7 +29,11 @@ app.add_middleware(
     max_age=60 * 60 * 24 * 30,      # จำการล็อกอินไว้ 30 วัน
     same_site="lax",
 )
-app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+# บนเว็บจริง /static ถูก CDN ของ Vercel แจกไปก่อนถึงตรงนี้แล้ว (ดู vercel.json)
+# ตัวนี้เหลือไว้ให้รันทดสอบในเครื่อง — check_dir=False กันพังถ้าไม่มีโฟลเดอร์ติดไปด้วย
+app.mount("/static",
+          StaticFiles(directory=BASE_DIR / "static", check_dir=False),
+          name="static")
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 templates.env.globals.update(
@@ -137,6 +141,18 @@ def healthz():
         "database": db.health(),
         "missing_config": config.missing_config(),
     })
+
+
+@app.get("/ping")
+def ping():
+    """
+    ปลุกเครื่องให้ตื่นไว้ — เบาที่สุด ไม่แตะฐานข้อมูล ไม่เรนเดอร์หน้า
+
+    Vercel แพ็กเกจฟรีจะพักเครื่องเมื่อไม่มีคนเข้าสักพัก คนถัดไปที่เข้า
+    จึงต้องรอปลุกเครื่องราว 1 วินาที (cold start)
+    ให้บริการ ping ภายนอกยิงมาที่นี่ทุก 5 นาที เครื่องจะตื่นอยู่ตลอด
+    """
+    return JSONResponse({"ok": True})
 
 
 # ────────────────────────────────────────────────
