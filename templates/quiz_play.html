@@ -27,11 +27,12 @@
 
     <img id="qimg" class="q-img" alt="" hidden>
     <p class="q-prompt" id="prompt"></p>
+    {# คำใบ้ต้องอยู่ก่อนตัวเลือก เด็กจะได้อ่านคำสั่งก่อนเลือกคำตอบ #}
+    <p class="hintline" id="hint"></p>
 
     <div id="answers"></div>
 
     <button class="btn btn-primary big" id="submit" disabled>ตอบ</button>
-    <p class="hintline" id="hint"></p>
   </div>
 
 </main>
@@ -100,7 +101,10 @@
     var q = QS[i];
     picked = null;
     el("qno").textContent = "ข้อ " + (i + 1) + " / " + QS.length;
-    el("prompt").textContent = q.prompt || "";
+    var ptext = q.prompt || "";
+    el("prompt").textContent = ptext;
+    // โจทย์ที่เป็นอีโมจิหรือตัวอักษรสั้น ๆ (เช่น 🐶 หรือ Dd) ให้ขยายใหญ่กลางจอ
+    el("prompt").classList.toggle("big", ptext.replace(/\s/g, "").length <= 4);
     el("hint").textContent = q.hint || "";
 
     var img = el("qimg");
@@ -298,6 +302,9 @@
        margin:.4rem auto .6rem;display:block}
 .q-img[hidden]{display:none}          /* เหตุผลเดียวกับ .sheet[hidden] ด้านล่าง */
 .q-prompt{font-size:1.35rem;line-height:1.6;font-weight:600;margin:.2rem 0 1rem;white-space:pre-wrap}
+/* โจทย์ที่เป็นรูปอีโมจิหรือตัวอักษรเดี่ยว — ตัวเล็กเด็กมองไม่เห็น ต้องขยาย */
+.q-prompt.big{font-size:5rem;line-height:1.15;text-align:center;margin:.4rem 0 1.1rem}
+@media(max-width:480px){ .q-prompt.big{font-size:4.2rem} }
 
 .opt{display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;
      background:#f8fcff;border:2.5px solid #dbeefc;border-radius:18px;
@@ -347,7 +354,8 @@
 
 .btn.big{width:100%;padding:1.05rem;font-size:1.15rem;border-radius:999px;margin-top:.5rem}
 .btn.big:disabled{opacity:.45;cursor:not-allowed;transform:none}
-.hintline{color:#3e6b85;font-size:.9rem;text-align:center;margin:.5rem 0 0}
+.hintline{color:#3e6b85;font-size:.9rem;text-align:center;margin:0 0 .8rem}
+.hintline:empty{display:none;margin:0}
 .waiting{text-align:center;font-size:1.1rem;color:#3e6b85;padding:2rem 0}
 
 .sheet{position:fixed;inset:0;background:rgba(14,59,87,.45);display:grid;place-items:end center;
