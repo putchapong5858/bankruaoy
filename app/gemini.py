@@ -343,3 +343,58 @@ def polish(questions: list[dict]) -> list[dict]:
     for q in out:
         q["note"] = q["note"] or "ฉบับเกลาใหม่ — เทียบกับของเดิมก่อนบันทึกนะคะ"
     return out
+
+# ════════════════════════════════════════════════════════
+#  ตรวจสถานะ — ใช้เช็คว่ากุญแจใช้ได้ไหมโดยไม่ต้องล็อกอิน
+# ════════════════════════════════════════════════════════
+
+_probe_cache: dict = {"at": 0.0, "data": None}
+PROBE_COOLDOWN = 60          # วินาที — กันคนยิงรัว ๆ
+
+
+def status() -> dict:
+    """
+    เช็คว่ากุญแจ Gemini ใช้ได้จริงไหม และบัญชีนี้มีรุ่นอะไรให้ใช้บ้าง
+
+    เรียก GET /models ซึ่งเป็นการ "ดูรายการ" ไม่ใช่การสร้างข้อความ
+    จึงไม่กินโควตาและไม่มีค่าใช้จ่าย และไม่เคยส่งค่ากุญแจกลับออกไป
+    ผลถูกแคชไว้ 1 นาที กันคนกดรัว
+    """
+    import time
+
+    if not is_ready():
+        return {"key_set": False, "ok": False,
+                "detail": "ยังไม่ได้ตั้ง GEMINI_API_KEY ที่ Vercel"}
+
+    now = time.time()
+    if _probe_cache["data"] and now - _probe_cache["at"] < PROBE_COOLDOWN:
+        return dict(_probe_cache["data"], cached=True)
+
+    out: dict = {"key_set": True}
+    try:
+        from .db import _conn
+        res = _conn().get(f"{API_ROOT}/models",
+                          params={"key": _need_key(), "pageSize": 200},
+                          timeout=20.0)
+        if res.status_code in (401, 403):
+            out.update(ok=False, detail="กุญแจไม่ถูกต้องหรือถูกปิดสิทธิ์")
+        elif res.status_code >= 400:
+            out.update(ok=False,
+                       detail=f"Gemini ตอบ {res.status_code}: {res.text[:160]}")
+        else:
+            usable = [
+                m.get("name", "").split("/")[-1]
+                for m in (res.json().get("models") or [])
+                if "generateContent" in (m.get("supportedGenerationMethods") or [])
+            ]
+            picked = next((m for m in _models_to_try() if m in usable), "")
+            out.update(ok=bool(picked), models=usable[:40],
+                       will_use=picked,
+                       detail="พร้อมใช้งาน" if picked else
+                              "กุญแจใช้ได้ แต่ไม่พบรุ่นที่โค้ดรองรับ — "
+                              "ตั้ง GEMINI_MODEL เป็นรุ่นในรายการ models")
+    except Exception as exc:
+        out.update(ok=False, detail=f"ต่อกับ Gemini ไม่ได้ ({str(exc)[:140]})")
+
+    _probe_cache.update(at=now, data=out)
+    return out
