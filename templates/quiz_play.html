@@ -12,9 +12,34 @@
 <main class="play">
 
   <div class="play-head">
+    <div class="buddy" id="buddy" data-mood="idle" aria-hidden="true">
+      {# เจ้านกฮูกน้อย — ตัวช่วยประจำแบบฝึกหัด วาดด้วย SVG ล้วน ไม่ต้องโหลดรูป #}
+      <svg viewBox="0 0 120 120" width="86" height="86">
+        <ellipse class="b-shadow" cx="60" cy="112" rx="30" ry="6"/>
+        <path class="b-wing b-wing-l" d="M26 56c-9 6-11 20-4 28 5 5 12 4 14-2z"/>
+        <path class="b-wing b-wing-r" d="M94 56c9 6 11 20 4 28-5 5-12 4-14-2z"/>
+        <ellipse class="b-body" cx="60" cy="66" rx="34" ry="38"/>
+        <ellipse class="b-tummy" cx="60" cy="76" rx="22" ry="26"/>
+        <path class="b-tuft" d="M34 34c-3-10 1-18 6-20 3 6 7 10 12 12z"/>
+        <path class="b-tuft" d="M86 34c3-10-1-18-6-20-3 6-7 10-12 12z"/>
+        <circle class="b-eye" cx="47" cy="52" r="13"/>
+        <circle class="b-eye" cx="73" cy="52" r="13"/>
+        <circle class="b-pupil" cx="47" cy="53" r="6"/>
+        <circle class="b-pupil" cx="73" cy="53" r="6"/>
+        <circle class="b-spark" cx="49.5" cy="50.5" r="2.2"/>
+        <circle class="b-spark" cx="75.5" cy="50.5" r="2.2"/>
+        <path class="b-beak" d="M60 62l-7 8h14z"/>
+        <ellipse class="b-cheek" cx="34" cy="66" rx="6" ry="4"/>
+        <ellipse class="b-cheek" cx="86" cy="66" rx="6" ry="4"/>
+        <path class="b-foot" d="M48 102v6M52 108h-8M72 102v6M76 108h-8"/>
+      </svg>
+      <span class="bubble" id="bubble">สู้ ๆ นะ!</span>
+    </div>
     <h1>{{ quiz.title }}</h1>
     <p class="who-line">{{ student.nickname }} · รอบที่ {{ attempt.attempt_no }}</p>
+    <div class="bar"><span id="bar"></span></div>
     <div class="dots" id="dots"></div>
+    <button type="button" class="soundbtn" id="soundbtn" title="เปิด/ปิดเสียง">🔔</button>
   </div>
 
   <div class="card q-card" id="card">
@@ -39,6 +64,7 @@
 
 <!-- ป๊อปอัพผลของแต่ละข้อ -->
 <div class="sheet" id="sheet" hidden>
+  <canvas class="confetti" id="confetti" hidden></canvas>
   <div class="sheet-in">
     <div class="face" id="face">🎉</div>
     <h2 id="verdict">เก่งมาก!</h2>
@@ -58,11 +84,107 @@
   var CHILD    = {{ child }};
   var READ     = {{ 'true' if quiz.read_aloud else 'false' }};
   var started  = Date.now();
+
+  /* ══ เสียงประกอบ ══
+     สร้างเสียงเองด้วย Web Audio ไม่ต้องโหลดไฟล์เสียง เว็บจะได้ไม่หนัก */
+  var soundOn = true;
+  try { soundOn = localStorage.getItem("bka_sound") !== "off"; } catch (e) {}
+  var actx = null;
+
+  function tone(freq, startAt, dur, vol) {
+    var osc = actx.createOscillator(), gain = actx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, actx.currentTime + startAt);
+    gain.gain.exponentialRampToValueAtTime(vol, actx.currentTime + startAt + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + startAt + dur);
+    osc.connect(gain); gain.connect(actx.destination);
+    osc.start(actx.currentTime + startAt);
+    osc.stop(actx.currentTime + startAt + dur + 0.02);
+  }
+
+  function play(what) {
+    if (!soundOn) return;
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === "suspended") actx.resume();
+      if (what === "correct") {                 // โด-มี-ซอล ไล่ขึ้น ฟังแล้วดีใจ
+        [523, 659, 784, 1047].forEach(function (f, n) { tone(f, n * 0.09, 0.22, 0.16); });
+      } else if (what === "wrong") {            // เสียงนุ่ม ๆ ไม่ดุ ไม่ทำให้เด็กกลัว
+        tone(392, 0, 0.16, 0.11); tone(330, 0.13, 0.24, 0.11);
+      } else if (what === "tap") {
+        tone(880, 0, 0.06, 0.07);
+      }
+    } catch (e) {}
+  }
+
+  var sbtn = el("soundbtn");
+  function paintSound() {
+    sbtn.textContent = soundOn ? "🔔" : "🔕";
+    sbtn.classList.toggle("off", !soundOn);
+  }
+  sbtn.addEventListener("click", function () {
+    soundOn = !soundOn;
+    try { localStorage.setItem("bka_sound", soundOn ? "on" : "off"); } catch (e) {}
+    paintSound();
+    if (soundOn) play("tap");
+  });
+  paintSound();
+
+  /* ══ เจ้านกฮูก ══ */
+  var CHEER_OK = ["เก่งมาก!", "สุดยอดเลย!", "ถูกต้องนะครับ!", "เยี่ยมไปเลย!", "หนูเก่งจัง!"];
+  var CHEER_NO = ["ไม่เป็นไรนะ", "ลองข้อต่อไป!", "เกือบแล้ว สู้ ๆ", "ค่อย ๆ คิดนะ"];
+  var CHEER_GO = ["สู้ ๆ นะ!", "ค่อย ๆ อ่านนะ", "หนูทำได้!", "ตั้งใจนะจ๊ะ"];
+
+  function buddy(mood, words) {
+    var b = el("buddy");
+    b.setAttribute("data-mood", mood);
+    el("bubble").textContent = words;
+    if (mood !== "idle") {
+      setTimeout(function () { b.setAttribute("data-mood", "idle"); }, 1400);
+    }
+  }
+  function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
+
+  /* ══ กระดาษโปรยตอนตอบถูก ══ */
+  function confetti() {
+    var cv = el("confetti");
+    if (!cv || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    cv.hidden = false;                       // ต้องโชว์ก่อน ไม่งั้นวัดขนาดได้ 0
+    var w = cv.width = cv.offsetWidth, h = cv.height = cv.offsetHeight;
+    if (!w || !h) { cv.hidden = true; return; }
+    var ctx = cv.getContext("2d");
+    var colors = ["#26a5e0", "#3cc98a", "#ffb648", "#ff8fa3", "#a78bfa"];
+    var bits = [];
+    for (var n = 0; n < 70; n++) {
+      bits.push({
+        x: Math.random() * w, y: -20 - Math.random() * h * 0.4,
+        s: 6 + Math.random() * 7, c: colors[n % colors.length],
+        vy: 2 + Math.random() * 3, vx: -1.2 + Math.random() * 2.4,
+        a: Math.random() * 6.28, va: -0.16 + Math.random() * 0.32
+      });
+    }
+    var frames = 0;
+    (function draw() {
+      ctx.clearRect(0, 0, w, h);
+      bits.forEach(function (p) {
+        p.x += p.vx; p.y += p.vy; p.a += p.va;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2);
+        ctx.restore();
+      });
+      if (++frames < 150) requestAnimationFrame(draw);
+      else { ctx.clearRect(0, 0, w, h); cv.hidden = true; }
+    })();
+  }
+
   var i        = 0;         // ข้อที่กำลังทำ
   var picked   = null;      // คำตอบที่เลือกไว้
   var busy     = false;
 
-  var el = function (id) { return document.getElementById(id); };
+  // ประกาศแบบ function เพื่อให้ถูกยกขึ้นบนสุด — โค้ดด้านบนเรียกใช้ได้ด้วย
+  function el(id) { return document.getElementById(id); }
 
   // ── จุดบอกความคืบหน้า ──
   var dots = el("dots");
@@ -199,6 +321,7 @@
           });
           b.classList.add("on");
           picked = o.id;
+          play("tap");
           el("submit").disabled = false;
         });
         box.appendChild(b);
@@ -211,6 +334,8 @@
 
     el("submit").disabled = true;
     paintDots(null);
+    el("bar").style.width = Math.round(i / QS.length * 100) + "%";
+    buddy("idle", pick(CHEER_GO));
     speak(q.prompt || "");
   }
 
@@ -242,6 +367,15 @@
   // ── ป๊อปอัพบอกผลรายข้อ ──
   function showResult(res) {
     paintDots(res.correct ? "ok" : "no");
+    play(res.correct ? "correct" : "wrong");
+    buddy(res.correct ? "happy" : "cheerup",
+          pick(res.correct ? CHEER_OK : CHEER_NO));
+    if (!res.correct) {
+      var card = el("card");
+      card.classList.remove("nope");
+      void card.offsetWidth;                 // บังคับให้แอนิเมชันเล่นซ้ำได้
+      card.classList.add("nope");
+    }
     el("face").textContent = res.correct ? "🎉" : "💪";
     el("verdict").textContent = res.correct ? "เก่งมาก! ตอบถูกค่ะ" : "ยังไม่ถูกนะ ไม่เป็นไรค่ะ";
     el("verdict").className = res.correct ? "good" : "bad";
@@ -249,6 +383,7 @@
     el("explain").textContent = res.explanation || "";
     el("next").textContent = (i + 1 >= QS.length) ? "ดูคะแนนของหนู →" : "ข้อต่อไป →";
     el("sheet").hidden = false;
+    if (res.correct) setTimeout(confetti, 60);
     speak(res.correct ? "เก่งมาก ตอบถูกค่ะ"
                       : (res.answer ? "คำตอบที่ถูกคือ " + res.answer : "ยังไม่ถูกนะคะ"));
   }
@@ -263,6 +398,7 @@
 
   // ── จบรอบ ──
   function finish() {
+    el("bar").style.width = "100%";
     el("card").innerHTML = '<p class="waiting">กำลังรวมคะแนน…</p>';
     fetch("/quiz/" + ATTEMPT + "/finish", {
       method: "POST",
@@ -376,6 +512,71 @@
 @media(max-width:480px){
   .q-prompt{font-size:1.2rem}
   .matchrow{grid-template-columns:1fr}
+}
+
+/* ══════ เจ้านกฮูกน้อย — เพื่อนประจำแบบฝึกหัด ══════ */
+.buddy{position:relative;display:flex;flex-direction:column;align-items:center;
+       margin:0 auto .2rem;width:max-content}
+.buddy svg{overflow:visible;transform-origin:60px 104px;
+           animation:bob 3.2s ease-in-out infinite}
+.b-body{fill:#7cc4ec}
+.b-tummy{fill:#eaf7ff}
+.b-wing{fill:#5fb2e0}
+.b-tuft{fill:#5fb2e0}
+.b-eye{fill:#fff;stroke:#4aa3d6;stroke-width:2}
+.b-pupil{fill:#123c56;transition:transform .25s ease}
+.b-spark{fill:#fff}
+.b-beak{fill:#ffb648}
+.b-cheek{fill:#ffb3c1;opacity:.75}
+.b-foot{stroke:#ffb648;stroke-width:3.4;stroke-linecap:round;fill:none}
+.b-shadow{fill:rgba(14,59,87,.12)}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(0)}
+               50%{transform:translateY(-7px) rotate(-1.5deg)}}
+/* ดีใจ — เด้งแรงและปีกกาง */
+.buddy[data-mood=happy] svg{animation:cheer .55s ease 2}
+.buddy[data-mood=happy] .b-wing-l{transform:rotate(-26deg);transform-origin:30px 60px}
+.buddy[data-mood=happy] .b-wing-r{transform:rotate(26deg);transform-origin:90px 60px}
+.buddy[data-mood=happy] .b-cheek{opacity:1}
+@keyframes cheer{0%,100%{transform:translateY(0) scale(1)}
+                 45%{transform:translateY(-16px) scale(1.06)}}
+/* ให้กำลังใจ — เอียงหัวนิดหน่อย ไม่ทำหน้าเศร้าจนเด็กเสียใจ */
+.buddy[data-mood=cheerup] svg{animation:tilt .8s ease}
+.buddy[data-mood=cheerup] .b-pupil{transform:translateY(2px)}
+@keyframes tilt{0%,100%{transform:rotate(0)}30%{transform:rotate(-9deg)}70%{transform:rotate(6deg)}}
+.buddy .bubble{margin-top:.35rem;background:#fff;border:2px solid #d8eefc;
+               border-radius:999px;padding:.28rem .85rem;font-size:.9rem;font-weight:700;
+               color:#0c6b9e;box-shadow:0 3px 10px rgba(14,59,87,.08);
+               transition:opacity .2s;white-space:nowrap}
+@media(prefers-reduced-motion:reduce){
+  .buddy svg,.buddy[data-mood] svg{animation:none}
+}
+
+/* ══════ แถบความคืบหน้า ══════ */
+.bar{height:12px;border-radius:999px;background:#dbeefc;overflow:hidden;
+     margin:.7rem auto .5rem;width:min(320px,80%)}
+.bar span{display:block;height:100%;width:0;border-radius:999px;
+          background:linear-gradient(90deg,#3cc98a,#26a5e0);
+          transition:width .45s cubic-bezier(.2,.9,.3,1)}
+
+/* ══════ ปุ่มเปิด/ปิดเสียง ══════ */
+.soundbtn{position:absolute;top:0;right:0;border:2px solid #cfe8f8;background:#fff;
+          width:42px;height:42px;border-radius:50%;font-size:1.15rem;cursor:pointer;
+          line-height:1;box-shadow:0 3px 9px rgba(14,59,87,.08)}
+.soundbtn.off{opacity:.5}
+.play-head{position:relative}
+
+/* ══════ กระดาษโปรยตอนตอบถูก ══════ */
+.confetti{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+
+/* ตัวเลือกเด้งรับตอนกด */
+.opt.on{animation:pop .28s ease}
+@keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.05)}100%{transform:scale(1)}}
+/* ตอบผิด — สั่นเบา ๆ ไม่แรงจนตกใจ */
+.q-card.nope{animation:nope .4s ease}
+@keyframes nope{0%,100%{transform:translateX(0)}
+                25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+@media(prefers-reduced-motion:reduce){
+  .opt.on,.q-card.nope{animation:none}
 }
 </style>
 {% endblock %}

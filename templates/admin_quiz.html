@@ -132,6 +132,116 @@
     </div>
   </section>
 
+  <!-- ══════ ผู้ช่วย AI ══════ -->
+  <section class="panel aipanel">
+    <h2><i>✨</i> ให้ AI ช่วยออกข้อสอบ</h2>
+
+    {% if not ai_ready %}
+    <p class="muted" style="margin-top:-.4rem">
+      ยังใช้ไม่ได้ — ต้องใส่กุญแจ <b>GEMINI_API_KEY</b> ที่ Vercel ก่อน
+      (ขอฟรีได้ที่ <b>aistudio.google.com/apikey</b>)
+    </p>
+    {% else %}
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:.9rem">
+      AI จะร่างข้อสอบให้ก่อน แล้วพาไปหน้าตรวจทาน — <b>ครูอ้อยตรวจและกดบันทึกเองเสมอ</b>
+      ไม่มีข้อไหนเข้าระบบโดยที่ครูยังไม่เห็น
+    </p>
+
+    <div class="aitabs">
+      <button type="button" class="aitab on" data-ai="topic">📝 พิมพ์หัวข้อ</button>
+      <button type="button" class="aitab" data-ai="photo">📷 ถ่ายรูปใบงาน</button>
+      <button type="button" class="aitab" data-ai="text">📋 วางข้อความ</button>
+      <button type="button" class="aitab" data-ai="polish">🪄 เกลาข้อเดิม</button>
+    </div>
+
+    <!-- พิมพ์หัวข้อ -->
+    <form method="post" action="/admin/quiz/{{ quiz.id }}/ai" class="aibox" data-for="topic">
+      <input type="hidden" name="mode" value="topic">
+      <label style="display:block">อยากให้ออกข้อสอบเรื่องอะไร <b class="req">*</b>
+        <input type="text" name="topic" required
+               placeholder="เช่น บวกเลขไม่เกิน 20 / คำศัพท์เกี่ยวกับสัตว์ / สระอา">
+      </label>
+      <div class="grid4" style="margin-top:.5rem">
+        <label>จำนวนข้อ
+          <input type="number" name="count" value="10" min="1" max="40">
+        </label>
+        <label style="grid-column:span 3">สั่งเพิ่มเติม (ไม่บังคับ)
+          <input type="text" name="note" placeholder="เช่น ห้ามมีเลขติดลบ ใช้ผลไม้เป็นตัวอย่าง">
+        </label>
+      </div>
+      <p class="muted" style="font-size:.85rem;margin:.5rem 0 .7rem">
+        AI จะใช้วิชาและระดับชั้นของชุดนี้ ({{ quiz.subject or 'ไม่ระบุวิชา' }} ·
+        {{ quiz.level or 'ทุกระดับชั้น' }}) มาช่วยกำหนดความยากให้เอง
+      </p>
+      <button class="btn btn-primary btn-sm">ให้ AI ร่างให้ →</button>
+    </form>
+
+    <!-- ถ่ายรูปใบงาน -->
+    <form method="post" action="/admin/quiz/{{ quiz.id }}/ai" class="aibox" data-for="photo"
+          enctype="multipart/form-data" hidden>
+      <input type="hidden" name="mode" value="photo">
+      <label style="display:block">รูปใบงาน หรือไฟล์ PDF (เลือกได้หลายไฟล์)
+        <input type="file" name="files" accept="image/*,.pdf" multiple required>
+      </label>
+      <p class="muted" style="font-size:.85rem;margin:.5rem 0">
+        วิธีนี้อ่าน<b>รูปถ่ายกระดาษ</b>และ<b>ไฟล์สแกน</b>ได้ ซึ่งการนำเข้าไฟล์แบบเดิมทำไม่ได้ —
+        ถ่ายให้ตรง ๆ แสงพอ ตัวหนังสือชัด ไฟล์ละไม่เกิน 8 MB
+      </p>
+      <div class="grid4">
+        <label>จำนวนข้อสูงสุด
+          <input type="number" name="count" value="20" min="1" max="40">
+        </label>
+        <label style="grid-column:span 3">สั่งเพิ่มเติม (ไม่บังคับ)
+          <input type="text" name="note" placeholder="เช่น เอาเฉพาะข้อ 1-10">
+        </label>
+      </div>
+      <button class="btn btn-primary btn-sm" style="margin-top:.7rem">
+        ให้ AI อ่านรูป →
+      </button>
+    </form>
+
+    <!-- วางข้อความ -->
+    <form method="post" action="/admin/quiz/{{ quiz.id }}/ai" class="aibox" data-for="text" hidden>
+      <input type="hidden" name="mode" value="text">
+      <label style="display:block">วางข้อความข้อสอบตรงนี้
+        <textarea name="raw" rows="7" required
+                  placeholder="ก๊อปมาจาก Word หรือเว็บ วางได้เลย ไม่ต้องจัดหน้าให้สวย
+AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือกให้เอง"></textarea>
+      </label>
+      <div class="grid4" style="margin-top:.5rem">
+        <label>จำนวนข้อสูงสุด
+          <input type="number" name="count" value="20" min="1" max="40">
+        </label>
+        <label style="grid-column:span 3">สั่งเพิ่มเติม (ไม่บังคับ)
+          <input type="text" name="note" placeholder="เช่น เฉลยอยู่ในวงเล็บท้ายข้อ">
+        </label>
+      </div>
+      <button class="btn btn-primary btn-sm" style="margin-top:.7rem">
+        ให้ AI จัดให้ →
+      </button>
+    </form>
+
+    <!-- เกลาข้อเดิม -->
+    <form method="post" action="/admin/quiz/{{ quiz.id }}/ai" class="aibox" data-for="polish" hidden>
+      <input type="hidden" name="mode" value="polish">
+      <p class="muted" style="font-size:.9rem;margin:.2rem 0 .8rem">
+        เอา <b>{{ questions | length }} ข้อ</b> ที่มีอยู่ในชุดนี้ไปให้ AI เกลาภาษาให้เด็กอ่านง่ายขึ้น
+        เติมอีโมจิให้น่ารัก และเขียนคำอธิบายเฉลยให้ —
+        <b>ความหมายและคำตอบที่ถูกจะไม่เปลี่ยน</b><br>
+        ผลที่ได้จะเป็นข้อ<b>ชุดใหม่</b>ให้เทียบกับของเดิม ข้อเดิมยังอยู่ครบ
+        ถ้าชอบฉบับใหม่ค่อยลบของเดิมทีหลัง
+      </p>
+      <button class="btn btn-primary btn-sm" {{ 'disabled' if not questions }}>
+        ให้ AI เกลาให้ →
+      </button>
+    </form>
+
+    <p class="muted aiwait" style="font-size:.85rem;margin:.8rem 0 0" hidden>
+      ⏳ AI กำลังคิดอยู่ ใช้เวลาราว 10–30 วินาที อย่าเพิ่งปิดหน้านี้นะคะ
+    </p>
+    {% endif %}
+  </section>
+
   <!-- ══════ นำเข้าจากไฟล์ ══════ -->
   <section class="panel">
     <h2><i>📥</i> นำเข้าข้อสอบจากไฟล์</h2>
@@ -290,6 +400,17 @@ img.cico{height:28px;width:auto}
 .iconbtn{font-size:1.3rem;line-height:1;background:#f8fcff;border:2px solid #dbeefc;
          border-radius:12px;padding:.25rem .45rem;cursor:pointer}
 .iconbtn:hover{border-color:#26a5e0;background:#e8f6ff}
+
+/* ── แผงผู้ช่วย AI ── */
+.aipanel{background:linear-gradient(160deg,#fff 60%,#f4f9ff)}
+.aitabs{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem}
+.aitab{background:#fff;border:1.5px solid var(--sky-100);border-radius:999px;
+       padding:.5rem .95rem;font:inherit;font-size:.9rem;font-weight:600;
+       color:var(--ink-soft);cursor:pointer;transition:.15s}
+.aitab:hover{border-color:var(--sky-200)}
+.aitab.on{background:var(--sky-600);border-color:var(--sky-600);color:#fff}
+.aibox[hidden]{display:none}
+.aibox textarea{min-height:130px}
 </style>
 
 <script>
@@ -315,4 +436,31 @@ function bindKind(form){
 }
 document.querySelectorAll('form.qform').forEach(bindKind);
 </script>
+
+<script>
+/* สลับวิธีให้ AI ช่วย และกันกดซ้ำระหว่างรอ */
+(function () {
+  var tabs = [].slice.call(document.querySelectorAll('.aitab'));
+  var boxes = [].slice.call(document.querySelectorAll('.aibox'));
+  var wait = document.querySelector('.aiwait');
+  if (!tabs.length) return;
+
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      var name = t.getAttribute('data-ai');
+      tabs.forEach(function (x) { x.classList.toggle('on', x === t); });
+      boxes.forEach(function (b) { b.hidden = (b.getAttribute('data-for') !== name); });
+    });
+  });
+
+  boxes.forEach(function (b) {
+    b.addEventListener('submit', function () {
+      var btn = b.querySelector('button');
+      if (btn) { btn.disabled = true; btn.textContent = 'กำลังให้ AI คิด...'; }
+      if (wait) wait.hidden = false;
+    });
+  });
+})();
+</script>
+
 {% endblock %}

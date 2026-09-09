@@ -16,7 +16,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import config, content, db, line_auth, line_push, quiz, quiz_import
+from . import (config, content, db, gemini, line_auth, line_push, quiz,
+               quiz_import)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -1033,6 +1034,7 @@ def admin_quiz_edit(request: Request, quiz_id: str, saved: str = "", err: str = 
                 questions=quiz.list_questions(quiz_id),
                 levels=config.LEVELS,
                 icon_sets=quiz.ICON_SETS,
+                ai_ready=gemini.is_ready(),
                 saved=saved, err=err)
 
 
@@ -1214,7 +1216,7 @@ async def admin_quiz_import(request: Request, quiz_id: str,
     return page(request, "admin_quiz_import.html",
                 user=user, quiz=item, parsed=parsed,
                 stat=quiz_import.summarize(parsed),
-                filename=file.filename)
+                source=f"ไฟล์ {file.filename}")
 
 
 @app.post("/admin/quiz/{quiz_id}/import/save")
@@ -1244,7 +1246,7 @@ async def admin_quiz_import_save(request: Request, quiz_id: str):
             "kind": "choice",
             "prompt": form.get(f"prompt_{index}") or "",
             "points": 1,
-            "explanation": "",
+            "explanation": (form.get(f"expl_{index}") or "").strip(),
             "options": [
                 {"label": label, "is_correct": (i == correct)}
                 for i, label in enumerate(labels)
@@ -1260,6 +1262,63 @@ async def admin_quiz_import_save(request: Request, quiz_id: str):
         return _quiz_page(quiz_id, err="ยังไม่มีข้อไหนบันทึกได้ — "
                                        "ตรวจว่าเลือกเฉลยและมีตัวเลือกอย่างน้อย 2 ตัวแล้วหรือยัง")
     return _quiz_page(quiz_id, f"imported-{added}-{skipped}")
+
+
+# ─── ผู้ช่วย AI สร้างข้อสอบ ───
+
+@app.post("/admin/quiz/{quiz_id}/ai", response_class=HTMLResponse)
+async def admin_quiz_ai(
+    request: Request,
+    quiz_id: str,
+    mode: str = Form("topic"),
+    topic: str = Form(""),
+    raw: str = Form(""),
+    note: str = Form(""),
+    count: str = Form("10"),
+    files: list[UploadFile] = File(default=[]),
+):
+    """
+    ให้ Gemini ร่างข้อสอบให้ แล้วพาไปหน้าตรวจทานหน้าเดียวกับการนำเข้าไฟล์
+
+    ยังไม่เขียนลงฐานข้อมูล — ครูอ้อยต้องตรวจและกดบันทึกเองเสมอ
+    """
+    user, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    item = quiz.get_quiz(quiz_id)
+    if not item:
+        return _back("quizzes", err="ไม่พบแบบฝึกหัดชุดนี้")
+
+    try:
+        if mode == "photo":
+            blobs = [(f.filename, await f.read())
+                     for f in (files or []) if f and f.filename]
+            parsed = gemini.from_files(blobs, count, note)
+            source = "AI อ่านจากรูป %d ไฟล์" % len(blobs)
+        elif mode == "text":
+            parsed = gemini.from_text(raw, count, note)
+            source = "AI จัดจากข้อความที่วางมา"
+        elif mode == "polish":
+            parsed = gemini.polish(quiz.list_questions(quiz_id))
+            source = "AI เกลาข้อเดิมให้อ่านง่ายขึ้น"
+        else:
+            parsed = gemini.from_topic(topic, item.get("level") or "",
+                                       item.get("subject") or "", count, note)
+            source = "AI แต่งจากหัวข้อ “%s”" % topic.strip()
+    except gemini.GeminiError as exc:
+        return _quiz_page(quiz_id, err=str(exc))
+    except Exception as exc:
+        return _quiz_page(quiz_id, err="ผู้ช่วย AI ทำงานไม่สำเร็จ (%s)"
+                                       % str(exc)[:120])
+
+    if not parsed:
+        return _quiz_page(quiz_id, err="AI ยังร่างข้อสอบไม่ได้ — "
+                                       "ลองพิมพ์หัวข้อให้ละเอียดขึ้นอีกนิดค่ะ")
+
+    return page(request, "admin_quiz_import.html",
+                user=user, quiz=item, parsed=parsed,
+                stat=quiz_import.summarize(parsed),
+                source=source, by_ai=True)
 
 
 # ─── รายงานผลของแบบฝึกหัด ───

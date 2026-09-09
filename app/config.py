@@ -20,6 +20,10 @@ LINE_OA_ID = os.environ.get("LINE_OA_ID", "@178bogmt")   # บัญชีทา
 # ถ้ายังไม่ได้ตั้ง ปุ่มแจ้งเตือนจะบอกวิธีตั้งค่าแทนการส่ง
 LINE_MESSAGING_TOKEN = os.environ.get("LINE_MESSAGING_TOKEN", "")
 
+# ─── ผู้ช่วยสร้างข้อสอบด้วย AI (ไม่บังคับ — ไม่ตั้งก็ใช้เว็บได้ตามปกติ) ───
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "")
+
 # ─── Supabase ───
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://ncpretfileknkhpfvfif.supabase.co")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
