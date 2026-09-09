@@ -20,7 +20,8 @@ import re
 import unicodedata
 from datetime import datetime, timezone
 
-from .db import SupabaseError, delete, insert, select, select_one, update
+from .db import (SupabaseError, delete, gather, insert, select,
+                 select_one, update)
 
 # รูปแบบคำถามที่ระบบรองรับ
 KINDS = {
@@ -75,9 +76,13 @@ def list_quizzes(limit: int = 60) -> list[dict]:
     if not rows:
         return []
 
-    questions = select("quiz_questions", "id,quiz_id", limit=5000)
-    attempts = select("quiz_attempts", "quiz_id,student_id,score,full_score,finished",
-                      limit=5000)
+    got = gather(
+        questions=lambda: select("quiz_questions", "id,quiz_id", limit=5000),
+        attempts=lambda: select("quiz_attempts",
+                                "quiz_id,student_id,score,full_score,finished",
+                                limit=5000),
+    )
+    questions, attempts = got["questions"], got["attempts"]
 
     for q in rows:
         qid = str(q["id"])
@@ -432,9 +437,12 @@ def quizzes_for_student(student: dict, limit: int = 40) -> list[dict]:
     if not rows:
         return []
 
-    counts = select("quiz_questions", "id,quiz_id", limit=5000)
-    mine = select("quiz_attempts", student_id=f"eq.{student['id']}",
-                  finished="eq.true", order="finished_at.desc", limit=500)
+    got = gather(
+        counts=lambda: select("quiz_questions", "id,quiz_id", limit=5000),
+        mine=lambda: select("quiz_attempts", student_id=f"eq.{student['id']}",
+                            finished="eq.true", order="finished_at.desc", limit=500),
+    )
+    counts, mine = got["counts"], got["mine"]
 
     for q in rows:
         qid = str(q["id"])

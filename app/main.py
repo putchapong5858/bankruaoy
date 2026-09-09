@@ -290,20 +290,31 @@ def portal(request: Request, child: int = 0):
                     note="ยังไม่มีข้อมูลนักเรียน กรุณาติดต่อครูอ้อย")
 
     index = max(0, min(child, len(children) - 1))
-    detail = db.get_student_detail(children[index])
+    student = children[index]
     enrolled = enrolled_flag(request)
+
+    # ยิงทุก query พร้อมกัน ไม่ต้องรอทีละอัน — ฐานข้อมูลอยู่คนละที่กับเซิร์ฟเวอร์
+    got = db.gather(
+        detail=lambda: db.get_student_detail(student),
+        schedule=db.get_schedule,
+        news=db.get_announcements,
+        courses=db.list_courses,
+        enrollments=lambda: db.get_enrollments(student["id"]),
+        quizzes=lambda: quiz.quizzes_for_student(student),
+        quiz_history=lambda: quiz.attempt_history(student["id"], limit=8),
+    )
 
     return page(
         request, "portal.html",
         user=user, parent=parent,
-        children=children, index=index, s=detail,
-        schedule=db.get_schedule(),
-        news=db.get_announcements(),
-        courses=db.list_courses(),
-        enrollments=db.get_enrollments(detail["id"]),
+        children=children, index=index, s=got["detail"],
+        schedule=got["schedule"],
+        news=got["news"],
+        courses=got["courses"],
+        enrollments=got["enrollments"],
         enrolled=enrolled,
-        quizzes=quiz.quizzes_for_student(detail),
-        quiz_history=quiz.attempt_history(detail["id"], limit=8),
+        quizzes=got["quizzes"],
+        quiz_history=got["quiz_history"],
         quizerr=request.query_params.get("quizerr", ""),
     )
 
@@ -382,20 +393,32 @@ def admin(request: Request, saved: str = "", err: str = ""):
     if blocked:
         return blocked
 
-    students = db.list_students()
+    # หน้าแอดมินดึงข้อมูลสิบกว่าชุด — ยิงพร้อมกันแทนการรอทีละชุด
+    got = db.gather(
+        students=db.list_students,
+        pending=lambda: db.list_parents("pending"),
+        enroll_requests=db.list_enrollment_requests,
+        all_courses=db.list_all_courses,
+        sessions=db.list_sessions,
+        homeworks=db.list_homework,
+        exams=db.list_exams,
+        quizzes=quiz.list_quizzes,
+        materials=db.list_materials,
+        announcements=db.list_announcements,
+    )
     return page(
         request, "admin.html",
         user=user,
-        pending=db.list_parents("pending"),
-        enroll_requests=db.list_enrollment_requests(),
-        all_courses=db.list_all_courses(),
-        sessions=db.list_sessions(),
-        homeworks=db.list_homework(),
-        exams=db.list_exams(),
-        quizzes=quiz.list_quizzes(),
-        materials=db.list_materials(),
-        announcements=db.list_announcements(),
-        students=students,
+        pending=got["pending"],
+        enroll_requests=got["enroll_requests"],
+        all_courses=got["all_courses"],
+        sessions=got["sessions"],
+        homeworks=got["homeworks"],
+        exams=got["exams"],
+        quizzes=got["quizzes"],
+        materials=got["materials"],
+        announcements=got["announcements"],
+        students=got["students"],
         levels=config.LEVELS,
         payment_statuses=config.PAYMENT_STATUSES,
         attendance_statuses=config.ATTENDANCE_STATUSES,

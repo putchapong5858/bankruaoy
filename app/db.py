@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import httpx
@@ -17,6 +18,25 @@ from . import config
 
 class SupabaseError(RuntimeError):
     pass
+
+
+# ── การเชื่อมต่อที่ใช้ซ้ำ ───────────────────────────────────────
+# เดิมเปิด httpx.Client ใหม่ทุก query จึงต้องจับมือ TLS ใหม่ทุกครั้ง
+# (ประมาณ 3 รอบไป-กลับ) หน้าเดียวมีสิบกว่า query เลยช้ามาก
+# เก็บ client ไว้ระดับโมดูล ต่อครั้งเดียวแล้วใช้ซ้ำทุก query
+_client: httpx.Client | None = None
+
+
+def _conn() -> httpx.Client:
+    global _client
+    if _client is None or _client.is_closed:
+        _client = httpx.Client(
+            timeout=httpx.Timeout(15.0, connect=8.0),
+            limits=httpx.Limits(max_keepalive_connections=10,
+                                max_connections=20,
+                                keepalive_expiry=60.0),
+        )
+    return _client
 
 
 def _headers() -> dict[str, str]:
@@ -59,8 +79,7 @@ def select(
     if limit:
         params["limit"] = str(limit)
 
-    with httpx.Client(timeout=15) as client:
-        return _check(client.get(_url(table), headers=_headers(), params=params)) or []
+    return _check(_conn().get(_url(table), headers=_headers(), params=params)) or []
 
 
 def select_one(table: str, columns: str = "*", **filters: str) -> dict | None:
@@ -70,25 +89,40 @@ def select_one(table: str, columns: str = "*", **filters: str) -> dict | None:
 
 def insert(table: str, rows: dict | list[dict]) -> list[dict]:
     headers = _headers() | {"Prefer": "return=representation"}
-    with httpx.Client(timeout=15) as client:
-        return _check(client.post(_url(table), headers=headers, json=rows)) or []
+    return _check(_conn().post(_url(table), headers=headers, json=rows)) or []
 
 
 def update(table: str, values: dict, **filters: str) -> list[dict]:
     if not filters:
         raise SupabaseError("update ต้องระบุเงื่อนไขเสมอ กันการแก้ทั้งตาราง")
     headers = _headers() | {"Prefer": "return=representation"}
-    with httpx.Client(timeout=15) as client:
-        return _check(
-            client.patch(_url(table), headers=headers, params=filters, json=values)
-        ) or []
+    return _check(
+        _conn().patch(_url(table), headers=headers, params=filters, json=values)
+    ) or []
 
 
 def delete(table: str, **filters: str) -> None:
     if not filters:
         raise SupabaseError("delete ต้องระบุเงื่อนไขเสมอ")
-    with httpx.Client(timeout=15) as client:
-        _check(client.delete(_url(table), headers=_headers(), params=filters))
+    _check(_conn().delete(_url(table), headers=_headers(), params=filters))
+
+
+def gather(**jobs):
+    """
+    ยิงหลาย query พร้อมกันแทนการรอทีละอัน
+
+    ฐานข้อมูลอยู่คนละทวีปกับเซิร์ฟเวอร์ แต่ละ query จึงเสียเวลาเดินทาง
+    ถ้ารอทีละอัน 10 query ก็ช้าเป็น 10 เท่า — ยิงพร้อมกันเสียเวลาเท่าอันที่ช้าสุด
+    ใช้ได้เฉพาะ query ที่ไม่ต้องรอผลของกันและกัน
+
+        rows = gather(schedule=db.get_schedule, news=db.get_announcements)
+        rows["schedule"], rows["news"]
+    """
+    if not jobs:
+        return {}
+    with ThreadPoolExecutor(max_workers=min(10, len(jobs))) as pool:
+        futures = {key: pool.submit(fn) for key, fn in jobs.items()}
+        return {key: fut.result() for key, fut in futures.items()}
 
 
 def health() -> bool:
@@ -174,14 +208,27 @@ def get_student_detail(student: dict) -> dict:
     sid = student["id"]
     level = student.get("level") or ""
 
-    attendance = select("attendance", student_id=f"eq.{sid}",
-                        order="date.desc", limit=40)
-    scores = select("scores", student_id=f"eq.{sid}",
-                    order="date.desc", limit=40)
-
-    personal = select("homework", student_id=f"eq.{sid}", order="due_date.desc", limit=40)
-    class_wide = select("homework", student_id="is.null",
-                        level=f"eq.{level}", order="due_date.desc", limit=40)
+    # ทุกอันนี้ไม่ต้องรอผลของกันและกัน — ยิงพร้อมกันทีเดียว
+    got = gather(
+        attendance=lambda: select("attendance", student_id=f"eq.{sid}",
+                                  order="date.desc", limit=40),
+        scores=lambda: select("scores", student_id=f"eq.{sid}",
+                              order="date.desc", limit=40),
+        personal=lambda: select("homework", student_id=f"eq.{sid}",
+                                order="due_date.desc", limit=40),
+        class_wide=lambda: select("homework", student_id="is.null",
+                                  level=f"eq.{level}", order="due_date.desc", limit=40),
+        subs_rows=lambda: select("homework_submissions",
+                                 student_id=f"eq.{sid}", limit=200),
+        avgs=exam_averages,
+        attend_summary=lambda: attendance_summary(sid),
+        materials=lambda: list_materials(level),
+        sessions=lambda: upcoming_sessions(level),
+    )
+    attendance = got["attendance"]
+    scores = got["scores"]
+    personal = got["personal"]
+    class_wide = got["class_wide"]
 
     homework = sorted(
         personal + class_wide,
@@ -190,26 +237,25 @@ def get_student_detail(student: dict) -> dict:
     )[:40]
 
     # สถานะการส่งการบ้านของเด็กคนนี้ (ครูเป็นคนกด)
-    subs = {str(s["homework_id"]): s for s in
-            select("homework_submissions", student_id=f"eq.{sid}", limit=200)}
+    subs = {str(s["homework_id"]): s for s in got["subs_rows"]}
     for h in homework:
         sub = subs.get(str(h["id"])) or {}
         h["sub_status"] = sub.get("status") or "ยังไม่ส่ง"
         h["sub_comment"] = sub.get("comment") or ""
 
     # คะแนนเทียบกับค่าเฉลี่ยของห้อง
-    avgs = exam_averages()
+    avgs = got["avgs"]
     for s in scores:
         s["class_average"] = avgs.get(str(s.get("exam_id"))) if s.get("exam_id") else None
 
     return {
         **student,
         "attendance": attendance,
-        "attend_summary": attendance_summary(sid),
+        "attend_summary": got["attend_summary"],
         "scores": scores,
         "homework": homework,
-        "materials": list_materials(level),
-        "sessions": upcoming_sessions(level),
+        "materials": got["materials"],
+        "sessions": got["sessions"],
     }
 
 
