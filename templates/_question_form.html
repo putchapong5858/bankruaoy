@@ -44,7 +44,9 @@
   {# ───── เลือกตอบ / ถูกผิด ───── #}
   <div class="kindbox" data-for="choice,truefalse">
     <p class="muted" style="font-size:.88rem;margin:.3rem 0">
-      กรอกตัวเลือกแล้วกดวงกลมหน้าข้อที่เป็นคำตอบที่ถูก (เว้นว่างไว้ = ไม่ใช้ตัวเลือกนั้น)
+      กรอกตัวเลือกแล้วกดวงกลมหน้าข้อที่เป็นคำตอบที่ถูก (เว้นว่างไว้ = ไม่ใช้ตัวเลือกนั้น)<br>
+      ถ้าใส่รูปให้ <b>ครบทุกตัวเลือก</b> ระบบจะแสดงเป็นการ์ดรูปใหญ่ให้เด็กกดเลือก
+      — ใช้รูปคำศัพท์ที่มีอยู่แล้วได้เลย เช่น <code>/static/img/vocab/cat.webp</code>
     </p>
     {% for i in range(4) %}
     {% set o = opts[i] if opts | length > i else None %}
@@ -53,7 +55,7 @@
              {{ 'checked' if (o and o.is_correct) or (not q and i == 0) }}>
       <input type="text" name="opt_label" placeholder="ตัวเลือกที่ {{ i + 1 }}"
              value="{{ o.label if o and kind != 'match' else '' }}">
-      <input type="url" name="opt_image" placeholder="ลิงก์รูปตัวเลือก (ไม่บังคับ)"
+      <input type="text" name="opt_image" placeholder="รูปตัวเลือก เช่น /static/img/vocab/cat.webp"
              value="{{ o.image_url or '' if o and kind != 'match' else '' }}">
     </div>
     {% endfor %}

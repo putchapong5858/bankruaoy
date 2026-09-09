@@ -158,7 +158,7 @@
         var strip = document.createElement("div");
         strip.className = "countstrip";
         for (var n = 0; n < q.icon_count; n++) {
-          if (/^https?:\/\//.test(q.icon)) {
+          if (/^(https?:\/\/|\/)/.test(q.icon)) {
             var pic = document.createElement("img");
             pic.src = q.icon; pic.alt = "";
             strip.appendChild(pic);
@@ -172,14 +172,18 @@
       }
 
       var numbers = (q.kind === "count");
+      // ถ้าทุกตัวเลือกมีรูป ให้วางเป็นการ์ดรูปใหญ่ ๆ เด็กอนุบาลกดง่ายกว่าอ่านตัวหนังสือ
+      var pics = !numbers && q.options.length > 0 &&
+                 q.options.every(function (o) { return !!o.image_url; });
       q.options.forEach(function (o) {
         var b = document.createElement("button");
         b.type = "button";
-        b.className = numbers ? "opt num" : "opt";
+        b.className = numbers ? "opt num" : (pics ? "opt pic" : "opt");
         b.innerHTML = "";
         if (o.image_url) {
           var im = document.createElement("img");
           im.src = o.image_url; im.alt = "";
+          im.loading = "lazy";
           b.appendChild(im);
         }
         var sp = document.createElement("span");
@@ -197,8 +201,8 @@
       });
 
       // ปุ่มตัวเลขวางเรียงแนวนอนเหมือนใบงาน
-      if (numbers) box.classList.add("numrow");
-      else box.classList.remove("numrow");
+      box.classList.toggle("numrow", numbers);
+      box.classList.toggle("piccards", pics);
     }
 
     el("submit").disabled = true;
@@ -290,7 +294,8 @@
 .speak{border:2px solid #bfe6fc;background:#f2faff;color:#0c6b9e;border-radius:999px;
        padding:.45rem 1rem;font:inherit;font-size:.92rem;cursor:pointer}
 .speak:active{transform:scale(.96)}
-.q-img{max-width:100%;border-radius:16px;margin:.4rem 0 .6rem;display:block}
+.q-img{max-width:100%;max-height:240px;width:auto;border-radius:16px;
+       margin:.4rem auto .6rem;display:block}
 .q-img[hidden]{display:none}          /* เหตุผลเดียวกับ .sheet[hidden] ด้านล่าง */
 .q-prompt{font-size:1.35rem;line-height:1.6;font-weight:600;margin:.2rem 0 1rem;white-space:pre-wrap}
 
@@ -301,6 +306,20 @@
 .opt img{height:52px;border-radius:10px}
 .opt:active{transform:scale(.985)}
 .opt.on{border-color:#26a5e0;background:#e8f6ff;box-shadow:0 0 0 4px rgba(38,165,224,.15)}
+
+/* ── ตัวเลือกแบบการ์ดรูป (ใช้เมื่อทุกตัวเลือกมีรูป) ──
+   เด็กอนุบาลยังอ่านไม่คล่อง จึงให้รูปใหญ่ ๆ นำ แล้ววางคำอยู่ใต้รูป */
+#answers.piccards{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem}
+.opt.pic{flex-direction:column;gap:.45rem;text-align:center;margin:0;
+         padding:.8rem .5rem;justify-content:flex-start}
+.opt.pic img{height:auto;width:100%;max-width:150px;aspect-ratio:1/1;object-fit:contain;
+             border-radius:14px;background:#fff}
+.opt.pic span{font-size:1.05rem;line-height:1.35;font-weight:600;color:#0e3b57}
+@media(max-width:520px){
+  #answers.piccards{grid-template-columns:repeat(3,1fr);gap:.45rem}
+  .opt.pic{padding:.55rem .3rem;border-width:2px;border-radius:14px}
+  .opt.pic span{font-size:.92rem}
+}
 
 /* ── โจทย์นับจำนวน (Count and Match) ── */
 .countstrip{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;justify-content:center;
