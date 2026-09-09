@@ -139,7 +139,7 @@ FEATURES = [
 # ────────────────────────────────────────────────
 
 ABOUT = {
-    "photo": "/static/img/kru-aoy.jpg",
+    "photo": "/static/img/kru-aoy.webp",
     "photo_alt": "ครูอ้อย มัลลิกา ปัญญาวชิรพงษ์ ครูผู้สอนบ้านครูอ้อย",
     "badge_title": TEACHER_NAME,
     "badge_sub": "ปริญญาตรี ครุศาสตร์ · ประสบการณ์สอน 32 ปี",
@@ -240,15 +240,15 @@ GALLERY_HEAD = {
 }
 
 GALLERY = [
-    {"src": "/static/img/class-01.jpg", "cls": "g-wide g-tall",
+    {"src": "/static/img/class-01.webp", "cls": "g-wide g-tall",
      "alt": "น้อง ๆ ตั้งใจเรียนในห้องเรียนบ้านครูอ้อย"},
-    {"src": "/static/img/class-02.jpg", "cls": "",
+    {"src": "/static/img/class-02.webp", "cls": "",
      "alt": "บรรยากาศห้องเรียนกลุ่มเล็กที่บ้านครูอ้อย"},
-    {"src": "/static/img/class-03.jpg", "cls": "",
+    {"src": "/static/img/class-03.webp", "cls": "",
      "alt": "น้อง ๆ ทำแบบฝึกหัดร่วมกันในชั้นเรียน"},
-    {"src": "/static/img/class-04.jpg", "cls": "g-wide",
+    {"src": "/static/img/class-04.webp", "cls": "g-wide",
      "alt": "ห้องเรียนบ้านครูอ้อย จังหวัดหนองบัวลำภู"},
-    {"src": "/static/img/class-05.jpg", "cls": "",
+    {"src": "/static/img/class-05.webp", "cls": "",
      "alt": "น้อง ๆ เรียนรู้อย่างมีความสุขที่บ้านครูอ้อย"},
 ]
 

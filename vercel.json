@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["hnd1"],
   "builds": [
+    { "src": "static/**", "use": "@vercel/static" },
     {
       "src": "api/index.py",
       "use": "@vercel/python",
@@ -12,6 +13,18 @@
     }
   ],
   "routes": [
+    {
+      "src": "/static/img/(.*)",
+      "dest": "/static/img/$1",
+      "headers": { "cache-control": "public, max-age=31536000, immutable" }
+    },
+    {
+      "src": "/static/(.*)",
+      "dest": "/static/$1",
+      "headers": {
+        "cache-control": "public, max-age=600, s-maxage=31536000, stale-while-revalidate=86400"
+      }
+    },
     { "src": "/(.*)", "dest": "/api/index.py" }
   ]
 }
