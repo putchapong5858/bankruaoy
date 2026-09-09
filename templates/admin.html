@@ -14,8 +14,41 @@
 
   <div class="hello">
     <h1>หน้าจัดการของครูอ้อย</h1>
-    <p class="muted">อนุมัติสมาชิก · เช็คชื่อ · บันทึกคะแนน · สั่งการบ้าน</p>
+    <p class="muted">กดเมนูด้านล่างเพื่อไปยังส่วนที่ต้องการจัดการได้เลย</p>
   </div>
+
+  {# แถบเมนู — กดแล้วสลับส่วนที่แสดง ไม่ต้องเลื่อนหา #}
+  <nav class="adminnav" id="adminnav" aria-label="เมนูหน้าจัดการ">
+    <button type="button" class="tabbtn" data-go="approve">
+      <i>🔔</i> รออนุมัติ
+      {% set waiting = (pending | length) + (enroll_requests | length) %}
+      {% if waiting %}<span class="n hot">{{ waiting }}</span>{% endif %}
+    </button>
+    <button type="button" class="tabbtn" data-go="students">
+      <i>👧</i> นักเรียน <span class="n">{{ students | length }}</span>
+    </button>
+    <button type="button" class="tabbtn" data-go="sessions">
+      <i>📅</i> คาบเรียน <span class="n">{{ sessions | length }}</span>
+    </button>
+    <button type="button" class="tabbtn" data-go="quizzes">
+      <i>🧩</i> แบบฝึกหัด <span class="n">{{ quizzes | length }}</span>
+    </button>
+    <button type="button" class="tabbtn" data-go="exams">
+      <i>📝</i> การสอบ <span class="n">{{ exams | length }}</span>
+    </button>
+    <button type="button" class="tabbtn" data-go="homework">
+      <i>📚</i> การบ้าน <span class="n">{{ homeworks | length }}</span>
+    </button>
+    <button type="button" class="tabbtn" data-go="materials">
+      <i>📎</i> เอกสาร <span class="n">{{ materials | length }}</span>
+    </button>
+    <button type="button" class="tabbtn" data-go="courses">
+      <i>🧾</i> คอร์สเรียน <span class="n">{{ all_courses | length }}</span>
+    </button>
+    <button type="button" class="tabbtn" data-go="news">
+      <i>📣</i> ประกาศ <span class="n">{{ announcements | length }}</span>
+    </button>
+  </nav>
 
   {% if saved %}
   <div class="flash">✓ บันทึกเรียบร้อยแล้วค่ะ</div>
@@ -25,7 +58,7 @@
   {% endif %}
 
   <!-- ══════ รออนุมัติ ══════ -->
-  <section class="panel">
+  <section class="panel" data-tab="approve" id="approve">
     <h2><i>🔔</i> ผู้ปกครองรออนุมัติ
       {% if pending %}<span class="badge">{{ pending | length }}</span>{% endif %}
     </h2>
@@ -51,7 +84,7 @@
   </section>
 
   <!-- ══════ คำขอลงคอร์ส ══════ -->
-  <section class="panel">
+  <section class="panel" data-tab="approve">
     <h2><i>🎒</i> คำขอลงคอร์สจากผู้ปกครอง
       {% if enroll_requests %}<span class="badge">{{ enroll_requests | length }}</span>{% endif %}
     </h2>
@@ -83,7 +116,7 @@
   </section>
 
   <!-- ══════ จัดการคอร์ส ══════ -->
-  <section class="panel" id="courses">
+  <section class="panel" data-tab="courses" id="courses">
     <h2><i>🧾</i> คอร์สเรียนทั้งหมด
       {% if all_courses %}<span class="badge">{{ all_courses | length }}</span>{% endif %}
     </h2>
@@ -178,7 +211,7 @@
     </details>
   </section>
   <!-- ══════ คาบเรียน + เช็คชื่อ ══════ -->
-  <section class="panel" id="sessions">
+  <section class="panel" data-tab="sessions" id="sessions">
     <h2><i>📅</i> คาบเรียน &amp; เช็คชื่อ
       {% if sessions %}<span class="badge">{{ sessions | length }}</span>{% endif %}
     </h2>
@@ -250,7 +283,7 @@
   </section>
 
   <!-- ══════ การสอบ + คะแนน ══════ -->
-  <section class="panel" id="exams">
+  <section class="panel" data-tab="exams" id="exams">
     <h2><i>📝</i> การสอบ &amp; คะแนน
       {% if exams %}<span class="badge">{{ exams | length }}</span>{% endif %}
     </h2>
@@ -303,7 +336,7 @@
   </section>
 
   <!-- ══════ แบบฝึกหัดออนไลน์ ══════ -->
-  <section class="panel" id="quizzes">
+  <section class="panel" data-tab="quizzes" id="quizzes">
     <h2><i>🧩</i> แบบฝึกหัดออนไลน์
       {% if quizzes %}<span class="badge">{{ quizzes | length }}</span>{% endif %}
     </h2>
@@ -364,7 +397,7 @@
   </section>
 
   <!-- ══════ การบ้าน ══════ -->
-  <section class="panel" id="homework">
+  <section class="panel" data-tab="homework" id="homework">
     <h2><i>📚</i> การบ้าน
       {% if homeworks %}<span class="badge">{{ homeworks | length }}</span>{% endif %}
     </h2>
@@ -433,7 +466,7 @@
   </section>
 
   <!-- ══════ เอกสารประกอบการเรียน ══════ -->
-  <section class="panel" id="materials">
+  <section class="panel" data-tab="materials" id="materials">
     <h2><i>📎</i> เอกสารประกอบการเรียน
       {% if materials %}<span class="badge">{{ materials | length }}</span>{% endif %}
     </h2>
@@ -493,7 +526,7 @@
   </section>
 
   <!-- ══════ ประกาศ ══════ -->
-  <section class="panel" id="news">
+  <section class="panel" data-tab="news" id="news">
     <h2><i>📣</i> ประกาศถึงผู้ปกครอง
       {% if announcements %}<span class="badge">{{ announcements | length }}</span>{% endif %}
     </h2>
@@ -524,8 +557,41 @@
   </section>
 
   <!-- ══════ นักเรียนทั้งหมด ══════ -->
-  <section class="panel">
+  <section class="panel" data-tab="students" id="students">
     <h2><i>👧</i> นักเรียนทั้งหมด <span class="badge">{{ students | length }}</span></h2>
+    <p class="muted" style="margin-top:-.6rem;margin-bottom:1rem">
+      เพิ่มนักเรียนได้เมื่อผู้ปกครองสมัครและได้รับอนุมัติแล้ว —
+      ผู้ปกครอง 1 คนมีลูกได้หลายคน
+    </p>
+
+    <details class="newbox">
+      <summary>+ เพิ่มนักเรียนใหม่</summary>
+      <form method="post" action="/admin/student">
+        <div class="grid4">
+          <label>ผู้ปกครอง <b class="req">*</b>
+            <select name="parent_id" required>
+              <option value="">— เลือกผู้ปกครอง —</option>
+              {% for pa in parent_options %}
+              <option value="{{ pa.id }}">{{ pa.full_name }}{% if pa.phone %} · {{ pa.phone }}{% endif %}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>ชื่อเล่น <b class="req">*</b>
+            <input type="text" name="nickname" required placeholder="เช่น น้องมิ้น">
+          </label>
+          <label>ชื่อ-นามสกุล
+            <input type="text" name="full_name" placeholder="ไม่บังคับ">
+          </label>
+          <label>ระดับชั้น
+            <select name="level">
+              {% for lv in levels %}<option>{{ lv }}</option>{% endfor %}
+            </select>
+          </label>
+        </div>
+        <button class="btn btn-primary btn-sm">เพิ่มนักเรียน</button>
+      </form>
+    </details>
+
     {% if students %}
     {% for s in students %}
     <form method="post" action="/admin/student/{{ s.id }}" class="stu">
@@ -549,10 +615,35 @@
         </label>
         <label>คอร์สหมดอายุ<input type="date" name="course_expiry" value="{{ s.course_expiry or '' }}"></label>
       </div>
-      <button class="btn btn-ghost btn-sm">บันทึก</button>
+      <div class="stu-foot">
+        <button class="btn btn-primary btn-sm">บันทึกการแก้ไข</button>
+      </div>
+    </form>
+    <form method="post" action="/admin/student/{{ s.id }}/delete" class="stu-del"
+          onsubmit="return confirm('ลบนักเรียน “{{ s.nickname }}” ?\n\nถ้ามีประวัติเรียนอยู่แล้ว ระบบจะย้ายไปเป็น “ไม่ใช้งาน” แทน เพื่อไม่ให้ประวัติหาย')">
+      <button class="btn btn-ghost btn-sm btn-del">ลบนักเรียนคนนี้</button>
     </form>
     {% endfor %}
     {% else %}<p class="empty">ยังไม่มีนักเรียนในระบบ</p>{% endif %}
+
+    {% if archived_students %}
+    <details class="newbox" style="margin-top:1.2rem">
+      <summary>นักเรียนที่ไม่ใช้งานแล้ว ({{ archived_students | length }})</summary>
+      <div class="rows" style="padding:0 1rem 1rem">
+        {% for s in archived_students %}
+        <div class="row">
+          <div class="body">
+            <b>{{ s.nickname }}</b>
+            <span>{{ s.code }} · {{ s.level }} · ผู้ปกครอง {{ s.parent_name }}</span>
+          </div>
+          <form method="post" action="/admin/student/{{ s.id }}/restore" class="inline">
+            <button class="btn btn-ghost btn-sm">กู้คืน</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
   </section>
 
 </main>
@@ -620,6 +711,41 @@
 .stu-head{margin-bottom:.6rem}
 .stu-head b{font-size:1.05rem;margin-right:.5rem}
 .panel form .btn{width:auto;margin-top:.4rem}
+
+/* ── แถบเมนูหน้าจัดการ ──────────────────────────────
+   หน้านี้ยาวมาก เดิมต้องเลื่อนหา จึงแบ่งเป็นหมวดแล้วโชว์ทีละหมวด */
+.adminnav{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:.45rem;
+          padding:.7rem .3rem;margin:0 -.3rem 1.2rem;
+          background:rgba(240,249,255,.93);backdrop-filter:blur(8px);
+          border-bottom:1px solid var(--sky-100);scrollbar-width:thin}
+/* จอแคบ: เรียงแถวเดียวแล้วเลื่อนซ้ายขวา จะได้ไม่กินพื้นที่แนวตั้ง */
+@media(max-width:700px){
+  .adminnav{flex-wrap:nowrap;overflow-x:auto}
+}
+.adminnav::-webkit-scrollbar{height:5px}
+.adminnav::-webkit-scrollbar-thumb{background:#cfe8f8;border-radius:9px}
+.tabbtn{flex:none;display:inline-flex;align-items:center;gap:.4rem;white-space:nowrap;
+        background:#fff;border:1.5px solid var(--sky-100);border-radius:999px;
+        padding:.55rem 1rem;font:inherit;font-size:.93rem;font-weight:600;
+        color:var(--ink-soft);cursor:pointer;transition:.15s}
+.tabbtn i{font-style:normal}
+.tabbtn:hover{border-color:var(--sky-200);color:var(--sky-700)}
+.tabbtn.on{background:var(--sky-600);border-color:var(--sky-600);color:#fff;
+           box-shadow:0 4px 12px rgba(38,165,224,.28)}
+.tabbtn .n{background:var(--sky-50);color:var(--sky-700);border-radius:999px;
+           padding:.05rem .45rem;font-size:.78rem;font-weight:700}
+.tabbtn .n.hot{background:#FFE9E4;color:#C2453C}
+.tabbtn.on .n{background:rgba(255,255,255,.25);color:#fff}
+/* สำคัญ: .panel ตั้ง display ไว้ ถ้าไม่เขียนบรรทัดนี้ [hidden] จะแพ้ แล้วโชว์ทุกหมวดพร้อมกัน */
+section[data-tab][hidden]{display:none !important}
+@media(max-width:600px){
+  .tabbtn{padding:.5rem .8rem;font-size:.86rem}
+}
+
+/* ── การ์ดนักเรียน ── */
+.stu-foot{display:flex;gap:.5rem;align-items:center;margin-top:.3rem}
+.stu-del{margin:-.45rem 0 .9rem;text-align:right}
+.stu-del .btn{width:auto}
 </style>
 
 <script>
@@ -688,6 +814,56 @@ document.querySelectorAll('.upform').forEach(function (form) {
     img.src = url;
   });
 });
+</script>
+
+<script>
+/* แถบเมนู — โชว์ทีละหมวด จำหมวดล่าสุดไว้ และรับค่าจาก #anchor ตอนบันทึกเสร็จ */
+(function () {
+  var nav = document.getElementById('adminnav');
+  if (!nav) return;
+  var btns = [].slice.call(nav.querySelectorAll('.tabbtn'));
+  var secs = [].slice.call(document.querySelectorAll('section[data-tab]'));
+  if (!btns.length || !secs.length) return;
+
+  var names = btns.map(function (b) { return b.getAttribute('data-go'); });
+
+  function show(name, remember) {
+    if (names.indexOf(name) < 0) name = names[0];
+    secs.forEach(function (sec) {
+      sec.hidden = (sec.getAttribute('data-tab') !== name);
+    });
+    btns.forEach(function (b) {
+      var on = b.getAttribute('data-go') === name;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-current', on ? 'true' : 'false');
+      if (on) b.scrollIntoView({block: 'nearest', inline: 'nearest'});
+    });
+    if (remember) {
+      try { localStorage.setItem('bka_admin_tab', name); } catch (e) {}
+    }
+  }
+
+  btns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      var name = b.getAttribute('data-go');
+      show(name, true);
+      if (history.replaceState) history.replaceState(null, '', '#' + name);
+      else location.hash = name;
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    });
+  });
+
+  // เปิดหน้า: ใช้ #anchor ก่อน (ระบบส่งกลับมาหลังบันทึก) ไม่มีค่อยใช้หมวดล่าสุด
+  var start = (location.hash || '').slice(1);
+  if (!start) {
+    try { start = localStorage.getItem('bka_admin_tab') || ''; } catch (e) {}
+  }
+  show(start, false);
+
+  window.addEventListener('hashchange', function () {
+    show((location.hash || '').slice(1), true);
+  });
+})();
 </script>
 
 {% endblock %}

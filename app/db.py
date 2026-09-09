@@ -305,6 +305,58 @@ def update_student(student_id: str, values: dict) -> None:
         update("students", clean, id=f"eq.{student_id}")
 
 
+def add_student(parent_id: str, nickname: str, level: str,
+                full_name: str = "") -> dict:
+    """เพิ่มนักเรียนใหม่เข้าใต้ผู้ปกครองที่มีอยู่แล้ว — ออกรหัสให้อัตโนมัติ"""
+    nickname = (nickname or "").strip()
+    if not nickname:
+        raise SupabaseError("กรุณากรอกชื่อเล่นของนักเรียน")
+    if not parent_id:
+        raise SupabaseError("กรุณาเลือกผู้ปกครองของนักเรียนคนนี้")
+
+    rows = insert("students", {
+        "code": next_student_code(),
+        "parent_id": parent_id,
+        "nickname": nickname,
+        "full_name": (full_name or "").strip() or None,
+        "level": level,
+    })
+    return rows[0] if rows else {}
+
+
+def remove_student(student_id: str) -> str:
+    """
+    ลบนักเรียน — ถ้ายังมีประวัติผูกอยู่จะลบทิ้งไม่ได้ (ประวัติจะหาย)
+    กรณีนั้นให้ย้ายไปเป็น "ไม่ใช้งาน" แทน เก็บประวัติไว้ครบแต่ไม่แสดงในรายชื่อ
+
+    คืนค่า "deleted" หรือ "archived" เพื่อบอกผู้ใช้ว่าเกิดอะไรขึ้น
+    """
+    sid = f"eq.{student_id}"
+    linked = (
+        select("attendance", "id", student_id=sid, limit=1)
+        or select("scores", "id", student_id=sid, limit=1)
+        or select("homework", "id", student_id=sid, limit=1)
+        or select("enrollments", "id", student_id=sid, limit=1)
+        or select("quiz_attempts", "id", student_id=sid, limit=1)
+        or select("homework_submissions", "id", student_id=sid, limit=1)
+    )
+    if linked:
+        update("students", {"active": False}, id=sid)
+        return "archived"
+    delete("students", id=sid)
+    return "deleted"
+
+
+def restore_student(student_id: str) -> None:
+    update("students", {"active": True}, id=f"eq.{student_id}")
+
+
+def list_parents_simple() -> list[dict]:
+    """รายชื่อผู้ปกครองสำหรับให้เลือกตอนเพิ่มนักเรียน"""
+    rows = select("parents", "id,full_name,phone,status", order="full_name.asc")
+    return [r for r in rows if r.get("status") == "active"] or rows
+
+
 def recalc_hours_used(student_id: str) -> float:
     """คำนวณชั่วโมงที่ใช้ไปใหม่ทั้งหมด จากประวัติเข้าเรียนจริง
 

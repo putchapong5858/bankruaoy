@@ -412,6 +412,8 @@ def admin(request: Request, saved: str = "", err: str = ""):
     # หน้าแอดมินดึงข้อมูลสิบกว่าชุด — ยิงพร้อมกันแทนการรอทีละชุด
     got = db.gather(
         students=db.list_students,
+        all_students=lambda: db.list_students(active_only=False),
+        parent_options=db.list_parents_simple,
         pending=lambda: db.list_parents("pending"),
         enroll_requests=db.list_enrollment_requests,
         all_courses=db.list_all_courses,
@@ -435,6 +437,9 @@ def admin(request: Request, saved: str = "", err: str = ""):
         materials=got["materials"],
         announcements=got["announcements"],
         students=got["students"],
+        # นักเรียนที่ถูกย้ายไป "ไม่ใช้งาน" — แสดงแยกไว้ให้กู้คืนได้
+        archived_students=[s for s in got["all_students"] if not s.get("active")],
+        parent_options=got["parent_options"],
         levels=config.LEVELS,
         payment_statuses=config.PAYMENT_STATUSES,
         attendance_statuses=config.ATTENDANCE_STATUSES,
@@ -561,7 +566,52 @@ def admin_student(
         "payment_status": payment_status,
         "course_expiry": course_expiry or None,
     })
-    return RedirectResponse("/admin?saved=student", status_code=303)
+    return _back("students", "student")
+
+
+@app.post("/admin/student")
+def admin_student_new(
+    request: Request,
+    parent_id: str = Form(""),
+    nickname: str = Form(""),
+    full_name: str = Form(""),
+    level: str = Form(""),
+):
+    """เพิ่มนักเรียนใหม่ใต้ผู้ปกครองที่มีอยู่แล้ว"""
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    try:
+        db.add_student(parent_id, nickname, level, full_name)
+    except db.SupabaseError as exc:
+        return _back("students", err=str(exc))
+    return _back("students", "student")
+
+
+@app.post("/admin/student/{student_id}/delete")
+def admin_student_delete(request: Request, student_id: str):
+    """ลบนักเรียน — ถ้ามีประวัติผูกอยู่จะย้ายไปเป็น 'ไม่ใช้งาน' แทน"""
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    try:
+        result = db.remove_student(student_id)
+    except db.SupabaseError as exc:
+        return _back("students", err=str(exc))
+    if result == "archived":
+        return _back("students", err="นักเรียนคนนี้มีประวัติเรียนอยู่แล้ว "
+                                     "ระบบจึงย้ายไปเป็น “ไม่ใช้งาน” แทนการลบ "
+                                     "เพื่อไม่ให้ประวัติหาย")
+    return _back("students", "deleted")
+
+
+@app.post("/admin/student/{student_id}/restore")
+def admin_student_restore(request: Request, student_id: str):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    db.restore_student(student_id)
+    return _back("students", "student")
 
 
 @app.post("/admin/announcement")
@@ -578,7 +628,7 @@ def admin_announcement(
         "title": title.strip(), "body": body.strip(),
         "show_until": show_until or None,
     })
-    return RedirectResponse("/admin?saved=announcement", status_code=303)
+    return _back("news", "announcement")
 
 
 @app.post("/admin/announcement/{announcement_id}/delete")
