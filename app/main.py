@@ -979,7 +979,8 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
             await upload.read(), upload.filename, upload.content_type or ""
         )
 
-    if kind in ("choice", "truefalse"):
+    if kind in ("choice", "truefalse", "model3d"):
+        # โจทย์ 3 มิติใช้ตัวเลือกแบบเดียวกับข้อเลือกตอบ ต่างแค่มีรูปทรงให้ดู
         labels = form.getlist("opt_label")
         images = form.getlist("opt_image")
         try:
@@ -1045,6 +1046,7 @@ def admin_quiz_edit(request: Request, quiz_id: str, saved: str = "", err: str = 
                 questions=quiz.list_questions(quiz_id),
                 levels=config.LEVELS,
                 icon_sets=quiz.ICON_SETS,
+                models=quiz.MODELS,
                 ai_ready=gemini.is_ready(),
                 saved=saved, err=err)
 

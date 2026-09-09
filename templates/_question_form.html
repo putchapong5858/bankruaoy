@@ -2,7 +2,7 @@
    ฟอร์มเพิ่ม/แก้ไขคำถาม 1 ข้อ — ใช้ร่วมกันทั้งตอนเพิ่มและตอนแก้
    q = None คือเพิ่มข้อใหม่
    ───────────────────────────────────────────────────────── #}
-{% macro question_form(quiz, q, icon_sets={}) %}
+{% macro question_form(quiz, q, icon_sets={}, models={}) %}
 {% set opts = (q.options if q else []) %}
 {% set kind = (q.kind if q else 'choice') %}
 <form class="qform" method="post" enctype="multipart/form-data"
@@ -16,6 +16,7 @@
         <option value="fill"      {{ 'selected' if kind == 'fill' }}>เติมคำตอบ</option>
         <option value="match"     {{ 'selected' if kind == 'match' }}>จับคู่</option>
         <option value="count"     {{ 'selected' if kind == 'count' }}>นับจำนวน (Count &amp; Match)</option>
+        <option value="model3d"   {{ 'selected' if kind == 'model3d' }}>รูปทรง 3 มิติ / ส่องกล้อง AR</option>
       </select>
     </label>
     <label>คะแนนของข้อนี้
@@ -42,7 +43,7 @@
   </label>
 
   {# ───── เลือกตอบ / ถูกผิด ───── #}
-  <div class="kindbox" data-for="choice,truefalse">
+  <div class="kindbox" data-for="choice,truefalse,model3d">
     <p class="muted" style="font-size:.88rem;margin:.3rem 0">
       กรอกตัวเลือกแล้วกดวงกลมหน้าข้อที่เป็นคำตอบที่ถูก (เว้นว่างไว้ = ไม่ใช้ตัวเลือกนั้น)<br>
       ถ้าใส่รูปให้ <b>ครบทุกตัวเลือก</b> ระบบจะแสดงเป็นการ์ดรูปใหญ่ให้เด็กกดเลือก
@@ -109,6 +110,32 @@
 
     <p class="muted" style="font-size:.85rem;margin:.6rem 0 0">
       ถ้าอยากใช้รูปของตัวเอง ให้วางลิงก์รูป (ขึ้นต้นด้วย https://) ในช่องรูปแทนอีโมจิได้
+    </p>
+  </div>
+
+
+  {# ───── รูปทรง 3 มิติ / AR ───── #}
+  <div class="kindbox" data-for="model3d">
+    <p class="muted" style="font-size:.88rem;margin:.3rem 0">
+      เด็กจะเห็นรูปทรงลอยอยู่ หมุนดูรอบตัวได้ด้วยนิ้ว และกดปุ่มส่องกล้อง
+      วางรูปทรงลงบนโต๊ะจริงได้ (มือถือ Android และ iPhone รุ่นใหม่) —
+      แล้วตอบคำถามจากตัวเลือกด้านบน
+    </p>
+    <div class="modelpick">
+      {% for slug, m in models.items() %}
+      <label class="mopt">
+        <input type="radio" name="icon" value="{{ slug }}"
+               {{ 'checked' if q and q.kind == 'model3d' and q.icon == slug }}>
+        <span class="mbox">
+          <b>{{ m.name }}</b>
+          <small>{{ m.facts }}</small>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    <p class="muted" style="font-size:.85rem;margin:.6rem 0 0">
+      ตัวอย่างโจทย์: “รูปทรงนี้มีกี่หน้า” · “รูปทรงนี้ชื่ออะไร” ·
+      “ของใช้ในบ้านชิ้นไหนเป็นรูปทรงนี้”
     </p>
   </div>
 

@@ -350,7 +350,7 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
 
       <details class="editbox">
         <summary>แก้ไขข้อนี้</summary>
-        {{ question_form(quiz, q, icon_sets) }}
+        {{ question_form(quiz, q, icon_sets, models) }}
       </details>
     </div>
     {% else %}
@@ -361,7 +361,7 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
   <!-- ══════ เพิ่มข้อใหม่ ══════ -->
   <section class="panel" id="add">
     <h2><i>➕</i> เพิ่มคำถามใหม่</h2>
-    {{ question_form(quiz, none, icon_sets) }}
+    {{ question_form(quiz, none, icon_sets, models) }}
   </section>
 
 </main>
@@ -411,6 +411,17 @@ img.cico{height:28px;width:auto}
 .aitab.on{background:var(--sky-600);border-color:var(--sky-600);color:#fff}
 .aibox[hidden]{display:none}
 .aibox textarea{min-height:130px}
+
+/* ── เลือกรูปทรง 3 มิติ ── */
+.modelpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.5rem}
+.mopt{margin:0;cursor:pointer}
+.mopt input{position:absolute;opacity:0;width:0;height:0}
+.mbox{display:block;border:2px solid var(--sky-100);border-radius:14px;
+      padding:.6rem .75rem;background:#fff;transition:.15s}
+.mbox b{display:block;font-size:.95rem}
+.mbox small{color:var(--ink-soft);font-size:.78rem}
+.mopt input:checked + .mbox{border-color:var(--sky-600);background:#eef8ff;
+      box-shadow:0 0 0 3px rgba(38,165,224,.15)}
 </style>
 
 <script>
@@ -420,14 +431,20 @@ function bindKind(form){
   if(!sel) return;
   function show(){
     form.querySelectorAll('.kindbox').forEach(function(box){
-      box.classList.toggle('on', box.dataset.for.split(',').indexOf(sel.value) >= 0);
+      var on = box.dataset.for.split(',').indexOf(sel.value) >= 0;
+      box.classList.toggle('on', on);
+      // ปิดช่องที่ซ่อนอยู่ ไม่งั้นค่าจะถูกส่งไปด้วย —
+      // สำคัญมากเพราะ "นับจำนวน" กับ "รูปทรง 3 มิติ" ใช้ชื่อช่อง icon เหมือนกัน
+      box.querySelectorAll('input,select,textarea').forEach(function(f){
+        f.disabled = !on;
+      });
     });
   }
   sel.addEventListener('change', show);
   show();
 
   // ปุ่มอีโมจิ — กดแล้วเติมลงช่อง "รูปที่ให้นับ" ให้เลย ไม่ต้องพิมพ์เอง
-  var iconInput = form.querySelector('input[name=icon]');
+  var iconInput = form.querySelector('.kindbox[data-for=count] input[name=icon]');
   form.querySelectorAll('.iconbtn').forEach(function(b){
     b.addEventListener('click', function(){
       if(iconInput){ iconInput.value = b.dataset.icon; iconInput.focus(); }

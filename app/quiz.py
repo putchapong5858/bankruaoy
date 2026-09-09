@@ -30,10 +30,11 @@ KINDS = {
     "fill":      "เติมคำตอบ",
     "match":     "จับคู่",
     "count":     "นับจำนวน",
+    "model3d":   "รูปทรง 3 มิติ / AR",
 }
 
 # รูปแบบที่ตรวจคำตอบเหมือนกัน คือเลือกตัวเลือกที่ถูก 1 ตัว
-PICK_KINDS = ("choice", "truefalse", "count")
+PICK_KINDS = ("choice", "truefalse", "count", "model3d")
 
 # อีโมจิยอดนิยมสำหรับโจทย์นับจำนวน — ครูกดเลือกได้เลยไม่ต้องพิมพ์
 ICON_SETS = {
@@ -43,6 +44,31 @@ ICON_SETS = {
     "ของใช้":       ["✏️", "📕", "🎒", "✂️", "🖍️", "📐", "🧴", "🪁"],
     "รูปทรง/ดาว":    ["⭐", "❤️", "🔵", "🔺", "🟩", "🌸", "🎈", "🍬"],
 }
+
+# ── รูปทรง 3 มิติสำหรับโจทย์แบบ AR ──────────────────────────
+# ไฟล์ .glb ใช้กับ Android และการหมุนดูบนจอ, .usdz ใช้กับ iPhone/iPad
+# สร้างขึ้นเองทั้งหมด ไม่ติดลิขสิทธิ์ใคร
+MODELS = {
+    "cube":      {"name": "ลูกบาศก์",       "en": "Cube",
+                  "facts": "6 หน้า · 12 ขอบ · 8 มุม"},
+    "box":       {"name": "ทรงสี่เหลี่ยมมุมฉาก", "en": "Cuboid",
+                  "facts": "6 หน้า · 12 ขอบ · 8 มุม"},
+    "sphere":    {"name": "ทรงกลม",         "en": "Sphere",
+                  "facts": "ไม่มีหน้าเหลี่ยม ไม่มีขอบ ไม่มีมุม"},
+    "cylinder":  {"name": "ทรงกระบอก",      "en": "Cylinder",
+                  "facts": "2 หน้าวงกลม · ผิวโค้ง 1 ผิว"},
+    "cone":      {"name": "กรวย",           "en": "Cone",
+                  "facts": "1 หน้าวงกลม · ยอดแหลม 1 จุด"},
+    "pyramid":   {"name": "พีระมิดฐานสี่เหลี่ยม", "en": "Pyramid",
+                  "facts": "5 หน้า · 8 ขอบ · 5 มุม"},
+    "tri_prism": {"name": "ปริซึมสามเหลี่ยม", "en": "Triangular prism",
+                  "facts": "5 หน้า · 9 ขอบ · 6 มุม"},
+}
+
+
+def model_url(slug: str, ios: bool = False) -> str:
+    return "/static/models/%s.%s" % (slug, "usdz" if ios else "glb")
+
 
 STATUSES = {
     "draft":     "ฉบับร่าง",
@@ -264,6 +290,11 @@ def save_question(quiz_id: str | int, data: dict,
 
     if kind == "fill" and not accepted:
         raise SupabaseError("ข้อเติมคำต้องมีคำตอบที่ถูกต้องอย่างน้อย 1 คำตอบ")
+    if kind == "model3d":
+        if icon not in MODELS:
+            raise SupabaseError("กรุณาเลือกรูปทรง 3 มิติที่จะให้เด็กดู")
+        if len(options) < 2:
+            raise SupabaseError("ต้องมีตัวเลือกอย่างน้อย 2 ตัวเลือก")
     if kind in ("choice", "truefalse"):
         if len(options) < 2:
             raise SupabaseError("ต้องมีตัวเลือกอย่างน้อย 2 ตัวเลือก")
@@ -522,7 +553,13 @@ def public_questions(questions: list[dict]) -> list[dict]:
             "hint": q.get("hint"),
             "points": float(q.get("points") or 1),
             # โจทย์นับจำนวน — ส่งรูปกับจำนวนไปให้หน้าเว็บวาดแถวรูปเอง
-            "icon": q.get("icon") if q.get("kind") == "count" else None,
+            "icon": q.get("icon") if q.get("kind") in ("count", "model3d") else None,
+            "model": (MODELS.get(q.get("icon") or "") or None)
+                     if q.get("kind") == "model3d" else None,
+            "model_url": model_url(q["icon"]) if q.get("kind") == "model3d"
+                         and q.get("icon") in MODELS else None,
+            "model_ios": model_url(q["icon"], True) if q.get("kind") == "model3d"
+                         and q.get("icon") in MODELS else None,
             "icon_count": q.get("icon_count") if q.get("kind") == "count" else None,
             "options": [
                 {"id": o["id"], "label": o["label"], "image_url": o.get("image_url")}

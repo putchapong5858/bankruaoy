@@ -74,6 +74,11 @@
   </div>
 </div>
 
+{% if questions | selectattr("model_url") | list %}
+{# ตัวแสดงผล 3 มิติ + ส่องกล้อง AR ของ Google — โหลดเฉพาะชุดที่มีโจทย์แบบนี้ #}
+<script type="module"
+        src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
+{% endif %}
 <script id="quiz-data" type="application/json">{{ questions | tojson }}</script>
 <script>
 (function () {
@@ -279,6 +284,41 @@
       });
 
     } else {
+      // โจทย์รูปทรง 3 มิติ — หมุนดูได้ และกดส่องกล้องวางบนโต๊ะจริงได้
+      if (q.kind === "model3d" && q.model_url) {
+        var mv = document.createElement("model-viewer");
+        mv.className = "shape3d";
+        mv.setAttribute("src", q.model_url);
+        if (q.model_ios) mv.setAttribute("ios-src", q.model_ios);
+        mv.setAttribute("alt", (q.model && q.model.name) || "รูปทรง 3 มิติ");
+        mv.setAttribute("camera-controls", "");
+        mv.setAttribute("touch-action", "pan-y");
+        mv.setAttribute("auto-rotate", "");
+        mv.setAttribute("rotation-per-second", "18deg");
+        mv.setAttribute("shadow-intensity", "1");
+        mv.setAttribute("environment-image", "neutral");
+        mv.setAttribute("ar", "");
+        mv.setAttribute("ar-modes", "webxr scene-viewer quick-look");
+        mv.setAttribute("ar-scale", "fixed");
+        mv.setAttribute("ar-placement", "floor");
+        mv.innerHTML =
+          '<button slot="ar-button" class="arbtn">📷 ส่องกล้องวางบนโต๊ะ</button>';
+        box.appendChild(mv);
+
+        var tip = document.createElement("p");
+        tip.className = "shapetip";
+        tip.textContent = "ใช้นิ้วลากเพื่อหมุนดูรอบ ๆ ได้เลย";
+        box.appendChild(tip);
+
+        // เผื่ออินเทอร์เน็ตช้าหรือโหลดตัวแสดงผล 3 มิติไม่ได้ — บอกให้รู้ ไม่ปล่อยจอว่าง
+        setTimeout(function () {
+          if (!window.customElements || !customElements.get("model-viewer")) {
+            mv.classList.add("failed");
+            tip.textContent = "โหลดรูปทรง 3 มิติไม่สำเร็จ ลองเช็กอินเทอร์เน็ตแล้วรีเฟรชหน้านี้นะคะ";
+          }
+        }, 7000);
+      }
+
       // โจทย์นับจำนวน — วางรูปให้เด็กนับก่อน แล้วค่อยเป็นปุ่มตัวเลข
       if (q.kind === "count" && q.icon && q.icon_count) {
         var strip = document.createElement("div");
@@ -578,5 +618,19 @@
 @media(prefers-reduced-motion:reduce){
   .opt.on,.q-card.nope{animation:none}
 }
+
+/* ══════ โจทย์รูปทรง 3 มิติ / AR ══════ */
+.shape3d{display:block;width:100%;height:280px;margin:0 0 .5rem;
+         background:linear-gradient(180deg,#f4fbff,#e6f4fd);
+         border:2px solid #dbeefc;border-radius:20px;--poster-color:transparent}
+.arbtn{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
+       background:#26a5e0;color:#fff;border:none;border-radius:999px;
+       padding:.6rem 1.15rem;font:inherit;font-size:.95rem;font-weight:700;
+       cursor:pointer;box-shadow:0 5px 14px rgba(38,165,224,.35);white-space:nowrap}
+.arbtn:active{transform:translateX(-50%) scale(.97)}
+.shapetip{text-align:center;color:#3e6b85;font-size:.86rem;margin:0 0 .9rem}
+.shape3d.failed{display:flex;align-items:center;justify-content:center}
+.shape3d.failed::after{content:"📦";font-size:3rem;opacity:.4}
+@media(max-width:480px){ .shape3d{height:240px} }
 </style>
 {% endblock %}
