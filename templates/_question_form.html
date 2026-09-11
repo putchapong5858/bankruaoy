@@ -2,7 +2,7 @@
    ฟอร์มเพิ่ม/แก้ไขคำถาม 1 ข้อ — ใช้ร่วมกันทั้งตอนเพิ่มและตอนแก้
    q = None คือเพิ่มข้อใหม่
    ───────────────────────────────────────────────────────── #}
-{% macro question_form(quiz, q, icon_sets={}, models={}, model_groups=[]) %}
+{% macro question_form(quiz, q, icon_sets={}, models={}, model_groups=[], vocab=[]) %}
 {% set opts = (q.options if q else []) %}
 {% set kind = (q.kind if q else 'choice') %}
 <form class="qform" method="post" enctype="multipart/form-data"
@@ -142,15 +142,21 @@
     </p>
   </div>
 
-  {# ───── จับคู่ ───── #}
+  {# ───── จับคู่ (ลากเส้น) ───── #}
   <div class="kindbox" data-for="match">
-    <p class="muted" style="font-size:.88rem;margin:.3rem 0">กรอกเป็นคู่ ๆ ฝั่งซ้ายคู่กับฝั่งขวา</p>
-    {% for i in range(4) %}
+    <p class="muted" style="font-size:.88rem;margin:.3rem 0">
+      กรอกเป็นคู่ ๆ ฝั่งซ้ายคู่กับฝั่งขวา — เด็กจะเห็นเป็นสองแถวแล้ว<b>ลากเส้นจับคู่</b>
+      (แตะฝั่งซ้ายแล้วแตะฝั่งขวาก็ได้)<br>
+      ฝั่งขวาใส่ <b>รูป</b> ได้ด้วย เช่น <code>/static/img/vocab/cat.webp</code>
+      — พิมพ์ชื่อคำศัพท์ในช่องขวาแล้วเลือกจากรายการที่ขึ้นมาได้เลย ·
+      ฝั่งขวาห้ามซ้ำกัน · ใส่ได้มากที่สุด 8 คู่ (ถ้ามีเยอะกว่านี้ให้แยกเป็นหลายข้อ)
+    </p>
+    {% for i in range(8) %}
     {% set o = opts[i] if opts | length > i else None %}
     <div class="optrow" style="grid-template-columns:1fr 1fr">
       <input type="text" name="match_left" placeholder="ฝั่งซ้าย {{ i + 1 }}"
              value="{{ o.label if o and kind == 'match' else '' }}">
-      <input type="text" name="match_right" placeholder="คู่กับ"
+      <input type="text" name="match_right" list="vocabpics" placeholder="คู่กับ (ข้อความ หรือรูป)"
              value="{{ o.match_value or '' if o and kind == 'match' else '' }}">
     </div>
     {% endfor %}

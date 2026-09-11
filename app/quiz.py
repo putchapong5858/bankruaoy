@@ -36,6 +36,37 @@ KINDS = {
 # รูปแบบที่ตรวจคำตอบเหมือนกัน คือเลือกตัวเลือกที่ถูก 1 ตัว
 PICK_KINDS = ("choice", "truefalse", "count", "model3d")
 
+
+# ── คลังรูปคำศัพท์ที่มีอยู่แล้วใน static/img/vocab ─────────────
+# ใช้ทำช่องเลือกรูปให้ครูในหน้าจัดการข้อ (พิมพ์ไม่กี่ตัวอักษรแล้วเลือกได้เลย)
+# เก็บเป็นรายชื่อไว้ในโค้ด เพราะฟังก์ชันบน Vercel ไม่ได้แนบโฟลเดอร์ static ไปด้วย
+VOCAB_WORDS = [
+    "ant", "bag", "ball", "banana", "bear", "bee", "bicycle", "bin", "bird",
+    "boat", "book", "boy", "bus", "butterfly", "can", "car", "cat", "chicken",
+    "cook", "cow", "cup", "doctor", "dog", "duck", "eat", "elephant", "fan",
+    "farmer", "finger", "fish", "frog", "giraffe", "girl", "goat", "hat",
+    "hen", "horse", "knee", "lion", "mango", "monkey", "mouse", "mouth",
+    "neck", "nose", "nurse", "orange", "pen", "pencil", "pig", "rabbit",
+    "rice", "ruler", "run", "sheep", "shoes", "shorts", "skirt", "sleep",
+    "snail", "snake", "socks", "spider", "sun", "teacher", "teeth", "tiger",
+    "train", "turtle", "van", "whale", "window", "zebra",
+]
+
+
+def vocab_images() -> list[dict]:
+    """รายการรูปคำศัพท์ [{word, url}] เรียงตามตัวอักษร"""
+    return [{"word": w, "url": f"/static/img/vocab/{w}.webp"} for w in VOCAB_WORDS]
+
+
+def is_image_value(value) -> bool:
+    """ค่านี้เป็นลิงก์รูปหรือเปล่า — ใช้กับข้อจับคู่ที่ฝั่งขวาเป็นรูปภาพ
+
+    ข้อจับคู่เก็บฝั่งขวาไว้ในคอลัมน์ match_value เป็นข้อความ
+    ถ้าครูใส่เป็นพาธรูป (เช่น /static/img/vocab/cat.webp) หน้าเด็กจะวาดเป็นรูปแทนตัวหนังสือ
+    """
+    text = str(value or "").strip()
+    return bool(re.match(r"^(https?://|/)\S+\.(png|jpe?g|gif|webp|svg)$", text, re.I))
+
 # อีโมจิยอดนิยมสำหรับโจทย์นับจำนวน — ครูกดเลือกได้เลยไม่ต้องพิมพ์
 ICON_SETS = {
     "เครื่องมือช่าง": ["🔧", "🔨", "🪛", "🪚", "📏", "🧰", "🔩", "⚙️"],
@@ -323,8 +354,15 @@ def save_question(quiz_id: str | int, data: dict,
             raise SupabaseError("ต้องมีตัวเลือกอย่างน้อย 2 ตัวเลือก")
         if not any(o["is_correct"] for o in options):
             raise SupabaseError("กรุณาเลือกว่าข้อไหนคือคำตอบที่ถูกต้อง")
-    if kind == "match" and len(options) < 2:
-        raise SupabaseError("ข้อจับคู่ต้องมีอย่างน้อย 2 คู่")
+    if kind == "match":
+        if len(options) < 2:
+            raise SupabaseError("ข้อจับคู่ต้องมีอย่างน้อย 2 คู่")
+        if len(options) > 8:
+            raise SupabaseError("ข้อจับคู่ใส่ได้มากที่สุด 8 คู่ — ถ้ามีเยอะกว่านี้ให้แยกเป็นหลายข้อ")
+        # ฝั่งขวาห้ามซ้ำกัน ไม่งั้นเด็กลากไปการ์ดไหนก็ถูกหมด แยกไม่ออกว่าคู่ไหนเป็นคู่ไหน
+        rights = [_normalize(o.get("match_value") or "") for o in options]
+        if len(set(rights)) != len(rights):
+            raise SupabaseError("ฝั่งขวาของข้อจับคู่ห้ามซ้ำกัน กรุณาแก้ให้ต่างกันทุกคู่")
 
     if question_id:
         update("quiz_questions", fields, id=f"eq.{question_id}")
@@ -472,9 +510,37 @@ def correct_answer_text(question: dict) -> str:
     if kind == "fill":
         return " หรือ ".join(question.get("accepted") or [])
     if kind == "match":
+        # ฝั่งขวาเป็นรูป — บอกเป็นตัวหนังสือไม่ได้ (จะกลายเป็นพาธไฟล์ยาว ๆ)
+        # หน้าเด็กจะวาดเส้นเฉลยให้ดูแทน ดู match_answer_pairs()
+        if any(is_image_value(o.get("match_value")) for o in options):
+            return ""
         return " · ".join(f"{o['label']} คู่กับ {o.get('match_value') or ''}"
                           for o in options)
     return ""
+
+
+def match_pair_results(question: dict, given) -> dict:
+    """ข้อจับคู่ — บอกว่าเส้นที่เด็กลากไว้ คู่ไหนถูกคู่ไหนผิด
+
+    คืน {option_id: True/False} ใช้ระบายสีเส้นให้เด็กเห็นว่าพลาดตรงไหน
+    (ไม่ใช่การบอกเฉลย — เป็นการบอกผลของคำตอบที่เด็กส่งมาเองเท่านั้น)
+    """
+    if (question.get("kind") or "") != "match" or not isinstance(given, dict):
+        return {}
+    out = {}
+    for o in question.get("options") or []:
+        oid = str(o["id"])
+        out[oid] = (_normalize(str(given.get(oid, "")))
+                    == _normalize(o.get("match_value") or ""))
+    return out
+
+
+def match_answer_pairs(question: dict) -> dict:
+    """เฉลยของข้อจับคู่ {option_id: ค่าฝั่งขวาที่ถูก} — ส่งให้หน้าเด็ก "หลัง" ตอบแล้วเท่านั้น"""
+    if (question.get("kind") or "") != "match":
+        return {}
+    return {str(o["id"]): (o.get("match_value") or "")
+            for o in question.get("options") or []}
 
 
 # ════════════════════════════════════════════════════════

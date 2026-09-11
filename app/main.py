@@ -1048,6 +1048,7 @@ def admin_quiz_edit(request: Request, quiz_id: str, saved: str = "", err: str = 
                 icon_sets=quiz.ICON_SETS,
                 models=quiz.MODELS,
                 model_groups=quiz.MODEL_GROUPS,
+                vocab=quiz.vocab_images(),
                 ai_ready=gemini.is_ready(),
                 saved=saved, err=err)
 
@@ -1448,11 +1449,17 @@ async def quiz_answer(request: Request, attempt_id: str):
 
     item = quiz.get_quiz(attempt["quiz_id"]) or {}
     reveal = bool(item.get("show_answer_on_wrong")) and not correct
-    return JSONResponse({
+    payload = {
         "correct": correct,
         "answer": quiz.correct_answer_text(question) if reveal else "",
         "explanation": (question.get("explanation") or "") if reveal else "",
-    })
+    }
+    if (question.get("kind") or "") == "match":
+        # ข้อจับคู่ — บอกว่าเส้นไหนที่เด็กลากไว้ถูก/ผิด (เป็นผลของคำตอบเขาเอง)
+        payload["pairs"] = quiz.match_pair_results(question, given)
+        if reveal:
+            payload["answer_pairs"] = quiz.match_answer_pairs(question)
+    return JSONResponse(payload)
 
 
 @app.post("/quiz/{attempt_id}/finish")

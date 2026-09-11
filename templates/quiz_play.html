@@ -223,10 +223,261 @@
     });
   }
 
+  /* ══════ ข้อจับคู่แบบลากเส้น ══════
+     คำอยู่แถวซ้าย รูปอยู่แถวขวา เด็กลากนิ้วจากคำไปที่รูป (หรือแตะทีละฝั่งก็ได้)
+     เส้นวาดด้วย SVG ทับอยู่บนสองแถว คู่ไหนเป็นคู่ไหนดูจากสีของเส้น        */
+
+  var M = null;   // สถานะของข้อจับคู่ที่กำลังทำอยู่
+  var SVGNS = "http://www.w3.org/2000/svg";
+  var LINE_COLORS = ["#26a5e0", "#f2856d", "#3cc98a", "#a887e8",
+                     "#f0a92b", "#ff7fa8", "#4fc3c3", "#8bbf3f"];
+
+  function isPic(v) { return /^(https?:\/\/|\/)/.test(String(v || "")); }
+
+  function fillItem(btn, text, image) {
+    var src = image || (isPic(text) ? text : "");
+    if (src) {
+      var im = document.createElement("img");
+      im.src = src; im.alt = ""; im.loading = "lazy";
+      btn.appendChild(im);
+      if (text && !isPic(text)) {
+        var cap = document.createElement("span");
+        cap.textContent = text;
+        btn.appendChild(cap);
+      }
+    } else {
+      var sp = document.createElement("span");
+      sp.textContent = text || "";
+      btn.appendChild(sp);
+    }
+    var dot = document.createElement("i");
+    dot.className = "mdot";
+    btn.appendChild(dot);
+  }
+
+  function buildMatch(q, box) {
+    var wrap = document.createElement("div");
+    wrap.className = "matchwrap";
+    var svg = document.createElementNS(SVGNS, "svg");
+    svg.setAttribute("class", "mlines");
+    var colL = document.createElement("div");
+    var colR = document.createElement("div");
+    colL.className = "mcol mcol-l";
+    colR.className = "mcol mcol-r";
+
+    M = { q: q, wrap: wrap, svg: svg, lefts: [], rights: [],
+          sel: null, locked: false, drag: null, marks: null, solution: null };
+
+    q.options.forEach(function (o, n) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "mitem mleft";
+      b.setAttribute("data-oid", o.id);
+      b.style.setProperty("--c", LINE_COLORS[n % LINE_COLORS.length]);
+      fillItem(b, o.label, o.image_url);
+      colL.appendChild(b);
+      M.lefts.push(b);
+    });
+
+    q.match_choices.forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "mitem mright";
+      b.setAttribute("data-val", c);
+      fillItem(b, c, null);
+      colR.appendChild(b);
+      M.rights.push(b);
+    });
+
+    wrap.appendChild(svg);
+    wrap.appendChild(colL);
+    wrap.appendChild(colR);
+    box.appendChild(wrap);
+
+    var tip = document.createElement("p");
+    tip.className = "mtip";
+    tip.textContent = "ลากนิ้วจากคำไปที่รูป หรือแตะคำแล้วแตะรูปก็ได้ · แตะซ้ำเพื่อยกเลิกเส้น";
+    box.appendChild(tip);
+
+    wrap.addEventListener("pointerdown", mDown);
+    wrap.addEventListener("pointermove", mMove);
+    wrap.addEventListener("pointerup", mUp);
+    wrap.addEventListener("pointercancel", mCancel);
+    // รูปเพิ่งโหลดเสร็จ ความสูงเปลี่ยน เส้นต้องขยับตาม
+    Array.prototype.forEach.call(wrap.querySelectorAll("img"), function (im) {
+      im.addEventListener("load", paintMatch);
+    });
+    setTimeout(paintMatch, 30);
+  }
+
+  function rightByVal(v) {
+    for (var k = 0; k < M.rights.length; k++) {
+      if (M.rights[k].getAttribute("data-val") === v) return M.rights[k];
+    }
+    return null;
+  }
+
+  function connect(leftEl, rightEl) {
+    var val = rightEl.getAttribute("data-val");
+    // รูปหนึ่งใช้ได้คู่เดียว — ถ้ามีคำอื่นลากมาไว้ก่อน ให้ปล่อยเส้นเดิมออก
+    Object.keys(picked).forEach(function (oid) {
+      if (picked[oid] === val) delete picked[oid];
+    });
+    picked[leftEl.getAttribute("data-oid")] = val;
+    M.sel = null;
+    play("tap");
+    paintMatch();
+  }
+
+  function unlink(leftEl) {
+    delete picked[leftEl.getAttribute("data-oid")];
+    paintMatch();
+  }
+
+  function tapItem(item) {
+    var isLeft = item.classList.contains("mleft");
+    if (isLeft && picked[item.getAttribute("data-oid")]) { unlink(item); return; }
+    if (!isLeft) {
+      var val = item.getAttribute("data-val");
+      var owner = null;
+      Object.keys(picked).forEach(function (oid) { if (picked[oid] === val) owner = oid; });
+      if (owner) { delete picked[owner]; paintMatch(); return; }
+    }
+    if (M.sel && M.sel !== item &&
+        M.sel.classList.contains("mleft") !== isLeft) {
+      connect(isLeft ? item : M.sel, isLeft ? M.sel : item);
+      return;
+    }
+    M.sel = (M.sel === item) ? null : item;
+    paintMatch();
+  }
+
+  function mDown(e) {
+    if (!M || M.locked) return;
+    var item = e.target.closest(".mitem");
+    if (!item) return;
+    e.preventDefault();
+    M.drag = { from: item, moved: false, x: e.clientX, y: e.clientY };
+    try { M.wrap.setPointerCapture(e.pointerId); } catch (err) {}
+  }
+
+  function mMove(e) {
+    if (!M || !M.drag) return;
+    if (Math.abs(e.clientX - M.drag.x) + Math.abs(e.clientY - M.drag.y) > 6) {
+      M.drag.moved = true;
+    }
+    if (M.drag.moved) paintMatch({ x: e.clientX, y: e.clientY });
+  }
+
+  function mUp(e) {
+    if (!M || !M.drag) return;
+    var start = M.drag.from, moved = M.drag.moved;
+    M.drag = null;
+    try { M.wrap.releasePointerCapture(e.pointerId); } catch (err) {}
+
+    var over = document.elementFromPoint(e.clientX, e.clientY);
+    var target = over && over.closest ? over.closest(".mitem") : null;
+    var startLeft = start.classList.contains("mleft");
+
+    if (target && target !== start &&
+        target.classList.contains("mleft") !== startLeft) {
+      connect(startLeft ? start : target, startLeft ? target : start);
+      return;
+    }
+    if (!moved) { tapItem(start); return; }
+    paintMatch();
+  }
+
+  function mCancel() { if (M) { M.drag = null; paintMatch(); } }
+
+  /* วาดเส้นและระบายสีการ์ดใหม่ทั้งหมดจากสถานะปัจจุบัน — คิดครั้งเดียวจบ ไม่ต้องไล่แก้ทีละจุด */
+  function paintMatch(dragTo) {
+    if (!M) return;
+    var wrap = M.wrap, svg = M.svg;
+    var box = wrap.getBoundingClientRect();
+    svg.setAttribute("width", box.width);
+    svg.setAttribute("height", box.height);
+    svg.setAttribute("viewBox", "0 0 " + box.width + " " + box.height);
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    M.rights.forEach(function (r) {
+      r.classList.remove("linked", "sel", "ok", "no");
+      r.style.removeProperty("--c");
+    });
+
+    M.lefts.forEach(function (l) {
+      l.classList.remove("linked", "sel", "ok", "no");
+      var oid = l.getAttribute("data-oid");
+      var val = picked[oid];
+      if (!val) return;
+      var r = rightByVal(val);
+      if (!r) return;
+      var color = l.style.getPropertyValue("--c") || "#26a5e0";
+      l.classList.add("linked");
+      r.classList.add("linked");
+      r.style.setProperty("--c", color);
+      var state = M.marks ? (M.marks[oid] ? "ok" : "no") : "";
+      if (state) { l.classList.add(state); r.classList.add(state); }
+      drawLine(svg, box, l, r, color, state);
+    });
+
+    // เส้นเฉลย — โชว์เฉพาะตอนตอบผิดแล้ว ให้เด็กเห็นว่าคู่ที่ถูกคือคู่ไหน
+    if (M.solution) {
+      Object.keys(M.solution).forEach(function (oid) {
+        if (M.marks && M.marks[oid]) return;          // คู่ที่เด็กทำถูกอยู่แล้ว ไม่ต้องซ้ำ
+        var l = null;
+        M.lefts.forEach(function (x) { if (x.getAttribute("data-oid") === oid) l = x; });
+        var r = rightByVal(M.solution[oid]);
+        if (l && r) drawLine(svg, box, l, r, "#12844b", "sol");
+      });
+    }
+
+    if (M.sel) M.sel.classList.add("sel");
+
+    // เส้นที่กำลังลากตามนิ้ว
+    if (dragTo && M.drag) {
+      var from = M.drag.from.getBoundingClientRect();
+      var fromRight = M.drag.from.classList.contains("mleft");
+      var x1 = (fromRight ? from.right : from.left) - box.left;
+      var y1 = from.top + from.height / 2 - box.top;
+      var ln = document.createElementNS(SVGNS, "line");
+      ln.setAttribute("x1", x1); ln.setAttribute("y1", y1);
+      ln.setAttribute("x2", dragTo.x - box.left);
+      ln.setAttribute("y2", dragTo.y - box.top);
+      ln.setAttribute("class", "mline drag");
+      ln.setAttribute("stroke", M.drag.from.style.getPropertyValue("--c") || "#26a5e0");
+      svg.appendChild(ln);
+    }
+
+    if (!M.locked) {
+      var done = M.q.options.every(function (x) { return picked[x.id]; });
+      el("submit").disabled = !done;
+    }
+  }
+
+  function drawLine(svg, box, l, r, color, state) {
+    var a = l.getBoundingClientRect(), b = r.getBoundingClientRect();
+    var x1 = a.right - box.left, y1 = a.top + a.height / 2 - box.top;
+    var x2 = b.left - box.left,  y2 = b.top + b.height / 2 - box.top;
+    var mid = (x1 + x2) / 2;
+    var path = document.createElementNS(SVGNS, "path");
+    path.setAttribute("d", "M" + x1 + " " + y1 +
+                           " C" + mid + " " + y1 + " " + mid + " " + y2 +
+                           " " + x2 + " " + y2);
+    path.setAttribute("class", "mline" + (state ? " " + state : ""));
+    path.setAttribute("stroke", state === "no" ? "#e4674c"
+                              : state === "ok" ? "#12844b"
+                              : state === "sol" ? "#12844b" : color);
+    svg.appendChild(path);
+  }
+
+  window.addEventListener("resize", function () { if (M) paintMatch(); });
+
   // ── วาดข้อปัจจุบัน ──
   function render() {
     var q = QS[i];
     picked = null;
+    M = null;                              // ล้างสถานะข้อจับคู่ของข้อก่อนหน้า
     el("qno").textContent = "ข้อ " + (i + 1) + " / " + QS.length;
     var ptext = q.prompt || "";
     el("prompt").textContent = ptext;
@@ -259,29 +510,7 @@
 
     } else if (q.kind === "match") {
       picked = {};
-      q.options.forEach(function (o) {
-        var row = document.createElement("div");
-        row.className = "matchrow";
-        var left = document.createElement("span");
-        left.className = "mleft";
-        left.textContent = o.label;
-        var sel = document.createElement("select");
-        sel.className = "mright";
-        sel.innerHTML = '<option value="">— เลือก —</option>';
-        q.match_choices.forEach(function (c) {
-          var op = document.createElement("option");
-          op.value = c; op.textContent = c;
-          sel.appendChild(op);
-        });
-        sel.addEventListener("change", function () {
-          picked[o.id] = sel.value;
-          var done = q.options.every(function (x) { return picked[x.id]; });
-          el("submit").disabled = !done;
-        });
-        row.appendChild(left);
-        row.appendChild(sel);
-        box.appendChild(row);
-      });
+      buildMatch(q, box);
 
     } else {
       // โจทย์รูปทรง 3 มิติ — หมุนดูได้ และกดส่องกล้องวางบนโต๊ะจริงได้
@@ -406,6 +635,20 @@
 
   // ── ป๊อปอัพบอกผลรายข้อ ──
   function showResult(res) {
+    // ข้อจับคู่ — ระบายเส้นที่เด็กลากไว้ว่าคู่ไหนถูกคู่ไหนผิด แล้วค่อยโชว์เส้นเฉลย
+    if (M && res.pairs) {
+      M.locked = true;
+      M.marks = res.pairs;
+      M.sel = null;
+      paintMatch();
+      if (res.answer_pairs) {
+        setTimeout(function () {
+          if (!M) return;
+          M.solution = res.answer_pairs;
+          paintMatch();
+        }, 700);
+      }
+    }
     paintDots(res.correct ? "ok" : "no");
     play(res.correct ? "correct" : "wrong");
     buddy(res.correct ? "happy" : "cheerup",
@@ -419,7 +662,9 @@
     el("face").textContent = res.correct ? "🎉" : "💪";
     el("verdict").textContent = res.correct ? "เก่งมาก! ตอบถูกค่ะ" : "ยังไม่ถูกนะ ไม่เป็นไรค่ะ";
     el("verdict").className = res.correct ? "good" : "bad";
-    el("reveal").textContent = res.answer ? "คำตอบที่ถูกคือ " + res.answer : "";
+    el("reveal").textContent =
+      res.answer ? "คำตอบที่ถูกคือ " + res.answer
+      : (res.answer_pairs && !res.correct) ? "เส้นสีเขียวข้างหลังคือคู่ที่ถูกนะคะ" : "";
     el("explain").textContent = res.explanation || "";
     el("next").textContent = (i + 1 >= QS.length) ? "ดูคะแนนของหนู →" : "ข้อต่อไป →";
     el("sheet").hidden = false;
@@ -524,9 +769,48 @@
       font:inherit;font-size:1.25rem;background:#f8fcff;text-align:center}
 .fill:focus{outline:none;border-color:#26a5e0;background:#fff}
 
-.matchrow{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;align-items:center;margin-bottom:.6rem}
-.mleft{background:#f2faff;border:2px solid #dbeefc;border-radius:14px;padding:.8rem;font-size:1.1rem;text-align:center}
-.mright{padding:.8rem;border:2.5px solid #dbeefc;border-radius:14px;font:inherit;font-size:1rem;background:#fff}
+/* ══ ข้อจับคู่ลากเส้น ══
+   สองแถวซ้าย-ขวา มีผ้าใบ SVG ทับอยู่ เส้นจึงลากข้ามช่องว่างตรงกลางได้ */
+.matchwrap{position:relative;display:grid;grid-template-columns:1fr 76px 1fr;
+           gap:0 0;align-items:stretch;margin:.2rem 0 .4rem;touch-action:pan-y}
+.mlines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;
+        overflow:visible}
+.mline{fill:none;stroke-width:5;stroke-linecap:round;opacity:.9}
+.mline.drag{stroke-dasharray:9 8;opacity:.75}
+.mline.sol{stroke-dasharray:10 7;stroke-width:4.5}
+.mline.no{opacity:.55}
+.mcol{display:flex;flex-direction:column;gap:.55rem;justify-content:space-between}
+/* คำฝั่งซ้ายยืดให้สูงเท่าการ์ดรูปฝั่งขวา สองแถวจะได้ดูเป็นคู่ ๆ และกดง่ายขึ้น */
+.mcol-l .mitem{flex:1}
+.mcol-l{grid-column:1}
+.mcol-r{grid-column:3}
+.mitem{position:relative;background:#f8fcff;border:2.5px solid #dbeefc;border-radius:16px;
+       padding:.85rem .8rem;font:inherit;font-size:1.15rem;font-weight:600;color:#0e3b57;
+       cursor:pointer;transition:.15s;min-height:64px;
+       display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.25rem;
+       touch-action:pan-y;-webkit-user-select:none;user-select:none}
+.mitem img{width:100%;max-width:110px;aspect-ratio:1/1;object-fit:contain;background:#fff;
+           border-radius:12px;pointer-events:none}
+.mitem span{pointer-events:none;line-height:1.25}
+.mitem.sel{border-color:#26a5e0;background:#e8f6ff;box-shadow:0 0 0 4px rgba(38,165,224,.18)}
+.mitem.linked{border-color:var(--c,#26a5e0);background:#fff}
+.mitem.ok{border-color:#3cc98a;background:#f1fdf7}
+.mitem.no{border-color:#f0a08c;background:#fff6f3}
+/* จุดหัวเส้น — ให้เด็กเห็นชัดว่าลากจากตรงไหนไปตรงไหน เหมือนจุดในใบงาน */
+.mdot{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;
+      background:#fff;border:3px solid #bcd9ea;transform:translateY(-50%);z-index:3}
+.mleft .mdot{right:-9px}
+.mright .mdot{left:-9px}
+.mitem.linked .mdot{border-color:var(--c,#26a5e0);background:var(--c,#26a5e0)}
+.mitem.ok .mdot{border-color:#3cc98a;background:#3cc98a}
+.mitem.no .mdot{border-color:#e4674c;background:#e4674c}
+.mtip{text-align:center;color:#3e6b85;font-size:.86rem;margin:.2rem 0 .9rem}
+@media(max-width:480px){
+  .matchwrap{grid-template-columns:1fr 46px 1fr}
+  .mitem{font-size:1rem;padding:.6rem .45rem;min-height:56px;border-radius:14px}
+  .mitem img{max-width:78px}
+  .mline{stroke-width:4}
+}
 
 .btn.big{width:100%;padding:1.05rem;font-size:1.15rem;border-radius:999px;margin-top:.5rem}
 .btn.big:disabled{opacity:.45;cursor:not-allowed;transform:none}
@@ -551,7 +835,6 @@
 
 @media(max-width:480px){
   .q-prompt{font-size:1.2rem}
-  .matchrow{grid-template-columns:1fr}
 }
 
 /* ══════ เจ้านกฮูกน้อย — เพื่อนประจำแบบฝึกหัด ══════ */

@@ -350,7 +350,7 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
 
       <details class="editbox">
         <summary>แก้ไขข้อนี้</summary>
-        {{ question_form(quiz, q, icon_sets, models, model_groups) }}
+        {{ question_form(quiz, q, icon_sets, models, model_groups, vocab) }}
       </details>
     </div>
     {% else %}
@@ -361,7 +361,13 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
   <!-- ══════ เพิ่มข้อใหม่ ══════ -->
   <section class="panel" id="add">
     <h2><i>➕</i> เพิ่มคำถามใหม่</h2>
-    {{ question_form(quiz, none, icon_sets, models, model_groups) }}
+    {{ question_form(quiz, none, icon_sets, models, model_groups, vocab) }}
+    {% if vocab %}
+    {# รายการรูปคำศัพท์ที่มีอยู่แล้ว — ใช้ร่วมกันทุกฟอร์มในหน้านี้ #}
+    <datalist id="vocabpics">
+      {% for v in vocab %}<option value="{{ v.url }}">{{ v.word }}</option>{% endfor %}
+    </datalist>
+    {% endif %}
   </section>
 
 </main>
