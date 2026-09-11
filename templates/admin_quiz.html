@@ -350,7 +350,7 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
 
       <details class="editbox">
         <summary>แก้ไขข้อนี้</summary>
-        {{ question_form(quiz, q, icon_sets, models) }}
+        {{ question_form(quiz, q, icon_sets, models, model_groups) }}
       </details>
     </div>
     {% else %}
@@ -361,7 +361,7 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
   <!-- ══════ เพิ่มข้อใหม่ ══════ -->
   <section class="panel" id="add">
     <h2><i>➕</i> เพิ่มคำถามใหม่</h2>
-    {{ question_form(quiz, none, icon_sets, models) }}
+    {{ question_form(quiz, none, icon_sets, models, model_groups) }}
   </section>
 
 </main>
@@ -413,6 +413,7 @@ img.cico{height:28px;width:auto}
 .aibox textarea{min-height:130px}
 
 /* ── เลือกรูปทรง 3 มิติ ── */
+.mgroup{font-weight:700;color:var(--sky-700);font-size:.88rem;margin:.8rem 0 .35rem}
 .modelpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.5rem}
 .mopt{margin:0;cursor:pointer}
 .mopt input{position:absolute;opacity:0;width:0;height:0}

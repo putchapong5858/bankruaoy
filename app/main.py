@@ -1047,6 +1047,7 @@ def admin_quiz_edit(request: Request, quiz_id: str, saved: str = "", err: str = 
                 levels=config.LEVELS,
                 icon_sets=quiz.ICON_SETS,
                 models=quiz.MODELS,
+                model_groups=quiz.MODEL_GROUPS,
                 ai_ready=gemini.is_ready(),
                 saved=saved, err=err)
 

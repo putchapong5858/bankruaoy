@@ -2,7 +2,7 @@
    ฟอร์มเพิ่ม/แก้ไขคำถาม 1 ข้อ — ใช้ร่วมกันทั้งตอนเพิ่มและตอนแก้
    q = None คือเพิ่มข้อใหม่
    ───────────────────────────────────────────────────────── #}
-{% macro question_form(quiz, q, icon_sets={}, models={}) %}
+{% macro question_form(quiz, q, icon_sets={}, models={}, model_groups=[]) %}
 {% set opts = (q.options if q else []) %}
 {% set kind = (q.kind if q else 'choice') %}
 <form class="qform" method="post" enctype="multipart/form-data"
@@ -121,8 +121,10 @@
       วางรูปทรงลงบนโต๊ะจริงได้ (มือถือ Android และ iPhone รุ่นใหม่) —
       แล้วตอบคำถามจากตัวเลือกด้านบน
     </p>
+    {% for grp in model_groups %}
+    <p class="mgroup">{{ grp }}</p>
     <div class="modelpick">
-      {% for slug, m in models.items() %}
+      {% for slug, m in models.items() if m.g == grp %}
       <label class="mopt">
         <input type="radio" name="icon" value="{{ slug }}"
                {{ 'checked' if q and q.kind == 'model3d' and q.icon == slug }}>
@@ -133,6 +135,7 @@
       </label>
       {% endfor %}
     </div>
+    {% endfor %}
     <p class="muted" style="font-size:.85rem;margin:.6rem 0 0">
       ตัวอย่างโจทย์: “รูปทรงนี้มีกี่หน้า” · “รูปทรงนี้ชื่ออะไร” ·
       “ของใช้ในบ้านชิ้นไหนเป็นรูปทรงนี้”
