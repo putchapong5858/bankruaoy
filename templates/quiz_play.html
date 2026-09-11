@@ -217,9 +217,12 @@
       window.speechSynthesis.speak(u);
     } catch (e) { /* เบราว์เซอร์ไม่รองรับก็ข้ามไป */ }
   }
+  // ข้อที่ซ่อนคำไว้ในโจทย์ (เช่น ฟังเสียงแล้วเติมพยัญชนะต้น) จะมี speak_text
+  // ให้อ่านแทนโจทย์ที่เห็นบนจอ ถ้าไม่มีก็อ่านโจทย์ตามเดิม
+  function sayable(q) { return (q && (q.speak_text || q.prompt)) || ""; }
   if (el("speak")) {
     el("speak").addEventListener("click", function () {
-      speak(QS[i].prompt || "");
+      speak(sayable(QS[i]));
     });
   }
 
@@ -566,7 +569,12 @@
         box.appendChild(strip);
       }
 
-      var numbers = (q.kind === "count");
+      // ตัวเลือกที่เป็นตัวอักษร/ตัวเลขสั้น ๆ (เช่น ก ข ค หรือ S C Z) วางเป็นปุ่มใหญ่
+      // เรียงแนวนอนเหมือนปุ่มตัวเลข เด็กอนุบาลกดง่ายและเห็นตัวอักษรชัดกว่า
+      var tiles = q.options.length > 0 && q.options.every(function (o) {
+        return !o.image_url && String(o.label || "").replace(/\s/g, "").length <= 2;
+      });
+      var numbers = (q.kind === "count") || tiles;
       // ถ้าทุกตัวเลือกมีรูป ให้วางเป็นการ์ดรูปใหญ่ ๆ เด็กอนุบาลกดง่ายกว่าอ่านตัวหนังสือ
       var pics = !numbers && q.options.length > 0 &&
                  q.options.every(function (o) { return !!o.image_url; });
@@ -605,7 +613,7 @@
     paintDots(null);
     el("bar").style.width = Math.round(i / QS.length * 100) + "%";
     buddy("idle", pick(CHEER_GO));
-    speak(q.prompt || "");
+    speak(sayable(q));
   }
 
   // ── ส่งคำตอบไปตรวจที่เซิร์ฟเวอร์ ──

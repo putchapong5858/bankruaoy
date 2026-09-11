@@ -295,6 +295,7 @@ def save_question(quiz_id: str | int, data: dict,
     data ที่รับ
         kind         choice | truefalse | fill | match
         prompt       โจทย์
+        speak_text   ข้อความที่ปุ่ม 🔊 จะอ่าน (เว้นว่าง = อ่าน prompt)
         image_url    รูปประกอบ (ถ้ามี)
         explanation  คำอธิบายเฉลย
         points       คะแนนของข้อนี้
@@ -322,6 +323,7 @@ def save_question(quiz_id: str | int, data: dict,
         "prompt": prompt,
         "image_url": image_url or None,
         "hint": _txt(data.get("hint"), 300) or None,
+        "speak_text": _txt(data.get("speak_text"), 300) or None,
         "explanation": _txt(data.get("explanation"), 500) or None,
         "points": points,
         "icon": icon or None,
@@ -640,6 +642,9 @@ def public_questions(questions: list[dict]) -> list[dict]:
             "prompt": q.get("prompt") or "",
             "image_url": q.get("image_url"),
             "hint": q.get("hint"),
+            # ข้อความสำหรับปุ่มฟังเสียง — ใช้กับข้อที่โจทย์ซ่อนคำไว้
+            # (เช่น ฟังเสียงแล้วเติมพยัญชนะต้น) ถ้าไม่ได้กรอกจะอ่าน prompt ตามเดิม
+            "speak_text": q.get("speak_text") or None,
             "points": float(q.get("points") or 1),
             # โจทย์นับจำนวน — ส่งรูปกับจำนวนไปให้หน้าเว็บวาดแถวรูปเอง
             "icon": q.get("icon") if q.get("kind") in ("count", "model3d") else None,

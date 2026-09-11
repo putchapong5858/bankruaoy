@@ -42,6 +42,23 @@
               placeholder="เช่น 12 + 9 เท่ากับเท่าไร">{{ q.prompt if q else '' }}</textarea>
   </label>
 
+  <div class="grid4">
+    <label>คำใบ้ใต้โจทย์ (ไม่บังคับ)
+      <input type="text" name="hint" maxlength="300"
+             placeholder="เช่น กดปุ่ม 🔊 ฟังคำก่อนนะ"
+             value="{{ q.hint or '' if q else '' }}">
+    </label>
+    <label>ข้อความที่ปุ่ม 🔊 จะอ่าน (ไม่บังคับ)
+      <input type="text" name="speak_text" maxlength="300"
+             placeholder="เว้นว่าง = อ่านโจทย์ตามปกติ"
+             value="{{ q.speak_text or '' if q else '' }}">
+    </label>
+  </div>
+  <p class="muted" style="font-size:.85rem;margin:.1rem 0 .5rem">
+    ช่อง <b>ข้อความที่ปุ่ม 🔊 จะอ่าน</b> ใช้กับข้อที่ต้องซ่อนคำตอบไว้ในโจทย์
+    เช่น โจทย์เขียนว่า <code>_ า ว</code> แต่ให้เสียงอ่านว่า <code>กาว</code>
+  </p>
+
   {# ───── เลือกตอบ / ถูกผิด ───── #}
   <div class="kindbox" data-for="choice,truefalse,model3d">
     <p class="muted" style="font-size:.88rem;margin:.3rem 0">

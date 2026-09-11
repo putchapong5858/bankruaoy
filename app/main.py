@@ -964,6 +964,9 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
     data: dict = {
         "kind": kind,
         "prompt": form.get("prompt") or "",
+        # คำใบ้ที่แสดงใต้โจทย์ และข้อความที่ปุ่ม 🔊 จะอ่าน (เว้นว่าง = อ่านโจทย์)
+        "hint": form.get("hint") or "",
+        "speak_text": form.get("speak_text") or "",
         "points": form.get("points") or 1,
         "explanation": form.get("explanation") or "",
         # ไม่ได้แนบรูปใหม่ = ใช้รูปเดิม (ยกเว้นกดลบรูป)
