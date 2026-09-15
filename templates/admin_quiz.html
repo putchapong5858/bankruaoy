@@ -342,7 +342,15 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
         </div>
         {% endif %}
 
-        {% if q.kind in ('choice', 'truefalse', 'count') %}
+        {% if q.kind == 'mathrun' and q.icon %}
+        {% set ms = q.icon.split('|') %}
+        <p class="muted" style="font-size:.85rem;margin:.2rem 0 .4rem">
+          ⚡ โบนัสความเร็ว {{ ms[1] if ms | length > 1 else 15 }} วินาที ·
+          {{ 'มีจุดช่วยนับ' if ms | length > 2 and ms[2] == '1' else 'ไม่มีจุดช่วยนับ' }}
+        </p>
+        {% endif %}
+
+        {% if q.kind in ('choice', 'truefalse', 'count', 'mathrun') %}
         <ul class="qopts">
           {% for o in q.options %}
           <li class="{{ 'right' if o.is_correct }}">

@@ -39,6 +39,11 @@
     <p class="who-line">{{ student.nickname }} · รอบที่ {{ attempt.attempt_no }}</p>
     <div class="bar"><span id="bar"></span></div>
     <div class="dots" id="dots"></div>
+    {# แถบจับเวลา — โผล่เฉพาะชุดที่มีโจทย์คิดเลขเร็ว #}
+    <div class="timechips" id="timechips" hidden>
+      <span class="chip" id="chipclock">⏱ 0:00</span>
+      <span class="chip star" id="chipstar">⚡ ดาวเร็ว 0</span>
+    </div>
     <button type="button" class="soundbtn" id="soundbtn" title="เปิด/ปิดเสียง">🔔</button>
   </div>
 
@@ -113,6 +118,57 @@
       '<circle cx="20" cy="40" r="3" fill="#3E9150"/>' +
       '<circle cx="30" cy="34" r="3" fill="#3E9150"/>' +
     '</svg>';
+
+  /* ══ ก้อนเมฆสีน้ำ สำหรับโจทย์คิดเลขเร็ว ══
+     วาดเองด้วยวงกลมซ้อนกัน + ไล่สีนุ่ม ๆ ให้ได้อารมณ์สีน้ำแบบใบงาน
+     (วาดขึ้นใหม่ทั้งหมด ไม่ได้ก๊อปรูปของใคร) */
+  var CLOUD_COLORS = [
+    ["#FFE3EE", "#FFC3D9", "#C2547E"],   /* ชมพู */
+    ["#DCF3E7", "#B5E9D0", "#2E7D5B"],   /* เขียวมิ้นต์ */
+    ["#DDEFFC", "#BADDF8", "#1E6B96"],   /* ฟ้า */
+    ["#EAE4FC", "#D2C6F8", "#5B45A8"],   /* ม่วงลาเวนเดอร์ */
+    ["#FFE9D8", "#FFD1B0", "#B4602A"],   /* พีช */
+    ["#FFF4D2", "#FFE7A2", "#96702A"]    /* เหลืองอ่อน */
+  ];
+  var CLOUD_DECOR = ["✿", "❀", "♡", "✦", "❁", "✧"];
+
+  function cloudSvg(no, expr, tone) {
+    var id = "cg" + no;
+    return '' +
+      '<svg class="cloudart" viewBox="0 0 320 168" role="img" aria-label="' + expr + '">' +
+        '<defs>' +
+          '<linearGradient id="' + id + '" gradientUnits="userSpaceOnUse" ' +
+            'x1="40" y1="16" x2="290" y2="156">' +
+            '<stop offset="0" stop-color="' + tone[0] + '"/>' +
+            '<stop offset="1" stop-color="' + tone[1] + '"/>' +
+          '</linearGradient>' +
+          '<filter id="sf' + no + '" x="-25%" y="-25%" width="150%" height="150%">' +
+            '<feGaussianBlur stdDeviation="9"/>' +
+          '</filter>' +
+        '</defs>' +
+        /* เงาฟุ้ง ๆ ใต้ก้อนเมฆ ให้ดูเหมือนสีซึมลงกระดาษ */
+        '<g filter="url(#sf' + no + ')" opacity=".40" fill="' + tone[1] + '" ' +
+           'transform="translate(2 9)">' +
+          '<circle cx="92" cy="86" r="42"/><circle cx="156" cy="64" r="54"/>' +
+          '<circle cx="218" cy="84" r="44"/>' +
+          '<rect x="52" y="84" width="212" height="60" rx="30"/>' +
+        '</g>' +
+        '<g fill="url(#' + id + ')">' +
+          '<circle cx="92" cy="86" r="42"/><circle cx="156" cy="64" r="54"/>' +
+          '<circle cx="218" cy="84" r="44"/>' +
+          '<rect x="52" y="84" width="212" height="60" rx="30"/>' +
+        '</g>' +
+        /* แสงขาวด้านบน + รอยสีเข้มจาง ๆ ด้านล่าง ให้ดูมีมิติแบบระบายสีน้ำ */
+        '<g opacity=".38" fill="#fff" filter="url(#sf' + no + ')">' +
+          '<ellipse cx="148" cy="34" rx="38" ry="13"/>' +
+          '<ellipse cx="84" cy="62" rx="22" ry="9"/>' +
+        '</g>' +
+        '<g opacity=".30" fill="' + tone[1] + '">' +
+          '<ellipse cx="112" cy="118" rx="38" ry="15"/>' +
+          '<ellipse cx="210" cy="112" rx="30" ry="12"/>' +
+        '</g>' +
+      '</svg>';
+  }
 
   /* ══ เสียงประกอบ ══
      สร้างเสียงเองด้วย Web Audio ไม่ต้องโหลดไฟล์เสียง เว็บจะได้ไม่หนัก */
@@ -215,6 +271,64 @@
   // ประกาศแบบ function เพื่อให้ถูกยกขึ้นบนสุด — โค้ดด้านบนเรียกใช้ได้ด้วย
   function el(id) { return document.getElementById(id); }
 
+  /* ══════ จับเวลา ══════
+     ตั้งใจออกแบบให้ "จับเวลาแบบไม่กดดัน" สำหรับเด็ก 5-7 ขวบ
+       · นาฬิกาใหญ่ด้านบน = นับขึ้น ไม่ใช่นับถอยหลัง เด็กจึงไม่รู้สึกถูกไล่
+       · แถบสายฟ้าใต้โจทย์ = โบนัสดาวความเร็ว หมดแล้วก็ยังตอบได้ คะแนนเต็มเหมือนเดิม
+     ถ้าวันไหนอยากเอาแรงกดดันออกทั้งหมด ให้ตั้งเวลาเป็นเลขเยอะ ๆ ในหน้าแอดมิน */
+  var HAS_MATH = QS.some(function (q) { return q.kind === "mathrun"; });
+  var speedStars = 0;       // ดาวความเร็วที่สะสมได้
+  var tStart = 0;           // เวลาที่เริ่มข้อนี้
+  var tTick = null;
+
+  if (HAS_MATH) el("timechips").hidden = false;
+
+  function mmss(sec) {
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  function paintStars() {
+    el("chipstar").textContent = "⚡ ดาวเร็ว " + speedStars;
+  }
+
+  // ดาว 3 ดวงถ้าตอบภายใน 1 ใน 3 ของเวลา · 2 ดวงครึ่งทาง · 1 ดวงถ้าทันเวลา
+  function starsFor(used, limit) {
+    if (used <= limit / 3) return 3;
+    if (used <= limit * 2 / 3) return 2;
+    if (used <= limit) return 1;
+    return 0;
+  }
+
+  function stopTimer() {
+    if (tTick) { clearInterval(tTick); tTick = null; }
+  }
+
+  function startTimer(limit) {
+    stopTimer();
+    tStart = Date.now();
+    var fill = el("speedfill"), txt = el("speedtxt"), bar = el("speedbar");
+
+    function paint() {
+      var used = (Date.now() - tStart) / 1000;
+      if (HAS_MATH) el("chipclock").textContent =
+        "⏱ " + mmss(Math.round((Date.now() - started) / 1000));
+      if (!bar) return;
+      var leftPct = Math.max(0, 1 - used / limit);
+      fill.style.width = (leftPct * 100).toFixed(1) + "%";
+      var s = starsFor(used, limit);
+      bar.setAttribute("data-level", s);
+      if (s > 0) {
+        txt.textContent = "⭐".repeat(s) + " " + Math.ceil(limit - used) + " วิ";
+      } else {
+        // หมดเวลาโบนัสแล้ว — เปลี่ยนเป็นคำพูดปลอบใจ ไม่ใช่คำตัดสิน
+        txt.textContent = "ค่อย ๆ คิดนะ ไม่ต้องรีบ";
+      }
+    }
+    paint();
+    tTick = setInterval(paint, 200);
+  }
+
   // ── จุดบอกความคืบหน้า ──
   var dots = el("dots");
   QS.forEach(function () {
@@ -253,7 +367,8 @@
     picked = null;
     el("qno").textContent = "ข้อ " + (i + 1) + " / " + QS.length;
     var ptext = q.prompt || "";
-    el("prompt").textContent = ptext;
+    // โจทย์คิดเลขเร็วโชว์อยู่บนก้อนเมฆแล้ว ไม่ต้องเขียนซ้ำอีกบรรทัด
+    el("prompt").textContent = (q.kind === "mathrun") ? "" : ptext;
     // โจทย์ที่เป็นอีโมจิหรือตัวอักษรสั้น ๆ (เช่น 🐶 หรือ Dd) ให้ขยายใหญ่กลางจอ
     el("prompt").classList.toggle("big", ptext.replace(/\s/g, "").length <= 4);
     el("hint").textContent = q.hint || "";
@@ -372,6 +487,68 @@
         }, 7000);
       }
 
+      // โจทย์คิดเลขเร็ว — ก้อนเมฆสีน้ำ + แถบสายฟ้าโบนัสความเร็ว
+      if (q.kind === "mathrun" && q.math) {
+        var m = q.math;
+        var tone = CLOUD_COLORS[i % CLOUD_COLORS.length];
+        var sign = (m.op === "+") ? "+" : "−";
+        var expr = m.a + " " + sign + " " + m.b;
+
+        // ปุ่มตัวเลขใช้สีเดียวกับก้อนเมฆของข้อนั้น ให้ดูเป็นชุดเดียวกัน
+        box.style.setProperty("--soft", tone[0]);
+        box.style.setProperty("--mid", tone[1]);
+        box.style.setProperty("--ink", tone[2]);
+
+        var wrap = document.createElement("div");
+        wrap.className = "cloudwrap";
+        wrap.style.setProperty("--ink", tone[2]);
+        wrap.innerHTML =
+          '<span class="petal p1">' + CLOUD_DECOR[i % CLOUD_DECOR.length] + '</span>' +
+          '<span class="petal p2">' + CLOUD_DECOR[(i + 2) % CLOUD_DECOR.length] + '</span>' +
+          '<span class="petal p3">' + CLOUD_DECOR[(i + 4) % CLOUD_DECOR.length] + '</span>' +
+          cloudSvg(i, expr, tone) +
+          '<span class="cloudno">' + (i + 1) + '</span>' +
+          '<span class="cloudsum">' + expr + ' = <b class="blank">?</b></span>';
+        box.appendChild(wrap);
+
+        // จุดช่วยนับ — สำหรับอนุบาลที่ยังต้องนับนิ้ว
+        if (m.dots) {
+          var help = document.createElement("div");
+          help.className = "mathdots";
+          function putDots(host, count, color, goneFrom) {
+            for (var n = 0; n < count; n++) {
+              var dot = document.createElement("i");
+              // ลบ = จุดท้าย ๆ ถูกขีดออก เหมือนที่ครูสอนให้เด็กขีดทิ้งบนกระดาน
+              if (goneFrom >= 0 && n >= goneFrom) dot.className = "gone";
+              else dot.style.background = color;
+              host.appendChild(dot);
+            }
+          }
+          if (m.op === "+") {
+            help.innerHTML = '<span class="mset" id="mdA"></span>' +
+                             '<span class="msign">+</span>' +
+                             '<span class="mset" id="mdB"></span>';
+            box.appendChild(help);
+            putDots(help.querySelector("#mdA"), m.a, "#26a5e0", -1);
+            putDots(help.querySelector("#mdB"), m.b, "#f27da0", -1);
+          } else {
+            help.innerHTML = '<span class="mset" id="mdA"></span>';
+            box.appendChild(help);
+            putDots(help.querySelector("#mdA"), m.a, "#26a5e0", m.a - m.b);
+          }
+        }
+
+        var sbar = document.createElement("div");
+        sbar.className = "speedbar";
+        sbar.id = "speedbar";
+        sbar.setAttribute("data-level", "3");
+        sbar.innerHTML =
+          '<span class="sb-ic">⚡</span>' +
+          '<span class="sb-track"><i id="speedfill"></i></span>' +
+          '<span class="sb-txt" id="speedtxt"></span>';
+        box.appendChild(sbar);
+      }
+
       // โจทย์นับจำนวน — วางรูปให้เด็กนับก่อน แล้วค่อยเป็นปุ่มตัวเลข
       if (q.kind === "count" && q.icon && q.icon_count) {
         var strip = document.createElement("div");
@@ -390,7 +567,7 @@
         box.appendChild(strip);
       }
 
-      var numbers = (q.kind === "count");
+      var numbers = (q.kind === "count" || q.kind === "mathrun");
       var signs = (q.kind === "compare");
       // ถ้าทุกตัวเลือกมีรูป ให้วางเป็นการ์ดรูปใหญ่ ๆ เด็กอนุบาลกดง่ายกว่าอ่านตัวหนังสือ
       var pics = !numbers && q.options.length > 0 &&
@@ -427,6 +604,7 @@
       box.classList.toggle("numrow", numbers);
       box.classList.toggle("signrow", signs);
       box.classList.toggle("piccards", pics);
+      box.classList.toggle("mathrow", q.kind === "mathrun");
     }
 
     el("submit").disabled = true;
@@ -434,13 +612,27 @@
     el("bar").style.width = Math.round(i / QS.length * 100) + "%";
     buddy("idle", pick(CHEER_GO));
     speak(q.prompt || "");
+
+    stopTimer();
+    if (q.kind === "mathrun" && q.math) startTimer(q.math.seconds);
+    else if (HAS_MATH) startTimer(0);   // ยังเดินนาฬิการวมด้านบนต่อไป
   }
 
   // ── ส่งคำตอบไปตรวจที่เซิร์ฟเวอร์ ──
+  var lastSpeed = 0;        // ดาวความเร็วของข้อที่เพิ่งตอบ
+
   function send() {
     if (busy) return;
     busy = true;
     el("submit").disabled = true;
+
+    // หยุดนาฬิกาตอนกดตอบ แล้วคิดดาวความเร็วของข้อนี้
+    lastSpeed = 0;
+    var qq = QS[i];
+    if (qq.kind === "mathrun" && qq.math) {
+      lastSpeed = starsFor((Date.now() - tStart) / 1000, qq.math.seconds);
+      stopTimer();
+    }
 
     fetch("/quiz/" + ATTEMPT + "/answer", {
       method: "POST",
@@ -484,10 +676,28 @@
         el("numR").classList.add(R >= L ? "win" : "lose");
       }
     }
+    // โจทย์คิดเลขเร็ว — เฉลยตัวเลขลงบนก้อนเมฆ แล้วแจกดาวความเร็ว
+    var speedLine = "";
+    if (q.kind === "mathrun") {
+      var blank = document.querySelector(".cloudsum .blank");
+      if (blank && res.answer) {
+        blank.textContent = res.answer;
+        blank.classList.add(res.correct ? "ok" : "no");
+      }
+      if (res.correct && lastSpeed > 0) {
+        speedStars += lastSpeed;
+        paintStars();
+        speedLine = "⚡ คิดเร็วมาก ได้ดาวความเร็ว " + "⭐".repeat(lastSpeed);
+      } else if (res.correct) {
+        speedLine = "ตอบถูกแล้วนะ รอบหน้าลองคิดเร็วขึ้นอีกนิดจะได้ดาวเพิ่ม";
+      }
+    }
+
     el("face").textContent = res.correct ? "🎉" : "💪";
     el("verdict").textContent = res.correct ? "เก่งมาก! ตอบถูกค่ะ" : "ยังไม่ถูกนะ ไม่เป็นไรค่ะ";
     el("verdict").className = res.correct ? "good" : "bad";
-    el("reveal").textContent = res.answer ? "คำตอบที่ถูกคือ " + res.answer : "";
+    el("reveal").textContent = speedLine ||
+      (res.answer ? "คำตอบที่ถูกคือ " + res.answer : "");
     el("explain").textContent = res.explanation || "";
     el("next").textContent = (i + 1 >= QS.length) ? "ดูคะแนนของหนู →" : "ข้อต่อไป →";
     el("sheet").hidden = false;
@@ -506,6 +716,7 @@
 
   // ── จบรอบ ──
   function finish() {
+    stopTimer();
     el("bar").style.width = "100%";
     el("card").innerHTML = '<p class="waiting">กำลังรวมคะแนน…</p>';
     fetch("/quiz/" + ATTEMPT + "/finish", {
@@ -521,6 +732,7 @@
       });
   }
 
+  paintStars();
   render();
 })();
 </script>
@@ -700,6 +912,88 @@
 .shape3d.failed{display:flex;align-items:center;justify-content:center}
 .shape3d.failed::after{content:"📦";font-size:3rem;opacity:.4}
 @media(max-width:480px){ .shape3d{height:240px} }
+
+/* ══════ โจทย์คิดเลขเร็ว บนก้อนเมฆ ══════ */
+.q-prompt:empty{display:none;margin:0}
+.cloudwrap{position:relative;width:100%;max-width:400px;margin:.2rem auto .9rem;
+           --ink:#3B5566}
+.cloudart{display:block;width:100%;height:auto;overflow:visible}
+.cloudsum{position:absolute;inset:22% 9% 20%;display:flex;align-items:center;
+          justify-content:center;gap:.35rem;font-family:'Mali',cursive;font-weight:700;
+          font-size:2.6rem;line-height:1;color:var(--ink);letter-spacing:.02em}
+.cloudsum .blank{display:inline-block;min-width:1.15em;text-align:center;
+                 border-bottom:4px solid currentColor;padding-bottom:.06em;
+                 transition:color .25s}
+.cloudsum .blank.ok{color:#12844b;border-color:#12844b}
+.cloudsum .blank.no{color:#c2410c;border-color:#c2410c}
+.cloudno{position:absolute;left:1%;top:18%;width:38px;height:38px;border-radius:50%;
+         background:#fff;border:3px solid currentColor;color:var(--ink);
+         display:grid;place-items:center;font-family:'Mali',cursive;font-weight:700;
+         font-size:1.1rem;box-shadow:0 3px 8px rgba(14,59,87,.12)}
+/* ดอกไม้/หัวใจเล็ก ๆ รอบก้อนเมฆ ให้ดูเป็นใบงานน่ารัก ๆ */
+.petal{position:absolute;color:var(--ink);opacity:.6;font-size:1.25rem;line-height:1}
+.petal.p1{right:3%;top:4%;font-size:1.55rem}
+.petal.p2{left:6%;bottom:2%}
+.petal.p3{right:14%;bottom:4%;font-size:1rem}
+
+/* จุดช่วยนับ — ชุดแรกคือตัวตั้ง ชุดหลังคือตัวบวก/ตัวลบ */
+.mathdots{display:flex;align-items:center;justify-content:center;gap:.7rem;
+          flex-wrap:wrap;margin:0 0 1rem}
+/* กว้างพอดี 5 จุดต่อแถว — เด็กเล็กนับเป็นกลุ่มละ 5 ได้ง่ายกว่านับเรียงยาว */
+.mset{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;width:114px}
+/* flex:none สำคัญ — ถ้าปล่อยให้จุดหดได้ มันจะยัดกัน 6 จุดต่อแถวแทนที่จะเป็น 5 */
+.mset i{flex:0 0 auto;width:16px;height:16px;border-radius:50%;display:block;position:relative}
+/* จุดที่ถูกขีดออก (โจทย์ลบ) — จางลงแล้วมีขีดทับ */
+.mset i.gone{background:#d7e4ec}
+.mset i.gone::after{content:"";position:absolute;left:-2px;right:-2px;top:50%;
+                    border-top:3px solid #e8574c;border-radius:3px;
+                    transform:translateY(-50%) rotate(-45deg)}
+.msign{font-family:'Mali',cursive;font-size:1.6rem;font-weight:700;color:#3e6b85}
+
+/* แถบโบนัสความเร็ว — ไม่ใช่การบังคับ หมดแล้วยังตอบได้ */
+.speedbar{display:flex;align-items:center;gap:.55rem;margin:0 0 1rem;
+          background:#f8fcff;border:2px solid #dbeefc;border-radius:999px;
+          padding:.4rem .8rem}
+.sb-ic{font-size:1.1rem;line-height:1}
+.sb-track{flex:1;height:10px;border-radius:999px;background:#e6eef4;overflow:hidden}
+.sb-track i{display:block;height:100%;width:100%;border-radius:999px;
+            background:#3cc98a;transition:width .2s linear,background .3s}
+.sb-txt{font-size:.85rem;font-weight:700;color:#3e6b85;white-space:nowrap;min-width:5.6rem;
+        text-align:right}
+.speedbar[data-level="2"] .sb-track i{background:#8fd14f}
+.speedbar[data-level="1"] .sb-track i{background:#ffb648}
+.speedbar[data-level="0"]{opacity:.7}
+.speedbar[data-level="0"] .sb-track i{background:#c9d4dc}
+
+/* ปุ่มตัวเลขของโจทย์คิดเลขเร็ว — ก้อนกลม ๆ พาสเทล กดง่ายด้วยนิ้วเด็ก */
+/* #answers เป็น flex row (จาก .numrow) — ก้อนเมฆ/จุด/แถบเวลาต้องกินเต็มบรรทัด
+   ไม่งั้นจะไปเบียดอยู่ข้างปุ่มตัวเลข */
+#answers.mathrow > .cloudwrap,
+#answers.mathrow > .mathdots,
+#answers.mathrow > .speedbar{flex:0 0 100%;width:100%}
+#answers.mathrow .opt.num{flex:0 0 96px;border-radius:28px;border-width:3px;
+                          border-color:var(--mid,#dbeefc);background:var(--soft,#fff);
+                          color:var(--ink,#0c6b9e);font-size:2.3rem}
+#answers.mathrow .opt.num.on{background:#fff;border-color:var(--ink,#26a5e0);
+                             box-shadow:0 0 0 4px var(--mid,#dbeefc)}
+
+/* นาฬิกา + ดาวความเร็วด้านบน */
+.timechips{display:flex;gap:.5rem;justify-content:center;margin:0 0 .9rem;flex-wrap:wrap}
+.timechips[hidden]{display:none}
+.chip{background:#fff;border:2px solid #dbeefc;border-radius:999px;
+      padding:.28rem .8rem;font-size:.88rem;font-weight:700;color:#0c6b9e;
+      font-variant-numeric:tabular-nums}
+.chip.star{border-color:#ffe0a8;color:#96702a;background:#fffaf0}
+
+@media(max-width:480px){
+  .cloudsum{font-size:2.1rem}
+  .cloudno{width:32px;height:32px;font-size:.95rem;border-width:2.5px}
+  #answers.mathrow .opt.num{flex:0 0 80px;font-size:1.95rem}
+  /* จอเล็ก จุดเล็กลง — ความกว้างต้องลดตามด้วย ไม่งั้นจะได้ 6 จุดต่อแถวแทน 5 */
+  .mset{width:100px}
+  .mset i{width:13px;height:13px}
+  .sb-txt{font-size:.8rem;min-width:5rem}
+}
 
 /* ══════ โจทย์เทียบเลข — จระเข้กินเลข ══════ */
 .croc-arena{display:grid;grid-template-columns:1fr 104px 1fr;gap:.5rem;align-items:center;

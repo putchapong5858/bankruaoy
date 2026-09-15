@@ -981,6 +981,13 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
         # เก็บคู่ตัวเลขไว้ในช่อง icon เป็น "12|10" ใช้คอลัมน์เดิม ไม่ต้องเพิ่มตาราง
         data["icon"] = "%s|%s" % ((form.get("cmp_left") or "").strip(),
                                   (form.get("cmp_right") or "").strip())
+    elif kind == "mathrun":
+        # เก็บเป็น "4+5|20|1" = โจทย์ | วินาทีคิดเร็ว | โชว์จุดช่วยนับ
+        data["icon"] = "%s|%s|%s" % (
+            (form.get("math_expr") or "").strip(),
+            (form.get("math_sec") or "").strip() or quiz.MATH_DEFAULT_SEC,
+            "1" if form.get("math_dots") else "0",
+        )
 
     upload = form.get("image")
     if upload is not None and getattr(upload, "filename", ""):

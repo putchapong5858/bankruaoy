@@ -18,6 +18,7 @@
         <option value="count"     {{ 'selected' if kind == 'count' }}>นับจำนวน (Count &amp; Match)</option>
         <option value="model3d"   {{ 'selected' if kind == 'model3d' }}>รูปทรง 3 มิติ / ส่องกล้อง AR</option>
         <option value="compare"   {{ 'selected' if kind == 'compare' }}>เทียบเลข มากกว่า/น้อยกว่า (จระเข้)</option>
+        <option value="mathrun"   {{ 'selected' if kind == 'mathrun' }}>คิดเลขเร็ว บนก้อนเมฆ (จับเวลา)</option>
       </select>
     </label>
     <label>คะแนนของข้อนี้
@@ -168,6 +169,36 @@
     </div>
     <p class="muted" style="font-size:.85rem;margin:.4rem 0 0">
       จุดช่วยนับเหมาะกับข้อแรก ๆ และเลขไม่เกิน 10 — พอเด็กเริ่มคล่องแล้วให้ติ๊กออก
+    </p>
+  </div>
+
+  {# ───── คิดเลขเร็ว บนก้อนเมฆ ───── #}
+  {% set mspec = (q.icon or '').split('|') if q and q.kind == 'mathrun' else [] %}
+  <div class="kindbox" data-for="mathrun">
+    <p class="muted" style="font-size:.88rem;margin:.3rem 0">
+      พิมพ์โจทย์สั้น ๆ เช่น <code>4+5</code> หรือ <code>9-3</code>
+      ระบบจะวาดก้อนเมฆสีพาสเทลให้เอง และสร้างตัวเลือกตัวเลข 3 ตัวรอบคำตอบให้ด้วย<br>
+      <b>เรื่องเวลา:</b> เวลาที่กรอกเป็นแค่ <b>โบนัสดาวความเร็ว</b> —
+      หมดเวลาแล้วเด็กยังตอบได้ตามปกติและได้คะแนนเต็มเหมือนเดิม ไม่มีการตัดสิทธิ์
+    </p>
+    <div class="grid4">
+      <label>โจทย์ (ใช้ได้เฉพาะ + และ −)
+        <input type="text" name="math_expr" maxlength="8" placeholder="เช่น 4+5"
+               value="{{ mspec[0] if mspec else '' }}">
+      </label>
+      <label>เวลาคิดเร็ว (วินาที)
+        <input type="number" name="math_sec" min="5" max="90" step="1"
+               value="{{ mspec[1] if mspec | length > 1 else 15 }}">
+      </label>
+      <label class="chk" style="align-self:end;margin-bottom:.6rem">
+        <input type="checkbox" name="math_dots" value="1"
+               {{ 'checked' if mspec | length > 2 and mspec[2] == '1' }}>
+        โชว์จุดช่วยนับใต้ตัวเลข
+      </label>
+    </div>
+    <p class="muted" style="font-size:.85rem;margin:.4rem 0 0">
+      แนะนำ — อนุบาล 3 ใช้ 20 วินาที + ติ๊กจุดช่วยนับ ·
+      ป.1 ใช้ 12 วินาที ไม่ต้องติ๊กจุด
     </p>
   </div>
 

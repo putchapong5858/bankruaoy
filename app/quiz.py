@@ -33,10 +33,11 @@ KINDS = {
     "count":     "นับจำนวน",
     "model3d":   "รูปทรง 3 มิติ / AR",
     "compare":   "เทียบเลข มากกว่า/น้อยกว่า (จระเข้กินเลข)",
+    "mathrun":   "คิดเลขเร็ว บนก้อนเมฆ (จับเวลา)",
 }
 
 # รูปแบบที่ตรวจคำตอบเหมือนกัน คือเลือกตัวเลือกที่ถูก 1 ตัว
-PICK_KINDS = ("choice", "truefalse", "count", "model3d", "compare")
+PICK_KINDS = ("choice", "truefalse", "count", "model3d", "compare", "mathrun")
 
 # อีโมจิยอดนิยมสำหรับโจทย์นับจำนวน — ครูกดเลือกได้เลยไม่ต้องพิมพ์
 ICON_SETS = {
@@ -304,7 +305,20 @@ def save_question(quiz_id: str | int, data: dict,
         "icon_count": icon_count if kind in ("count", "compare") else None,
     }
 
-    if kind == "count":
+    if kind == "mathrun":
+        # โจทย์คิดเลขเร็ว — ระบบสร้างตัวเลือกตัวเลขให้เอง ครูแค่กรอกโจทย์
+        spec = mathrun_spec(icon)
+        if not spec:
+            raise SupabaseError(
+                'โจทย์คิดเลขเร็วต้องอยู่ในรูปแบบ "4+5" หรือ "9-3" '
+                "(ใช้ได้เฉพาะ + และ - และผลลัพธ์ต้องไม่ติดลบ)"
+            )
+        options = _math_choices(spec["answer"])
+        accepted = []
+        if not prompt:
+            fields["prompt"] = "%d %s %d = ?" % (
+                spec["a"], "+" if spec["op"] == "+" else "−", spec["b"])
+    elif kind == "count":
         # โจทย์นับจำนวน — ระบบสร้างตัวเลือกตัวเลขให้เอง ครูแค่บอกรูปกับจำนวน
         if not icon:
             raise SupabaseError("กรุณาเลือกรูปหรืออีโมจิที่จะให้เด็กนับ")
@@ -372,6 +386,56 @@ def _number_choices(answer: int) -> list[dict]:
     numbers = [start, start + 1, start + 2]
     if answer not in numbers:              # กันกรณีขอบ
         numbers = [answer, answer + 1, answer + 2]
+    return [
+        {"sort_order": i + 1, "label": str(n), "image_url": None,
+         "is_correct": n == answer, "match_value": None}
+        for i, n in enumerate(numbers)
+    ]
+
+
+# ── คิดเลขเร็ว บนก้อนเมฆ ────────────────────────────────
+# เก็บทุกอย่างไว้ในช่อง icon ช่องเดียว คั่นด้วย | เหมือนโจทย์เทียบเลข
+# จะได้ไม่ต้องเพิ่มคอลัมน์ในฐานข้อมูล
+#
+#     "4+5|20|1"   =  โจทย์ 4+5 · ให้เวลาคิดเร็ว 20 วินาที · โชว์จุดช่วยนับ
+#     "9-3|12|0"   =  โจทย์ 9-3 · 12 วินาที · ไม่โชว์จุด
+#
+# หมายเหตุสำคัญ: "วินาที" ที่ว่านี้ไม่ใช่การบังคับ เด็กตอบช้ากว่านั้นก็ยังตอบได้
+# และยังได้คะแนนเต็มเหมือนเดิม — เป็นแค่โบนัสดาวความเร็วเท่านั้น
+
+MATH_DEFAULT_SEC = 15
+
+
+def mathrun_spec(raw: str) -> dict | None:
+    """อ่านโจทย์คิดเลขเร็วจากช่อง icon — คืน None ถ้ารูปแบบไม่ถูก"""
+    parts = (raw or "").split("|")
+    expr = (parts[0] if parts else "").replace(" ", "")
+    m = re.fullmatch(r"(\d{1,2})([+\-])(\d{1,2})", expr)
+    if not m:
+        return None
+
+    a, op, b = int(m.group(1)), m.group(2), int(m.group(3))
+    answer = a + b if op == "+" else a - b
+    if answer < 0:
+        return None
+
+    seconds = _int(parts[1], MATH_DEFAULT_SEC) if len(parts) > 1 else MATH_DEFAULT_SEC
+    seconds = max(5, min(seconds, 90))
+    dots = bool(_int(parts[2], 0)) if len(parts) > 2 else False
+    return {"a": a, "op": op, "b": b, "answer": answer,
+            "seconds": seconds, "dots": dots, "expr": f"{a}{op}{b}"}
+
+
+def _math_choices(answer: int) -> list[dict]:
+    """
+    ตัวเลือกตัวเลข 3 ตัว — คำตอบที่ถูก + ตัวลวงใกล้ ๆ อีก 2 ตัว
+
+    ตั้งใจไม่ใช้เลขเรียงติดกันทุกข้อ (8 9 10 ซ้ำ ๆ) เพราะเด็กจะจำรูปแบบแทนการคิด
+    """
+    pool = [answer - 2, answer - 1, answer + 1, answer + 2]
+    pool = [n for n in pool if 0 <= n <= 20]
+    random.shuffle(pool)
+    numbers = sorted([answer] + pool[:2])
     return [
         {"sort_order": i + 1, "label": str(n), "image_url": None,
          "is_correct": n == answer, "match_value": None}
@@ -684,6 +748,9 @@ def public_questions(questions: list[dict]) -> list[dict]:
             "icon": q.get("icon") if q.get("kind") in ("count", "model3d") else None,
             # โจทย์เทียบเลข — ส่งคู่ตัวเลขกับจำนวนจุดช่วยนับไปให้หน้าเด็กวาด
             "pair": compare_pair(q.get("icon")) if q.get("kind") == "compare" else None,
+            # โจทย์คิดเลขเร็ว — ส่งตัวเลข เครื่องหมาย และเวลาคิด ไปให้หน้าเด็ก
+            # ระวัง: ต้องตัด answer ทิ้ง ไม่งั้นเด็กกด View Source แล้วเห็นเฉลย
+            "math": _math_public(q.get("icon")) if q.get("kind") == "mathrun" else None,
             "dots": bool(q.get("icon_count")) if q.get("kind") == "compare" else False,
             "model": (MODELS.get(q.get("icon") or "") or None)
                      if q.get("kind") == "model3d" else None,
@@ -704,6 +771,15 @@ def public_questions(questions: list[dict]) -> list[dict]:
             ),
         })
     return out
+
+
+def _math_public(raw: str) -> dict | None:
+    """โจทย์คิดเลขเร็วฉบับที่ส่งให้เบราว์เซอร์ได้ — ตัดเฉลยออกแล้ว"""
+    spec = mathrun_spec(raw)
+    if not spec:
+        return None
+    return {"a": spec["a"], "op": spec["op"], "b": spec["b"],
+            "seconds": spec["seconds"], "dots": spec["dots"]}
 
 
 def get_attempt(attempt_id: str | int) -> dict | None:
