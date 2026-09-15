@@ -342,6 +342,7 @@ def portal(request: Request, child: int = 0):
         enrollments=got["enrollments"],
         enrolled=enrolled,
         quizzes=got["quizzes"],
+        quiz_subjects=quiz.by_subject(got["quizzes"]),
         quiz_history=got["quiz_history"],
         quizerr=request.query_params.get("quizerr", ""),
     )
@@ -446,6 +447,8 @@ def admin(request: Request, saved: str = "", err: str = ""):
         homeworks=got["homeworks"],
         exams=got["exams"],
         quizzes=got["quizzes"],
+        quiz_subjects=quiz.by_subject(got["quizzes"]),
+        subjects=config.SUBJECTS,
         materials=got["materials"],
         announcements=got["announcements"],
         students=got["students"],
@@ -969,10 +972,15 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
         "explanation": form.get("explanation") or "",
         # ไม่ได้แนบรูปใหม่ = ใช้รูปเดิม (ยกเว้นกดลบรูป)
         "image_url": "" if form.get("remove_image") else current_image,
-        # ใช้เฉพาะโจทย์นับจำนวน
+        # ใช้เฉพาะโจทย์นับจำนวน / รูปทรง 3 มิติ / เทียบเลข
         "icon": form.get("icon") or "",
         "icon_count": form.get("icon_count") or 0,
     }
+
+    if kind == "compare":
+        # เก็บคู่ตัวเลขไว้ในช่อง icon เป็น "12|10" ใช้คอลัมน์เดิม ไม่ต้องเพิ่มตาราง
+        data["icon"] = "%s|%s" % ((form.get("cmp_left") or "").strip(),
+                                  (form.get("cmp_right") or "").strip())
 
     upload = form.get("image")
     if upload is not None and getattr(upload, "filename", ""):
@@ -980,7 +988,7 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
             await upload.read(), upload.filename, upload.content_type or ""
         )
 
-    if kind in ("choice", "truefalse", "model3d"):
+    if kind in ("choice", "truefalse", "model3d", "compare"):
         # โจทย์ 3 มิติใช้ตัวเลือกแบบเดียวกับข้อเลือกตอบ ต่างแค่มีรูปทรงให้ดู
         labels = form.getlist("opt_label")
         images = form.getlist("opt_image")
@@ -1047,6 +1055,7 @@ def admin_quiz_edit(request: Request, quiz_id: str, saved: str = "", err: str = 
                 questions=quiz.list_questions(quiz_id),
                 levels=config.LEVELS,
                 level_ranges=config.LEVEL_RANGES,
+                subjects=config.SUBJECTS,
                 icon_sets=quiz.ICON_SETS,
                 models=quiz.MODELS,
                 model_groups=quiz.MODEL_GROUPS,

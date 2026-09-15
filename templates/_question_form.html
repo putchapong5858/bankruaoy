@@ -2,7 +2,7 @@
    ฟอร์มเพิ่ม/แก้ไขคำถาม 1 ข้อ — ใช้ร่วมกันทั้งตอนเพิ่มและตอนแก้
    q = None คือเพิ่มข้อใหม่
    ───────────────────────────────────────────────────────── #}
-{% macro question_form(quiz, q, icon_sets={}, models={}, model_groups=[], vocab=[]) %}
+{% macro question_form(quiz, q, icon_sets={}, models={}, model_groups=[]) %}
 {% set opts = (q.options if q else []) %}
 {% set kind = (q.kind if q else 'choice') %}
 <form class="qform" method="post" enctype="multipart/form-data"
@@ -17,6 +17,7 @@
         <option value="match"     {{ 'selected' if kind == 'match' }}>จับคู่</option>
         <option value="count"     {{ 'selected' if kind == 'count' }}>นับจำนวน (Count &amp; Match)</option>
         <option value="model3d"   {{ 'selected' if kind == 'model3d' }}>รูปทรง 3 มิติ / ส่องกล้อง AR</option>
+        <option value="compare"   {{ 'selected' if kind == 'compare' }}>เทียบเลข มากกว่า/น้อยกว่า (จระเข้)</option>
       </select>
     </label>
     <label>คะแนนของข้อนี้
@@ -42,25 +43,8 @@
               placeholder="เช่น 12 + 9 เท่ากับเท่าไร">{{ q.prompt if q else '' }}</textarea>
   </label>
 
-  <div class="grid4">
-    <label>คำใบ้ใต้โจทย์ (ไม่บังคับ)
-      <input type="text" name="hint" maxlength="300"
-             placeholder="เช่น กดปุ่ม 🔊 ฟังคำก่อนนะ"
-             value="{{ q.hint or '' if q else '' }}">
-    </label>
-    <label>ข้อความที่ปุ่ม 🔊 จะอ่าน (ไม่บังคับ)
-      <input type="text" name="speak_text" maxlength="300"
-             placeholder="เว้นว่าง = อ่านโจทย์ตามปกติ"
-             value="{{ q.speak_text or '' if q else '' }}">
-    </label>
-  </div>
-  <p class="muted" style="font-size:.85rem;margin:.1rem 0 .5rem">
-    ช่อง <b>ข้อความที่ปุ่ม 🔊 จะอ่าน</b> ใช้กับข้อที่ต้องซ่อนคำตอบไว้ในโจทย์
-    เช่น โจทย์เขียนว่า <code>_ า ว</code> แต่ให้เสียงอ่านว่า <code>กาว</code>
-  </p>
-
   {# ───── เลือกตอบ / ถูกผิด ───── #}
-  <div class="kindbox" data-for="choice,truefalse,model3d">
+  <div class="kindbox" data-for="choice,truefalse,model3d,compare">
     <p class="muted" style="font-size:.88rem;margin:.3rem 0">
       กรอกตัวเลือกแล้วกดวงกลมหน้าข้อที่เป็นคำตอบที่ถูก (เว้นว่างไว้ = ไม่ใช้ตัวเลือกนั้น)<br>
       ถ้าใส่รูปให้ <b>ครบทุกตัวเลือก</b> ระบบจะแสดงเป็นการ์ดรูปใหญ่ให้เด็กกดเลือก
@@ -159,21 +143,43 @@
     </p>
   </div>
 
-  {# ───── จับคู่ (ลากเส้น) ───── #}
-  <div class="kindbox" data-for="match">
+
+  {# ───── เทียบเลข มากกว่า/น้อยกว่า ───── #}
+  <div class="kindbox" data-for="compare">
     <p class="muted" style="font-size:.88rem;margin:.3rem 0">
-      กรอกเป็นคู่ ๆ ฝั่งซ้ายคู่กับฝั่งขวา — เด็กจะเห็นเป็นสองแถวแล้ว<b>ลากเส้นจับคู่</b>
-      (แตะฝั่งซ้ายแล้วแตะฝั่งขวาก็ได้)<br>
-      ฝั่งขวาใส่ <b>รูป</b> ได้ด้วย เช่น <code>/static/img/vocab/cat.webp</code>
-      — พิมพ์ชื่อคำศัพท์ในช่องขวาแล้วเลือกจากรายการที่ขึ้นมาได้เลย ·
-      ฝั่งขวาห้ามซ้ำกัน · ใส่ได้มากที่สุด 8 คู่ (ถ้ามีเยอะกว่านี้ให้แยกเป็นหลายข้อ)
+      ใส่เลข 2 ตัวที่จะให้เด็กเทียบกัน เด็กจะเห็นจระเข้อยู่ตรงกลาง
+      พอตอบเสร็จจระเข้จะอ้าปากหันไปทางเลขที่มากกว่า (เท่ากันจะหุบปาก)<br>
+      ตัวเลือกด้านบนให้กรอก 3 ช่องว่า <b>&lt;</b> <b>=</b> <b>&gt;</b> แล้วเลือกข้อที่ถูก
     </p>
-    {% for i in range(8) %}
+    <div class="grid4">
+      <label>เลขซ้าย
+        <input type="number" name="cmp_left" min="0" max="99" step="1"
+               value="{{ (q.icon or '|').split('|')[0] if q and q.kind == 'compare' else '' }}">
+      </label>
+      <label>เลขขวา
+        <input type="number" name="cmp_right" min="0" max="99" step="1"
+               value="{{ (q.icon or '|').split('|')[1] if q and q.kind == 'compare' else '' }}">
+      </label>
+      <label class="chk" style="align-self:end;margin-bottom:.6rem">
+        <input type="checkbox" name="icon_count" value="1"
+               {{ 'checked' if q and q.kind == 'compare' and q.icon_count }}>
+        โชว์จุดช่วยนับใต้ตัวเลข
+      </label>
+    </div>
+    <p class="muted" style="font-size:.85rem;margin:.4rem 0 0">
+      จุดช่วยนับเหมาะกับข้อแรก ๆ และเลขไม่เกิน 10 — พอเด็กเริ่มคล่องแล้วให้ติ๊กออก
+    </p>
+  </div>
+
+  {# ───── จับคู่ ───── #}
+  <div class="kindbox" data-for="match">
+    <p class="muted" style="font-size:.88rem;margin:.3rem 0">กรอกเป็นคู่ ๆ ฝั่งซ้ายคู่กับฝั่งขวา</p>
+    {% for i in range(4) %}
     {% set o = opts[i] if opts | length > i else None %}
     <div class="optrow" style="grid-template-columns:1fr 1fr">
       <input type="text" name="match_left" placeholder="ฝั่งซ้าย {{ i + 1 }}"
              value="{{ o.label if o and kind == 'match' else '' }}">
-      <input type="text" name="match_right" list="vocabpics" placeholder="คู่กับ (ข้อความ หรือรูป)"
+      <input type="text" name="match_right" placeholder="คู่กับ"
              value="{{ o.match_value or '' if o and kind == 'match' else '' }}">
     </div>
     {% endfor %}

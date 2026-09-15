@@ -32,10 +32,11 @@ KINDS = {
     "match":     "จับคู่",
     "count":     "นับจำนวน",
     "model3d":   "รูปทรง 3 มิติ / AR",
+    "compare":   "เทียบเลข มากกว่า/น้อยกว่า (จระเข้กินเลข)",
 }
 
 # รูปแบบที่ตรวจคำตอบเหมือนกัน คือเลือกตัวเลือกที่ถูก 1 ตัว
-PICK_KINDS = ("choice", "truefalse", "count", "model3d")
+PICK_KINDS = ("choice", "truefalse", "count", "model3d", "compare")
 
 # อีโมจิยอดนิยมสำหรับโจทย์นับจำนวน — ครูกดเลือกได้เลยไม่ต้องพิมพ์
 ICON_SETS = {
@@ -300,7 +301,7 @@ def save_question(quiz_id: str | int, data: dict,
         "explanation": _txt(data.get("explanation"), 500) or None,
         "points": points,
         "icon": icon or None,
-        "icon_count": icon_count if kind == "count" else None,
+        "icon_count": icon_count if kind in ("count", "compare") else None,
     }
 
     if kind == "count":
@@ -319,6 +320,14 @@ def save_question(quiz_id: str | int, data: dict,
 
     if kind == "fill" and not accepted:
         raise SupabaseError("ข้อเติมคำต้องมีคำตอบที่ถูกต้องอย่างน้อย 1 คำตอบ")
+    if kind == "compare":
+        pair = compare_pair(icon)
+        if not pair:
+            raise SupabaseError('กรุณากรอกคู่ตัวเลขในรูปแบบ "12|10"')
+        if not all(0 <= n <= 99 for n in pair):
+            raise SupabaseError("ตัวเลขที่เทียบต้องอยู่ระหว่าง 0 ถึง 99")
+        if len(options) < 2:
+            raise SupabaseError("ต้องมีตัวเลือกอย่างน้อย 2 ตัวเลือก")
     if kind == "model3d":
         if icon not in MODELS:
             raise SupabaseError("กรุณาเลือกรูปทรง 3 มิติที่จะให้เด็กดู")
@@ -530,6 +539,54 @@ def level_matches(quiz_level: str, student_level: str) -> bool:
     return False
 
 
+def compare_pair(raw: str) -> tuple[int, int] | None:
+    """อ่านคู่ตัวเลขของโจทย์เทียบเลข เก็บในช่อง icon เป็น "12|10" """
+    parts = (raw or "").split("|")
+    if len(parts) != 2:
+        return None
+    try:
+        return int(parts[0]), int(parts[1])
+    except ValueError:
+        return None
+
+
+def subject_key(raw: str) -> str:
+    """ชื่อวิชาที่พิมพ์มาแบบไหนก็ตาม ให้กลายเป็นชื่อมาตรฐานชื่อเดียว"""
+    name = (raw or "").strip()
+    if not name:
+        return ""
+    for s in config.SUBJECTS:
+        if name == s["name"]:
+            return name
+    return config.SUBJECT_ALIASES.get(name.lower(), name)
+
+
+def by_subject(rows: list[dict]) -> list[dict]:
+    """
+    จัดแบบฝึกหัดเป็นกล่องตามรายวิชา เรียงตามลำดับใน config.SUBJECTS
+
+    คืน [{name, icon, color, quizzes}] เฉพาะวิชาที่มีชุดจริง —
+    วิชาที่ยังไม่มีแบบฝึกหัดจะไม่โผล่เป็นกล่องว่างให้ผู้ปกครองงง
+    ชุดที่ชื่อวิชาไม่ตรงวิชาไหนเลยจะไปรวมอยู่กล่อง "อื่น ๆ" ท้ายสุด
+    """
+    buckets: dict[str, list] = {}
+    for q in rows:
+        buckets.setdefault(subject_key(q.get("subject")), []).append(q)
+
+    known = [s["name"] for s in config.SUBJECTS]
+    out = []
+    for s in config.SUBJECTS:
+        got = buckets.pop(s["name"], [])
+        if got:
+            out.append({**s, "quizzes": got})
+
+    leftovers = [q for name, group in buckets.items()
+                 if name not in known for q in group]
+    if leftovers:
+        out.append({**config.OTHER_SUBJECT, "quizzes": leftovers})
+    return out
+
+
 def quizzes_for_student(student: dict, limit: int = 40) -> list[dict]:
     """แบบฝึกหัดที่เผยแพร่แล้วและตรงระดับชั้นของเด็ก พร้อมผลที่เคยทำ"""
     level = (student.get("level") or "").strip()
@@ -625,6 +682,9 @@ def public_questions(questions: list[dict]) -> list[dict]:
             "points": float(q.get("points") or 1),
             # โจทย์นับจำนวน — ส่งรูปกับจำนวนไปให้หน้าเว็บวาดแถวรูปเอง
             "icon": q.get("icon") if q.get("kind") in ("count", "model3d") else None,
+            # โจทย์เทียบเลข — ส่งคู่ตัวเลขกับจำนวนจุดช่วยนับไปให้หน้าเด็กวาด
+            "pair": compare_pair(q.get("icon")) if q.get("kind") == "compare" else None,
+            "dots": bool(q.get("icon_count")) if q.get("kind") == "compare" else False,
             "model": (MODELS.get(q.get("icon") or "") or None)
                      if q.get("kind") == "model3d" else None,
             "model_url": model_url(q["icon"]) if q.get("kind") == "model3d"

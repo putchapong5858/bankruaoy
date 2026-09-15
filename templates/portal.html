@@ -170,14 +170,33 @@
 
     {% if quizerr %}<div class="flash warn">⚠ {{ quizerr }}</div>{% endif %}
 
-    {% if quizzes %}
+    {% if quiz_subjects %}
+    {# ปุ่มลัดข้ามไปวิชาที่ต้องการ — มีหลายวิชาถึงจะแสดง #}
+    {% if quiz_subjects | length > 1 %}
+    <div class="subjnav">
+      {% for g in quiz_subjects %}
+      <a class="subjchip" href="#subj-{{ loop.index }}" style="--c:{{ g.color }}">
+        <i>{{ g.icon }}</i> {{ g.name }} <b>{{ g.quizzes | length }}</b>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% for g in quiz_subjects %}
+    <div class="subjbox" id="subj-{{ loop.index }}" style="--c:{{ g.color }}">
+      <div class="subjhead">
+        <span class="subjicon">{{ g.icon }}</span>
+        <b>{{ g.name }}</b>
+        <span class="subjn">{{ g.quizzes | length }} ชุด</span>
+      </div>
     <div class="rows">
-      {% for qz in quizzes %}
+      {% for qz in g.quizzes %}
       <div class="row">
         <div class="body">
           <b>{{ qz.title }}</b>
           <span>
-            {{ qz.subject or 'ทั่วไป' }} · {{ qz.question_count }} ข้อ
+            {# ไม่ต้องบอกวิชาซ้ำ กล่องที่ครอบอยู่บอกไปแล้ว #}
+            {{ qz.question_count }} ข้อ
             {%- if qz.time_limit_sec %} · ประมาณ {{ (qz.time_limit_sec // 60) }} นาที{% endif %}
             {%- if qz.description %}<br>{{ qz.description }}{% endif %}
             {%- if qz.times_done %}
@@ -212,6 +231,8 @@
       </div>
       {% endfor %}
     </div>
+    </div>
+    {% endfor %}
     {% else %}
     <p class="empty">ยังไม่มีแบบฝึกหัดสำหรับระดับชั้นนี้</p>
     {% endif %}
@@ -344,4 +365,32 @@
   </section>
 
 </main>
+
+<style>
+/* ── กล่องแบบฝึกหัดแยกรายวิชา ──────────────────────────
+   ผู้ปกครองจะได้กวาดตาหาวิชาที่ต้องการได้เร็ว ไม่ต้องไล่อ่านทีละชุด */
+.subjnav{display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:1rem}
+.subjchip{display:inline-flex;align-items:center;gap:.4rem;text-decoration:none;
+          border:2px solid var(--c);border-radius:999px;padding:.4rem .9rem;
+          font-size:.9rem;font-weight:700;color:var(--c);background:#fff;transition:.15s}
+.subjchip i{font-style:normal}
+.subjchip b{background:var(--c);color:#fff;border-radius:999px;
+            padding:.02rem .45rem;font-size:.78rem}
+.subjchip:hover{background:color-mix(in srgb, var(--c) 10%, #fff)}
+
+.subjbox{border:2px solid color-mix(in srgb, var(--c) 35%, #fff);
+         border-radius:20px;padding:1rem 1.05rem;margin-bottom:1rem;
+         background:color-mix(in srgb, var(--c) 5%, #fff);scroll-margin-top:12px}
+.subjhead{display:flex;align-items:center;gap:.55rem;margin-bottom:.8rem}
+.subjhead b{font-size:1.08rem;color:var(--c)}
+.subjicon{font-size:1.35rem;line-height:1}
+.subjn{margin-left:auto;font-size:.82rem;font-weight:700;color:#fff;
+       background:var(--c);border-radius:999px;padding:.12rem .6rem}
+.subjbox .row{background:#fff}
+@media(max-width:600px){
+  .subjbox{padding:.85rem .7rem;border-radius:16px}
+  .subjchip{padding:.35rem .7rem;font-size:.84rem}
+}
+</style>
+
 {% endblock %}

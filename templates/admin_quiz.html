@@ -49,7 +49,16 @@
             <input type="text" name="title" required value="{{ quiz.title }}">
           </label>
           <label>วิชา
-            <input type="text" name="subject" value="{{ quiz.subject or '' }}" placeholder="คณิตศาสตร์">
+            <select name="subject">
+              <option value="">— ยังไม่ระบุวิชา —</option>
+              {% for sj in subjects %}
+              <option {{ 'selected' if quiz.subject == sj.name }}>{{ sj.name }}</option>
+              {% endfor %}
+              {# ชื่อวิชาเดิมที่ไม่ตรงรายการ ต้องเก็บไว้ ไม่งั้นกดบันทึกแล้วหาย #}
+              {% if quiz.subject and quiz.subject not in subjects | map(attribute='name') | list %}
+              <option selected>{{ quiz.subject }}</option>
+              {% endif %}
+            </select>
           </label>
           <label>ระดับชั้น
             <select name="level">

@@ -298,7 +298,12 @@
         <div class="grid4">
           <label>ชื่อการสอบ <b class="req">*</b><input type="text" name="name" required placeholder="ทดสอบบทที่ 3"></label>
           <label>วันที่<input type="date" name="date" value="{{ today }}"></label>
-          <label>วิชา<input type="text" name="subject" placeholder="คณิตศาสตร์"></label>
+          <label>วิชา
+            <select name="subject">
+              <option value="">— ยังไม่ระบุวิชา —</option>
+              {% for sj in subjects %}<option>{{ sj.name }}</option>{% endfor %}
+            </select>
+          </label>
           <label>คะแนนเต็ม<input type="number" name="full_score" value="20" min="1" step="1"></label>
           <label>ระดับชั้น
             <select name="level">
@@ -373,10 +378,16 @@
       </form>
     </details>
 
-    {% for qz in quizzes %}
+    {% for g in quiz_subjects %}
+    <div class="subjbar" style="--c:{{ g.color }}">
+      <span>{{ g.icon }}</span> <b>{{ g.name }}</b>
+      <span class="n">{{ g.quizzes | length }} ชุด</span>
+    </div>
+    {% for qz in g.quizzes %}
     <div class="row rowcard">
       <div class="body">
-        <b>{{ qz.title }}{% if qz.subject %} · {{ qz.subject }}{% endif %}</b>
+        {# วิชาอยู่บนแถบหัวกลุ่มแล้ว ไม่ต้องเขียนซ้ำท้ายชื่อชุด #}
+        <b>{{ qz.title }}</b>
         <span>
           {{ qz.level or 'ทุกระดับชั้น' }} · {{ qz.question_count }} ข้อ ·
           {% if qz.status == 'published' %}<span class="tag green">เผยแพร่แล้ว</span>
@@ -402,6 +413,7 @@
         <button class="btn btn-ghost btn-sm btn-del">ลบ</button>
       </form>
     </div>
+    {% endfor %}
     {% else %}
     <p class="empty">ยังไม่มีแบบฝึกหัด</p>
     {% endfor %}
@@ -722,6 +734,13 @@
 .stu-head{margin-bottom:.6rem}
 .stu-head b{font-size:1.05rem;margin-right:.5rem}
 .panel form .btn{width:auto;margin-top:.4rem}
+
+.subjbar{display:flex;align-items:center;gap:.5rem;margin:1.1rem 0 .6rem;
+          padding:.4rem .8rem;border-radius:999px;font-size:.95rem;color:var(--c);
+          background:color-mix(in srgb, var(--c) 10%, #fff);
+          border:1.5px solid color-mix(in srgb, var(--c) 30%, #fff)}
+.subjbar .n{margin-left:auto;font-size:.8rem;font-weight:700;color:#fff;
+            background:var(--c);border-radius:999px;padding:.1rem .55rem}
 
 .aud{display:inline-block;margin-top:.35rem;font-size:.82rem;font-weight:600;
       border-radius:999px;padding:.15rem .6rem}
