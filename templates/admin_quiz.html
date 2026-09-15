@@ -342,6 +342,16 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
         </div>
         {% endif %}
 
+        {% if q.kind == 'findshape' and q.find %}
+        <div class="findprev">
+          {{ q.find.svg | safe }}
+          <p class="muted" style="font-size:.85rem;margin:.3rem 0 0">
+            ให้นับ <b style="color:{{ q.find.hex }}">{{ q.find.target }}</b> ·
+            ในภาพมีทั้งหมด {{ q.find.total }} รูป
+          </p>
+        </div>
+        {% endif %}
+
         {% if q.kind == 'mathrun' and q.icon %}
         {% set ms = q.icon.split('|') %}
         <p class="muted" style="font-size:.85rem;margin:.2rem 0 .4rem">
@@ -350,7 +360,7 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
         </p>
         {% endif %}
 
-        {% if q.kind in ('choice', 'truefalse', 'count', 'mathrun') %}
+        {% if q.kind in ('choice', 'truefalse', 'count', 'mathrun', 'findshape') %}
         <ul class="qopts">
           {% for o in q.options %}
           <li class="{{ 'right' if o.is_correct }}">
@@ -449,6 +459,13 @@ img.cico{height:28px;width:auto}
 .mbox small{color:var(--ink-soft);font-size:.78rem}
 .mopt input:checked + .mbox{border-color:var(--sky-600);background:#eef8ff;
       box-shadow:0 0 0 3px rgba(38,165,224,.15)}
+
+/* ตัวอย่างภาพนับรูปทรงในหน้าครู — ใช้ SVG ชุดเดียวกับหน้าเด็ก */
+.findprev{margin:.4rem 0 .6rem}
+.findprev .findsvg{width:190px;height:auto;border:1px solid var(--line);border-radius:12px}
+.findprev .fs-paper{fill:#fff}
+.findprev .fs-bg{fill:var(--c);opacity:0}
+.findprev .fs-ln{fill:none;stroke:var(--c);stroke-width:2.6;stroke-linejoin:round}
 </style>
 
 <script>

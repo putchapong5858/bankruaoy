@@ -20,7 +20,7 @@ import re
 import unicodedata
 from datetime import datetime, timezone
 
-from . import config
+from . import config, shapes
 from .db import (SupabaseError, delete, gather, insert, select,
                  select_one, update)
 
@@ -34,10 +34,12 @@ KINDS = {
     "model3d":   "รูปทรง 3 มิติ / AR",
     "compare":   "เทียบเลข มากกว่า/น้อยกว่า (จระเข้กินเลข)",
     "mathrun":   "คิดเลขเร็ว บนก้อนเมฆ (จับเวลา)",
+    "findshape": "นับรูปทรงในภาพรวม (เชาวน์ปัญญา)",
 }
 
 # รูปแบบที่ตรวจคำตอบเหมือนกัน คือเลือกตัวเลือกที่ถูก 1 ตัว
-PICK_KINDS = ("choice", "truefalse", "count", "model3d", "compare", "mathrun")
+PICK_KINDS = ("choice", "truefalse", "count", "model3d", "compare",
+              "mathrun", "findshape")
 
 # อีโมจิยอดนิยมสำหรับโจทย์นับจำนวน — ครูกดเลือกได้เลยไม่ต้องพิมพ์
 ICON_SETS = {
@@ -238,6 +240,9 @@ def list_questions(quiz_id: str | int, with_answers: bool = True) -> list[dict]:
         q["options"] = [o for o in options if str(o["question_id"]) == qid]
         q["accepted"] = [a["value"] for a in accepted if str(a["question_id"]) == qid]
         q["kind_label"] = KINDS.get(q.get("kind"), q.get("kind"))
+        # ภาพรูปทรงสร้างสด ๆ จาก seed — ทั้งหน้าครูและหน้าเด็กใช้ตัวสร้างเดียวกัน
+        if q.get("kind") == "findshape":
+            q["find"] = shapes.scene_of(q.get("icon"))
         if not with_answers:
             for o in q["options"]:
                 o.pop("is_correct", None)
@@ -318,6 +323,21 @@ def save_question(quiz_id: str | int, data: dict,
         if not prompt:
             fields["prompt"] = "%d %s %d = ?" % (
                 spec["a"], "+" if spec["op"] == "+" else "−", spec["b"])
+    elif kind == "findshape":
+        # โจทย์นับรูปทรง — ภาพสร้างจาก seed เซิร์ฟเวอร์จึงนับคำตอบเองได้
+        sp = shapes.spec(icon)
+        if not sp:
+            raise SupabaseError(
+                'โจทย์นับรูปทรงต้องอยู่ในรูปแบบ "เลขภาพ|ชนิด|สี|ความยาก" '
+                "เช่น 3140|triangle|red|easy"
+            )
+        answer = shapes.answer_of(icon)
+        options = _count_choices(answer, 4)
+        accepted = []
+        if not prompt:
+            fields["prompt"] = "ในภาพนี้มี%sกี่รูป?" % shapes.label(sp["shape"], sp["color"])
+        if not fields.get("hint"):
+            fields["hint"] = "แตะรูปทีละรูปเพื่อทำเครื่องหมาย จะได้ไม่นับซ้ำนะ"
     elif kind == "count":
         # โจทย์นับจำนวน — ระบบสร้างตัวเลือกตัวเลขให้เอง ครูแค่บอกรูปกับจำนวน
         if not icon:
@@ -436,6 +456,28 @@ def _math_choices(answer: int) -> list[dict]:
     pool = [n for n in pool if 0 <= n <= 20]
     random.shuffle(pool)
     numbers = sorted([answer] + pool[:2])
+    return [
+        {"sort_order": i + 1, "label": str(n), "image_url": None,
+         "is_correct": n == answer, "match_value": None}
+        for i, n in enumerate(numbers)
+    ]
+
+
+def _count_choices(answer: int, how_many: int = 4) -> list[dict]:
+    """
+    ตัวเลือกตัวเลขรอบ ๆ คำตอบ สำหรับโจทย์นับ — คำตอบที่ถูก 1 ตัว + ตัวลวงใกล้ ๆ
+
+    ใช้ 4 ตัวเลือกกับโจทย์นับรูปทรง เพราะถ้ามีแค่ 3 ตัว เดาสุ่มก็ถูก 1 ใน 3
+    ซึ่งง่ายเกินไปสำหรับโจทย์ที่จริง ๆ แล้วต้องกวาดตาหาให้ครบ
+    """
+    # เอาตัวลวงที่ห่างแค่ 1-2 ก่อน ถ้าไม่พอค่อยใช้ห่าง 3 — ตัวลวงที่ห่างมาก
+    # เด็กตัดทิ้งได้ตั้งแต่ยังไม่นับ ข้อก็เลยง่ายเกินจริง และไม่ใช้เลข 0
+    near = [n for n in (answer - 1, answer + 1, answer - 2, answer + 2) if n >= 1]
+    far = [n for n in (answer - 3, answer + 3) if n >= 1]
+    random.shuffle(near)
+    random.shuffle(far)
+    pool = near + far
+    numbers = sorted([answer] + pool[:max(1, how_many - 1)])
     return [
         {"sort_order": i + 1, "label": str(n), "image_url": None,
          "is_correct": n == answer, "match_value": None}
@@ -751,6 +793,8 @@ def public_questions(questions: list[dict]) -> list[dict]:
             # โจทย์คิดเลขเร็ว — ส่งตัวเลข เครื่องหมาย และเวลาคิด ไปให้หน้าเด็ก
             # ระวัง: ต้องตัด answer ทิ้ง ไม่งั้นเด็กกด View Source แล้วเห็นเฉลย
             "math": _math_public(q.get("icon")) if q.get("kind") == "mathrun" else None,
+            # โจทย์นับรูปทรง — ส่งภาพ SVG กับชื่อเป้าหมายไป ไม่ได้ส่งจำนวนที่ถูก
+            "find": shapes.scene_of(q.get("icon")) if q.get("kind") == "findshape" else None,
             "dots": bool(q.get("icon_count")) if q.get("kind") == "compare" else False,
             "model": (MODELS.get(q.get("icon") or "") or None)
                      if q.get("kind") == "model3d" else None,

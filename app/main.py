@@ -5,6 +5,7 @@ FastAPI + Jinja2 + Supabase + LINE Login
 
 from __future__ import annotations
 
+import random
 import re
 from datetime import date
 from pathlib import Path
@@ -981,6 +982,18 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
         # เก็บคู่ตัวเลขไว้ในช่อง icon เป็น "12|10" ใช้คอลัมน์เดิม ไม่ต้องเพิ่มตาราง
         data["icon"] = "%s|%s" % ((form.get("cmp_left") or "").strip(),
                                   (form.get("cmp_right") or "").strip())
+    elif kind == "findshape":
+        # เก็บเป็น "3140|triangle|red|easy" = เลขภาพ | ชนิด | สี | ความยาก
+        # เลขภาพว่าง = สุ่มให้ใหม่ ครูจะได้ไม่ต้องคิดเอง
+        seed = (form.get("find_seed") or "").strip()
+        if not seed.isdigit():
+            seed = str(random.randint(1000, 99999))
+        data["icon"] = "%s|%s|%s|%s" % (
+            seed,
+            (form.get("find_shape") or "circle").strip(),
+            (form.get("find_color") or "blue").strip(),
+            (form.get("find_level") or "easy").strip(),
+        )
     elif kind == "mathrun":
         # เก็บเป็น "4+5|20|1" = โจทย์ | วินาทีคิดเร็ว | โชว์จุดช่วยนับ
         data["icon"] = "%s|%s|%s" % (

@@ -487,6 +487,73 @@
         }, 7000);
       }
 
+      // โจทย์นับรูปทรง — แตะรูปทีละรูปเพื่อทำเครื่องหมาย เหมือนเอาดินสอวงบนกระดาษ
+      if (q.kind === "findshape" && q.find) {
+        var fw = document.createElement("div");
+        fw.className = "findwrap";
+        fw.innerHTML =
+          '<div class="findtop">' +
+            '<span class="findgoal">' + (q.find.swatch || "") +
+              '<b style="color:' + q.find.hex + '">' + q.find.target + '</b></span>' +
+            '<span class="findtools">' +
+              '<span class="findcount" id="findcount">ทำเครื่องหมายแล้ว 0 รูป</span>' +
+              '<button type="button" class="findclear" id="findclear">ล้าง</button>' +
+            '</span>' +
+          '</div>' +
+          '<div class="findbox">' + q.find.svg + '</div>';
+        box.appendChild(fw);
+
+        var marks = fw.querySelector(".fs-marks");
+        var ns = "http://www.w3.org/2000/svg";
+        var onCount = 0;
+
+        function repaintCount() {
+          el("findcount").textContent = "ทำเครื่องหมายแล้ว " + onCount + " รูป";
+        }
+
+        // เครื่องหมายถูกวาดไว้ชั้นบนสุดแยกต่างหาก จะได้ไม่โดนรูปอื่นบังจนมองไม่เห็น
+        function addMark(g) {
+          var cx = parseFloat(g.getAttribute("data-cx"));
+          var cy = parseFloat(g.getAttribute("data-cy"));
+          var dot = document.createElementNS(ns, "circle");
+          dot.setAttribute("cx", cx); dot.setAttribute("cy", cy);
+          dot.setAttribute("r", 9);
+          dot.setAttribute("class", "fs-dot");
+          dot.setAttribute("data-for", g.getAttribute("data-i"));
+          var tick = document.createElementNS(ns, "path");
+          tick.setAttribute("d", "M" + (cx - 4.2) + " " + cy +
+                                 " l3.2 3.6 l5.6 -7.4");
+          tick.setAttribute("class", "fs-tick");
+          tick.setAttribute("data-for", g.getAttribute("data-i"));
+          marks.appendChild(dot);
+          marks.appendChild(tick);
+        }
+        function dropMark(g) {
+          var i = g.getAttribute("data-i");
+          Array.prototype.forEach.call(
+            marks.querySelectorAll('[data-for="' + i + '"]'),
+            function (n) { n.remove(); });
+        }
+
+        Array.prototype.forEach.call(fw.querySelectorAll(".fsh"), function (g) {
+          g.addEventListener("click", function () {
+            var on = g.classList.toggle("marked");
+            if (on) { addMark(g); onCount += 1; }
+            else { dropMark(g); onCount -= 1; }
+            play("tap");
+            repaintCount();
+          });
+        });
+
+        el("findclear").addEventListener("click", function () {
+          Array.prototype.forEach.call(fw.querySelectorAll(".fsh.marked"),
+            function (g) { g.classList.remove("marked"); });
+          marks.innerHTML = "";
+          onCount = 0;
+          repaintCount();
+        });
+      }
+
       // โจทย์คิดเลขเร็ว — ก้อนเมฆสีน้ำ + แถบสายฟ้าโบนัสความเร็ว
       if (q.kind === "mathrun" && q.math) {
         var m = q.math;
@@ -567,7 +634,8 @@
         box.appendChild(strip);
       }
 
-      var numbers = (q.kind === "count" || q.kind === "mathrun");
+      var numbers = (q.kind === "count" || q.kind === "mathrun" ||
+                     q.kind === "findshape");
       var signs = (q.kind === "compare");
       // ถ้าทุกตัวเลือกมีรูป ให้วางเป็นการ์ดรูปใหญ่ ๆ เด็กอนุบาลกดง่ายกว่าอ่านตัวหนังสือ
       var pics = !numbers && q.options.length > 0 &&
@@ -605,6 +673,7 @@
       box.classList.toggle("signrow", signs);
       box.classList.toggle("piccards", pics);
       box.classList.toggle("mathrow", q.kind === "mathrun");
+      box.classList.toggle("findrow", q.kind === "findshape");
     }
 
     el("submit").disabled = true;
@@ -912,6 +981,43 @@
 .shape3d.failed{display:flex;align-items:center;justify-content:center}
 .shape3d.failed::after{content:"📦";font-size:3rem;opacity:.4}
 @media(max-width:480px){ .shape3d{height:240px} }
+
+/* ══════ โจทย์นับรูปทรงในภาพรวม (เชาวน์ปัญญา) ══════ */
+#answers.findrow > .findwrap{flex:0 0 100%;width:100%;margin-bottom:.9rem}
+.findtop{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
+/* รูปตัวอย่างเป้าหมาย — เด็กที่ยังอ่านไม่ออกดูรูปนี้แล้วรู้เลยว่าต้องหาอะไร */
+.findgoal{display:flex;align-items:center;gap:.5rem;background:#f8fcff;
+          border:2px solid #dbeefc;border-radius:16px;padding:.3rem .8rem .3rem .45rem}
+.fs-swatch{display:block;width:34px;height:34px;flex:none}
+.findgoal b{font-family:'Mali',cursive;font-size:1.1rem;line-height:1.2}
+.findtools{display:flex;align-items:center;gap:.4rem;margin-left:auto}
+.findcount{background:#eef8ff;border:2px solid #dbeefc;border-radius:999px;
+           padding:.25rem .7rem;font-size:.82rem;font-weight:700;color:#0c6b9e;
+           font-variant-numeric:tabular-nums;white-space:nowrap}
+.findclear{border:2px solid #dbeefc;background:#fff;color:#3e6b85;border-radius:999px;
+           padding:.25rem .7rem;font:inherit;font-size:.82rem;cursor:pointer}
+.findclear:active{transform:scale(.96)}
+.findbox{border:2px solid #dbeefc;border-radius:18px;overflow:hidden;background:#fff;
+         touch-action:manipulation}
+.findsvg{display:block;width:100%;height:auto}
+.fs-paper{fill:#fff}
+/* pointer-events:all สำคัญ — ถ้าไม่ใส่ รูปที่ fill:none จะแตะได้แค่เส้นขอบบาง ๆ
+   เด็กเล็กจิ้มกลางรูปแล้วไม่ติด รูปเล็กวาดทีหลังจึงอยู่บนสุดและถูกเลือกก่อนเสมอ */
+.fsh{cursor:pointer}
+.fs-bg{fill:var(--c);opacity:0;pointer-events:all;transition:opacity .18s}
+.fs-ln{fill:none;stroke:var(--c);stroke-width:2.6;stroke-linejoin:round;
+       pointer-events:none;transition:stroke-width .18s}
+.fsh.marked .fs-bg{opacity:.24}
+.fsh.marked .fs-ln{stroke-width:4.6}
+.fs-dot{fill:#12844b}
+.fs-tick{fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+#answers.findrow{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap}
+#answers.findrow .opt.num{flex:0 0 74px;font-size:1.9rem}
+@media(max-width:480px){
+  .findgoal{font-size:1rem}
+  .findcount{font-size:.8rem;padding:.22rem .6rem}
+  #answers.findrow .opt.num{flex:0 0 66px;font-size:1.7rem}
+}
 
 /* ══════ โจทย์คิดเลขเร็ว บนก้อนเมฆ ══════ */
 .q-prompt:empty{display:none;margin:0}

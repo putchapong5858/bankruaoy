@@ -19,6 +19,7 @@
         <option value="model3d"   {{ 'selected' if kind == 'model3d' }}>รูปทรง 3 มิติ / ส่องกล้อง AR</option>
         <option value="compare"   {{ 'selected' if kind == 'compare' }}>เทียบเลข มากกว่า/น้อยกว่า (จระเข้)</option>
         <option value="mathrun"   {{ 'selected' if kind == 'mathrun' }}>คิดเลขเร็ว บนก้อนเมฆ (จับเวลา)</option>
+        <option value="findshape" {{ 'selected' if kind == 'findshape' }}>นับรูปทรงในภาพรวม (เชาวน์ปัญญา)</option>
       </select>
     </label>
     <label>คะแนนของข้อนี้
@@ -199,6 +200,45 @@
     <p class="muted" style="font-size:.85rem;margin:.4rem 0 0">
       แนะนำ — อนุบาล 3 ใช้ 20 วินาที + ติ๊กจุดช่วยนับ ·
       ป.1 ใช้ 12 วินาที ไม่ต้องติ๊กจุด
+    </p>
+  </div>
+
+  {# ───── นับรูปทรงในภาพรวม (เชาวน์ปัญญา) ───── #}
+  {% set fs = (q.icon or '').split('|') if q and q.kind == 'findshape' else [] %}
+  <div class="kindbox" data-for="findshape">
+    <p class="muted" style="font-size:.88rem;margin:.3rem 0">
+      ระบบจะวาดภาพรูปทรงวางซ้อน ๆ กันให้เอง (วาดใหม่ทุกครั้งจาก “เลขภาพ” ที่กรอก)
+      เด็กจะแตะรูปทีละรูปเพื่อทำเครื่องหมายเหมือนใช้ดินสอวงบนกระดาษ แล้วเลือกตัวเลขคำตอบ<br>
+      ระบบนับจำนวนที่ถูกต้องเองและสร้างตัวเลือกตัวเลข 4 ตัวให้ ครูไม่ต้องนั่งนับเอง
+    </p>
+    <div class="grid4">
+      <label>ให้นับรูปอะไร
+        <select name="find_shape">
+          <option value="circle"   {{ 'selected' if fs | length > 1 and fs[1] == 'circle' }}>วงกลม</option>
+          <option value="square"   {{ 'selected' if fs | length > 1 and fs[1] == 'square' }}>สี่เหลี่ยม</option>
+          <option value="triangle" {{ 'selected' if fs | length > 1 and fs[1] == 'triangle' }}>สามเหลี่ยม</option>
+        </select>
+      </label>
+      <label>สีอะไร
+        <select name="find_color">
+          <option value="red"   {{ 'selected' if fs | length > 2 and fs[2] == 'red' }}>แดง</option>
+          <option value="blue"  {{ 'selected' if fs | length > 2 and fs[2] == 'blue' }}>น้ำเงิน</option>
+          <option value="green" {{ 'selected' if fs | length > 2 and fs[2] == 'green' }}>เขียว</option>
+        </select>
+      </label>
+      <label>ความแน่นของภาพ
+        <select name="find_level">
+          <option value="easy" {{ 'selected' if fs | length > 3 and fs[3] == 'easy' }}>โล่ง — ราว 24 รูป (อนุบาล)</option>
+          <option value="hard" {{ 'selected' if fs | length > 3 and fs[3] == 'hard' }}>แน่น — ราว 40 รูป (ป.1 ขึ้นไป)</option>
+        </select>
+      </label>
+      <label>เลขภาพ (เว้นว่าง = สุ่มใหม่)
+        <input type="number" name="find_seed" min="1" max="99999" step="1"
+               value="{{ fs[0] if fs else '' }}" placeholder="สุ่มให้">
+      </label>
+    </div>
+    <p class="muted" style="font-size:.85rem;margin:.4rem 0 0">
+      เลขภาพเดียวกัน = ภาพเดิมเป๊ะทุกครั้ง · อยากได้ภาพใหม่ให้ลบเลขออกแล้วบันทึกซ้ำ
     </p>
   </div>
 
