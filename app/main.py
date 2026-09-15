@@ -449,6 +449,7 @@ def admin(request: Request, saved: str = "", err: str = ""):
         materials=got["materials"],
         announcements=got["announcements"],
         students=got["students"],
+        level_ranges=config.LEVEL_RANGES,
         # นักเรียนที่ถูกย้ายไป "ไม่ใช้งาน" — แสดงแยกไว้ให้กู้คืนได้
         archived_students=[s for s in got["all_students"] if not s.get("active")],
         parent_options=got["parent_options"],
@@ -964,9 +965,6 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
     data: dict = {
         "kind": kind,
         "prompt": form.get("prompt") or "",
-        # คำใบ้ที่แสดงใต้โจทย์ และข้อความที่ปุ่ม 🔊 จะอ่าน (เว้นว่าง = อ่านโจทย์)
-        "hint": form.get("hint") or "",
-        "speak_text": form.get("speak_text") or "",
         "points": form.get("points") or 1,
         "explanation": form.get("explanation") or "",
         # ไม่ได้แนบรูปใหม่ = ใช้รูปเดิม (ยกเว้นกดลบรูป)
@@ -1048,10 +1046,10 @@ def admin_quiz_edit(request: Request, quiz_id: str, saved: str = "", err: str = 
                 user=user, quiz=item,
                 questions=quiz.list_questions(quiz_id),
                 levels=config.LEVELS,
+                level_ranges=config.LEVEL_RANGES,
                 icon_sets=quiz.ICON_SETS,
                 models=quiz.MODELS,
                 model_groups=quiz.MODEL_GROUPS,
-                vocab=quiz.vocab_images(),
                 ai_ready=gemini.is_ready(),
                 saved=saved, err=err)
 
@@ -1452,17 +1450,11 @@ async def quiz_answer(request: Request, attempt_id: str):
 
     item = quiz.get_quiz(attempt["quiz_id"]) or {}
     reveal = bool(item.get("show_answer_on_wrong")) and not correct
-    payload = {
+    return JSONResponse({
         "correct": correct,
         "answer": quiz.correct_answer_text(question) if reveal else "",
         "explanation": (question.get("explanation") or "") if reveal else "",
-    }
-    if (question.get("kind") or "") == "match":
-        # ข้อจับคู่ — บอกว่าเส้นไหนที่เด็กลากไว้ถูก/ผิด (เป็นผลของคำตอบเขาเอง)
-        payload["pairs"] = quiz.match_pair_results(question, given)
-        if reveal:
-            payload["answer_pairs"] = quiz.match_answer_pairs(question)
-    return JSONResponse(payload)
+    })
 
 
 @app.post("/quiz/{attempt_id}/finish")

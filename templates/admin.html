@@ -357,6 +357,9 @@
             <select name="level">
               <option value="">— ทุกระดับชั้น —</option>
               {% for lv in levels %}<option>{{ lv }}</option>{% endfor %}
+              <optgroup label="ใช้ได้หลายชั้น">
+                {% for lv in level_ranges %}<option>{{ lv }}</option>{% endfor %}
+              </optgroup>
             </select>
           </label>
           <label>เวลาทำ (นาที)
@@ -384,6 +387,14 @@
             · เฉลี่ย <b>{{ qz.average_percent }}%</b>
           {% endif %}
         </span>
+        {% if qz.status == 'published' %}
+          {% if qz.audience %}
+          <span class="aud ok">👀 นักเรียนที่เห็นชุดนี้ {{ qz.audience }} คน</span>
+          {% else %}
+          <span class="aud warn">⚠ ยังไม่มีนักเรียนคนไหนเห็นชุดนี้ —
+            ไม่มีใครอยู่ระดับชั้น “{{ qz.level }}” กดจัดการข้อแล้วแก้ระดับชั้น</span>
+          {% endif %}
+        {% endif %}
       </div>
       <a class="btn btn-primary btn-sm" href="/admin/quiz/{{ qz.id }}">จัดการข้อ</a>
       <form method="post" action="/admin/quiz/{{ qz.id }}/delete" class="inline"
@@ -711,6 +722,11 @@
 .stu-head{margin-bottom:.6rem}
 .stu-head b{font-size:1.05rem;margin-right:.5rem}
 .panel form .btn{width:auto;margin-top:.4rem}
+
+.aud{display:inline-block;margin-top:.35rem;font-size:.82rem;font-weight:600;
+      border-radius:999px;padding:.15rem .6rem}
+.aud.ok{background:#E4F7EE;color:#1F8A62}
+.aud.warn{background:#FFE9E4;color:#C2453C}
 
 /* ── แถบเมนูหน้าจัดการ ──────────────────────────────
    หน้านี้ยาวมาก เดิมต้องเลื่อนหา จึงแบ่งเป็นหมวดแล้วโชว์ทีละหมวด */

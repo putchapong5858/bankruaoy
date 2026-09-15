@@ -57,6 +57,15 @@
               {% for lv in levels %}
               <option {{ 'selected' if quiz.level == lv }}>{{ lv }}</option>
               {% endfor %}
+              <optgroup label="ใช้ได้หลายชั้น">
+                {% for lv in level_ranges %}
+                <option {{ 'selected' if quiz.level == lv }}>{{ lv }}</option>
+                {% endfor %}
+              </optgroup>
+              {# ถ้าค่าเดิมไม่ตรงกับตัวเลือกไหนเลย ต้องเก็บไว้ ไม่งั้นกดบันทึกแล้วหาย #}
+              {% if quiz.level and quiz.level not in levels and quiz.level not in level_ranges %}
+              <option selected>{{ quiz.level }}</option>
+              {% endif %}
             </select>
           </label>
           <label>เวลาทำ (นาที)
@@ -350,7 +359,7 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
 
       <details class="editbox">
         <summary>แก้ไขข้อนี้</summary>
-        {{ question_form(quiz, q, icon_sets, models, model_groups, vocab) }}
+        {{ question_form(quiz, q, icon_sets, models, model_groups) }}
       </details>
     </div>
     {% else %}
@@ -361,13 +370,7 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
   <!-- ══════ เพิ่มข้อใหม่ ══════ -->
   <section class="panel" id="add">
     <h2><i>➕</i> เพิ่มคำถามใหม่</h2>
-    {{ question_form(quiz, none, icon_sets, models, model_groups, vocab) }}
-    {% if vocab %}
-    {# รายการรูปคำศัพท์ที่มีอยู่แล้ว — ใช้ร่วมกันทุกฟอร์มในหน้านี้ #}
-    <datalist id="vocabpics">
-      {% for v in vocab %}<option value="{{ v.url }}">{{ v.word }}</option>{% endfor %}
-    </datalist>
-    {% endif %}
+    {{ question_form(quiz, none, icon_sets, models, model_groups) }}
   </section>
 
 </main>

@@ -20,6 +20,7 @@ import re
 import unicodedata
 from datetime import datetime, timezone
 
+from . import config
 from .db import (SupabaseError, delete, gather, insert, select,
                  select_one, update)
 
@@ -35,37 +36,6 @@ KINDS = {
 
 # รูปแบบที่ตรวจคำตอบเหมือนกัน คือเลือกตัวเลือกที่ถูก 1 ตัว
 PICK_KINDS = ("choice", "truefalse", "count", "model3d")
-
-
-# ── คลังรูปคำศัพท์ที่มีอยู่แล้วใน static/img/vocab ─────────────
-# ใช้ทำช่องเลือกรูปให้ครูในหน้าจัดการข้อ (พิมพ์ไม่กี่ตัวอักษรแล้วเลือกได้เลย)
-# เก็บเป็นรายชื่อไว้ในโค้ด เพราะฟังก์ชันบน Vercel ไม่ได้แนบโฟลเดอร์ static ไปด้วย
-VOCAB_WORDS = [
-    "ant", "bag", "ball", "banana", "bear", "bee", "bicycle", "bin", "bird",
-    "boat", "book", "boy", "bus", "butterfly", "can", "car", "cat", "chicken",
-    "cook", "cow", "cup", "doctor", "dog", "duck", "eat", "elephant", "fan",
-    "farmer", "finger", "fish", "frog", "giraffe", "girl", "goat", "hat",
-    "hen", "horse", "knee", "lion", "mango", "monkey", "mouse", "mouth",
-    "neck", "nose", "nurse", "orange", "pen", "pencil", "pig", "rabbit",
-    "rice", "ruler", "run", "sheep", "shoes", "shorts", "skirt", "sleep",
-    "snail", "snake", "socks", "spider", "sun", "teacher", "teeth", "tiger",
-    "train", "turtle", "van", "whale", "window", "zebra",
-]
-
-
-def vocab_images() -> list[dict]:
-    """รายการรูปคำศัพท์ [{word, url}] เรียงตามตัวอักษร"""
-    return [{"word": w, "url": f"/static/img/vocab/{w}.webp"} for w in VOCAB_WORDS]
-
-
-def is_image_value(value) -> bool:
-    """ค่านี้เป็นลิงก์รูปหรือเปล่า — ใช้กับข้อจับคู่ที่ฝั่งขวาเป็นรูปภาพ
-
-    ข้อจับคู่เก็บฝั่งขวาไว้ในคอลัมน์ match_value เป็นข้อความ
-    ถ้าครูใส่เป็นพาธรูป (เช่น /static/img/vocab/cat.webp) หน้าเด็กจะวาดเป็นรูปแทนตัวหนังสือ
-    """
-    text = str(value or "").strip()
-    return bool(re.match(r"^(https?://|/)\S+\.(png|jpe?g|gif|webp|svg)$", text, re.I))
 
 # อีโมจิยอดนิยมสำหรับโจทย์นับจำนวน — ครูกดเลือกได้เลยไม่ต้องพิมพ์
 ICON_SETS = {
@@ -161,8 +131,11 @@ def list_quizzes(limit: int = 60) -> list[dict]:
         attempts=lambda: select("quiz_attempts",
                                 "quiz_id,student_id,score,full_score,finished",
                                 limit=5000),
+        # ระดับชั้นของเด็กที่ยังเรียนอยู่ — ไว้บอกครูว่าชุดนี้มีใครเห็นบ้าง
+        kids=lambda: select("students", "level", active="eq.true", limit=2000),
     )
     questions, attempts = got["questions"], got["attempts"]
+    kid_levels = [(k.get("level") or "").strip() for k in got["kids"]]
 
     for q in rows:
         qid = str(q["id"])
@@ -175,6 +148,8 @@ def list_quizzes(limit: int = 60) -> list[dict]:
                 for a in mine if float(a.get("full_score") or 0) > 0]
         q["average_percent"] = round(sum(pcts) / len(pcts)) if pcts else None
         q["status_label"] = STATUSES.get(q.get("status"), q.get("status"))
+        # เด็กกี่คนที่ระดับชั้นตรงกับชุดนี้ — ถ้าเป็น 0 แปลว่าเผยแพร่ไปก็ไม่มีใครเห็น
+        q["audience"] = sum(1 for lv in kid_levels if level_matches(q.get("level"), lv))
     return rows
 
 
@@ -295,7 +270,6 @@ def save_question(quiz_id: str | int, data: dict,
     data ที่รับ
         kind         choice | truefalse | fill | match
         prompt       โจทย์
-        speak_text   ข้อความที่ปุ่ม 🔊 จะอ่าน (เว้นว่าง = อ่าน prompt)
         image_url    รูปประกอบ (ถ้ามี)
         explanation  คำอธิบายเฉลย
         points       คะแนนของข้อนี้
@@ -323,7 +297,6 @@ def save_question(quiz_id: str | int, data: dict,
         "prompt": prompt,
         "image_url": image_url or None,
         "hint": _txt(data.get("hint"), 300) or None,
-        "speak_text": _txt(data.get("speak_text"), 300) or None,
         "explanation": _txt(data.get("explanation"), 500) or None,
         "points": points,
         "icon": icon or None,
@@ -356,15 +329,8 @@ def save_question(quiz_id: str | int, data: dict,
             raise SupabaseError("ต้องมีตัวเลือกอย่างน้อย 2 ตัวเลือก")
         if not any(o["is_correct"] for o in options):
             raise SupabaseError("กรุณาเลือกว่าข้อไหนคือคำตอบที่ถูกต้อง")
-    if kind == "match":
-        if len(options) < 2:
-            raise SupabaseError("ข้อจับคู่ต้องมีอย่างน้อย 2 คู่")
-        if len(options) > 8:
-            raise SupabaseError("ข้อจับคู่ใส่ได้มากที่สุด 8 คู่ — ถ้ามีเยอะกว่านี้ให้แยกเป็นหลายข้อ")
-        # ฝั่งขวาห้ามซ้ำกัน ไม่งั้นเด็กลากไปการ์ดไหนก็ถูกหมด แยกไม่ออกว่าคู่ไหนเป็นคู่ไหน
-        rights = [_normalize(o.get("match_value") or "") for o in options]
-        if len(set(rights)) != len(rights):
-            raise SupabaseError("ฝั่งขวาของข้อจับคู่ห้ามซ้ำกัน กรุณาแก้ให้ต่างกันทุกคู่")
+    if kind == "match" and len(options) < 2:
+        raise SupabaseError("ข้อจับคู่ต้องมีอย่างน้อย 2 คู่")
 
     if question_id:
         update("quiz_questions", fields, id=f"eq.{question_id}")
@@ -512,50 +478,64 @@ def correct_answer_text(question: dict) -> str:
     if kind == "fill":
         return " หรือ ".join(question.get("accepted") or [])
     if kind == "match":
-        # ฝั่งขวาเป็นรูป — บอกเป็นตัวหนังสือไม่ได้ (จะกลายเป็นพาธไฟล์ยาว ๆ)
-        # หน้าเด็กจะวาดเส้นเฉลยให้ดูแทน ดู match_answer_pairs()
-        if any(is_image_value(o.get("match_value")) for o in options):
-            return ""
         return " · ".join(f"{o['label']} คู่กับ {o.get('match_value') or ''}"
                           for o in options)
     return ""
-
-
-def match_pair_results(question: dict, given) -> dict:
-    """ข้อจับคู่ — บอกว่าเส้นที่เด็กลากไว้ คู่ไหนถูกคู่ไหนผิด
-
-    คืน {option_id: True/False} ใช้ระบายสีเส้นให้เด็กเห็นว่าพลาดตรงไหน
-    (ไม่ใช่การบอกเฉลย — เป็นการบอกผลของคำตอบที่เด็กส่งมาเองเท่านั้น)
-    """
-    if (question.get("kind") or "") != "match" or not isinstance(given, dict):
-        return {}
-    out = {}
-    for o in question.get("options") or []:
-        oid = str(o["id"])
-        out[oid] = (_normalize(str(given.get(oid, "")))
-                    == _normalize(o.get("match_value") or ""))
-    return out
-
-
-def match_answer_pairs(question: dict) -> dict:
-    """เฉลยของข้อจับคู่ {option_id: ค่าฝั่งขวาที่ถูก} — ส่งให้หน้าเด็ก "หลัง" ตอบแล้วเท่านั้น"""
-    if (question.get("kind") or "") != "match":
-        return {}
-    return {str(o["id"]): (o.get("match_value") or "")
-            for o in question.get("options") or []}
 
 
 # ════════════════════════════════════════════════════════
 #  ฝั่งนักเรียน — ชุดที่ทำได้ และการทำแต่ละรอบ
 # ════════════════════════════════════════════════════════
 
+def level_matches(quiz_level: str, student_level: str) -> bool:
+    """
+    ชุดนี้ตรงกับระดับชั้นของเด็กคนนี้ไหม
+
+    เดิมเทียบข้อความตรง ๆ ทำให้ชุดที่ตั้งระดับเป็นช่วง เช่น "อนุบาล 3 - ป.1"
+    ไม่ขึ้นให้เด็กคนไหนเลย เพราะไม่มีเด็กคนไหนมีระดับชั้นชื่อนั้น
+    ตอนนี้จึงรองรับ 3 แบบ
+
+        ""                  ว่าง = ทุกระดับชั้น
+        "ป.1, ป.2"          หลายชั้นคั่นด้วย , / ;
+        "อนุบาล 3 - ป.1"     ช่วงชั้น — ตรงทุกชั้นที่อยู่ระหว่างกลางด้วย
+    """
+    want = (student_level or "").strip()
+    text = (quiz_level or "").strip()
+    if not text:
+        return True                       # ไม่ระบุ = เปิดให้ทุกชั้น
+    if not want:
+        return False
+
+    order = list(config.LEVELS)
+
+    def rank(name: str) -> int:
+        name = name.strip()
+        return order.index(name) if name in order else -1
+
+    for part in re.split(r"[,;/]|\bหรือ\b", text):
+        part = part.strip()
+        if not part:
+            continue
+        if part == want:
+            return True
+
+        # ช่วงชั้น เช่น "อนุบาล 2 - ป.6" (รับทั้งขีดสั้น ขีดยาว และ ถึง)
+        ends = re.split(r"\s*(?:-|–|—|ถึง)\s*", part)
+        if len(ends) == 2:
+            lo, hi = rank(ends[0]), rank(ends[1])
+            me = rank(want)
+            if lo >= 0 and hi >= 0 and me >= 0:
+                if min(lo, hi) <= me <= max(lo, hi):
+                    return True
+    return False
+
+
 def quizzes_for_student(student: dict, limit: int = 40) -> list[dict]:
     """แบบฝึกหัดที่เผยแพร่แล้วและตรงระดับชั้นของเด็ก พร้อมผลที่เคยทำ"""
     level = (student.get("level") or "").strip()
     rows = select("quizzes", status="eq.published",
                   order="published_at.desc,id.desc", limit=limit)
-    rows = [q for q in rows
-            if not (q.get("level") or "").strip() or (q.get("level") or "").strip() == level]
+    rows = [q for q in rows if level_matches(q.get("level"), level)]
     if not rows:
         return []
 
@@ -642,9 +622,6 @@ def public_questions(questions: list[dict]) -> list[dict]:
             "prompt": q.get("prompt") or "",
             "image_url": q.get("image_url"),
             "hint": q.get("hint"),
-            # ข้อความสำหรับปุ่มฟังเสียง — ใช้กับข้อที่โจทย์ซ่อนคำไว้
-            # (เช่น ฟังเสียงแล้วเติมพยัญชนะต้น) ถ้าไม่ได้กรอกจะอ่าน prompt ตามเดิม
-            "speak_text": q.get("speak_text") or None,
             "points": float(q.get("points") or 1),
             # โจทย์นับจำนวน — ส่งรูปกับจำนวนไปให้หน้าเว็บวาดแถวรูปเอง
             "icon": q.get("icon") if q.get("kind") in ("count", "model3d") else None,
