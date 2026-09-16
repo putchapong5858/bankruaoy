@@ -55,6 +55,7 @@
       {% endif %}
     </div>
 
+    <p class="ttsnote" id="ttsnote" hidden></p>
     <img id="qimg" class="q-img" alt="" hidden>
     <p class="q-prompt" id="prompt"></p>
     {# คำใบ้ต้องอยู่ก่อนตัวเลือก เด็กจะได้อ่านคำสั่งก่อนเลือกคำตอบ #}
@@ -358,7 +359,7 @@
   }
 
   function langOf(text) {
-    return /[฀-๿]/.test(text) ? "th" : "en";
+    return /[\u0E00-\u0E7F]/.test(text) ? "th" : "en";
   }
 
   function voiceFor(lang) {
@@ -390,12 +391,37 @@
       var lang = langOf(t);
       u.lang = (lang === "th") ? "th-TH" : "en-US";
       var v = voiceFor(lang);
-      if (v) u.voice = v;
+      // บางเบราว์เซอร์ตั้ง voice ไม่ได้ ถ้าพลาดก็ปล่อยให้ใช้เสียงมาตรฐานไป
+      // ห้ามให้ทั้งข้อเงียบเพราะบรรทัดนี้บรรทัดเดียว
+      if (v) { try { u.voice = v; } catch (e2) {} }
       // อังกฤษอ่านช้ากว่านิดหนึ่ง เด็กจะได้จับเสียงทัน
       u.rate = (lang === "th") ? 0.9 : 0.78;
       u.pitch = 1.05;
+      // จำไว้ว่าออกเสียงได้จริงไหม — เครื่องที่ไม่มีเสียงภาษานั้นจะเงียบสนิท
+      // โดยไม่แจ้งอะไรเลย ครูกับเด็กจะนึกว่าเว็บเสีย
+      u.onstart = function () { ttsOk[lang] = true; hideTtsNote(); };
+      u.onerror = function () { if (noteArmed) noteTts(lang); };
       window.speechSynthesis.speak(u);
     } catch (e) { /* เบราว์เซอร์ไม่รองรับก็ข้ามไป */ }
+  }
+
+  /* ── บอกให้รู้เมื่อเครื่องอ่านออกเสียงไม่ได้ ──
+     เตือนเฉพาะตอนที่ครู/เด็กกดปุ่ม 🔊 เองเท่านั้น เพราะเสียงที่เล่นเองตอนเปิดข้อ
+     บางเครื่อง (โดยเฉพาะ iPhone) จะถูกบล็อกไว้ก่อนจนกว่าจะมีการแตะจอ
+     ซึ่งไม่ได้แปลว่าเครื่องไม่มีเสียงอ่าน */
+  var ttsOk = {}, noteArmed = false;
+  function hideTtsNote() {
+    var n = el("ttsnote");
+    if (n) n.hidden = true;
+  }
+  function noteTts(lang) {
+    if (ttsOk[lang]) return;
+    var n = el("ttsnote");
+    if (!n) return;
+    n.textContent = (lang === "th")
+      ? "เครื่องนี้ยังไม่มีเสียงอ่านภาษาไทย — เปิด ตั้งค่า › ภาษาและการป้อนข้อมูล › เสียงอ่าน (Text-to-speech) แล้วดาวน์โหลดเสียงภาษาไทย"
+      : "เครื่องนี้ยังไม่มีเสียงอ่านภาษาอังกฤษ — เปิด ตั้งค่า › ภาษาและการป้อนข้อมูล › เสียงอ่าน (Text-to-speech) แล้วดาวน์โหลดเสียงภาษาอังกฤษ";
+    n.hidden = false;
   }
 
   /* คั่นด้วย | เพื่อให้อ่านหลายท่อนคนละภาษาได้
@@ -412,8 +438,38 @@
 
   if (el("speak")) {
     el("speak").addEventListener("click", function () {
-      speak(saidFor(QS[i]));
+      var text = saidFor(QS[i]);
+      noteArmed = true;
+      speak(text);
+      // ถ้ากดปุ่มแล้วยังไม่มีเสียงออกเลยภายใน 1.8 วินาที แปลว่าเครื่องอ่านไม่ได้จริง
+      // (กดปุ่มเองแบบนี้เบราว์เซอร์ไม่บล็อก จึงสรุปได้ว่าไม่ใช่เรื่องการกดปุ่ม)
+      var lang = langOf(sayable(String(text || "").split("|")[0]));
+      setTimeout(function () { noteTts(lang); noteArmed = false; }, 1800);
     });
+  }
+
+  /* ── ขยายรูปสระในโจทย์ให้เด็กเห็นชัด ──
+     สระไทยที่ต้องเกาะพยัญชนะ (◌ุ ◌ี ◌็) ถ้าเขียนลอย ๆ ฟอนต์จะไม่วาดให้
+     จึงใช้ ◌ (U+25CC) เป็นตัวแทนพยัญชนะตามมาตรฐานยูนิโคด แล้วขยายให้ตัวโต
+     สร้างเป็น text node ล้วน ไม่ได้ยัด HTML จากฐานข้อมูล */
+  var VOWEL_RE = /[\u0E40-\u0E44]?\u25CC[\u0E30-\u0E4E]*/g;
+
+  function paintPrompt(node, text) {
+    node.textContent = "";
+    if (!text) return;
+    var last = 0, m;
+    VOWEL_RE.lastIndex = 0;
+    while ((m = VOWEL_RE.exec(text)) !== null) {
+      if (m.index > last) {
+        node.appendChild(document.createTextNode(text.slice(last, m.index)));
+      }
+      var b = document.createElement("b");
+      b.className = "vowel";
+      b.textContent = m[0];
+      node.appendChild(b);
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) node.appendChild(document.createTextNode(text.slice(last)));
   }
 
   // ── วาดข้อปัจจุบัน ──
@@ -423,7 +479,7 @@
     el("qno").textContent = "ข้อ " + (i + 1) + " / " + QS.length;
     var ptext = q.prompt || "";
     // โจทย์คิดเลขเร็วโชว์อยู่บนก้อนเมฆแล้ว ไม่ต้องเขียนซ้ำอีกบรรทัด
-    el("prompt").textContent = (q.kind === "mathrun") ? "" : ptext;
+    paintPrompt(el("prompt"), (q.kind === "mathrun") ? "" : ptext);
     // โจทย์ที่เป็นอีโมจิหรือตัวอักษรสั้น ๆ (เช่น 🐶 หรือ Dd) ให้ขยายใหญ่กลางจอ
     // ตัวใหญ่เมื่อโจทย์เป็นอีโมจิ/ตัวอักษรสั้น ๆ หรือเป็นคำศัพท์คำเดียว เช่น "Elephant"
     el("prompt").classList.toggle("big",
@@ -743,6 +799,9 @@
       box.classList.toggle("letters", duo && q.options.every(function (o) {
         return !o.image_url && (o.label || "").replace(/\s/g, "").length <= 2;
       }));
+      // ตัวเลือกที่เป็นรูปสระล้วน — ต้องตัวโตเป็นพิเศษ เด็กอนุบาลถึงจะเห็นหางสระ
+      box.classList.toggle("vowels", !pics && q.options.length > 0 &&
+        q.options.every(function (o) { return (o.label || "").indexOf("\u25CC") >= 0; }));
     }
 
     el("submit").disabled = true;
@@ -1052,6 +1111,25 @@
 .shape3d.failed{display:flex;align-items:center;justify-content:center}
 .shape3d.failed::after{content:"📦";font-size:3rem;opacity:.4}
 @media(max-width:480px){ .shape3d{height:240px} }
+
+/* ══════ รูปสระ ══════
+   สระที่ต้องเกาะพยัญชนะเขียนลอย ๆ ไม่ได้ ต้องมี ◌ เป็นฐาน แล้วขยายให้เห็นชัด */
+.vowel{font-family:'Mali',cursive;font-size:1.9em;line-height:1;color:#0c6b9e;
+       padding:0 .1em;vertical-align:-.16em;font-weight:700}
+#answers.vowels{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap}
+#answers.vowels .opt{width:auto;flex:0 0 96px;justify-content:center;margin:0;
+                     padding:.7rem .4rem;border-radius:20px}
+#answers.vowels .opt span{font-family:'Mali',cursive;font-size:2.5rem;line-height:1.35;
+                          color:#0c6b9e;font-weight:700}
+@media(max-width:480px){
+  #answers.vowels .opt{flex:0 0 84px}
+  #answers.vowels .opt span{font-size:2.1rem}
+}
+
+/* ══════ แจ้งเตือนเมื่อเครื่องอ่านออกเสียงไม่ได้ ══════ */
+.ttsnote{background:#FFF7E8;border:2px solid #FFDFA6;color:#8A6416;border-radius:14px;
+         padding:.6rem .8rem;font-size:.85rem;line-height:1.55;margin:0 0 .7rem}
+.ttsnote[hidden]{display:none}
 
 /* ══════ 2 ตัวเลือก วางซ้าย-ขวา ══════
    ใช้กับแบบฝึกหัดคำศัพท์ที่ตัดเหลือ 2 ตัวเลือก — นิ้วเด็กอนุบาลกดพลาดยาก
