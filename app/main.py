@@ -971,6 +971,7 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
         "prompt": form.get("prompt") or "",
         "points": form.get("points") or 1,
         "explanation": form.get("explanation") or "",
+        "speak_text": form.get("speak_text") or "",
         # ไม่ได้แนบรูปใหม่ = ใช้รูปเดิม (ยกเว้นกดลบรูป)
         "image_url": "" if form.get("remove_image") else current_image,
         # ใช้เฉพาะโจทย์นับจำนวน / รูปทรง 3 มิติ / เทียบเลข
@@ -1482,7 +1483,9 @@ async def quiz_answer(request: Request, attempt_id: str):
     return JSONResponse({
         "correct": correct,
         "answer": quiz.correct_answer_text(question) if reveal else "",
-        "explanation": (question.get("explanation") or "") if reveal else "",
+        # คำอธิบายเป็น "ความรู้" ไม่ใช่ "เฉลย" — ส่งให้ทั้งตอนตอบถูกและตอบผิด
+        # เด็กที่ตอบถูกก็ควรได้เห็นว่า Dog แปลว่า สุนัข ด้วย (ส่งหลังตอบแล้วเท่านั้น)
+        "explanation": question.get("explanation") or "",
     })
 
 

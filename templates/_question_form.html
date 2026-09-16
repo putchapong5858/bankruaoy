@@ -256,6 +256,16 @@
     {% endfor %}
   </div>
 
+  <label style="display:block;margin:.5rem 0">ข้อความที่ให้เสียงอ่าน (เว้นว่าง = อ่านโจทย์ตามที่เห็น)
+    <input type="text" name="speak_text" value="{{ q.speak_text or '' if q else '' }}"
+           placeholder="เช่น จอโชว์ “C c” แต่อยากให้อ่านว่า “C”">
+  </label>
+  <p class="muted" style="font-size:.85rem;margin:-.2rem 0 .6rem">
+    ระบบเลือกภาษาให้เอง — ข้อความไทยอ่านเป็นไทย ข้อความอังกฤษอ่านเป็นอังกฤษ ·
+    อยากให้อ่านหลายท่อนคนละภาษาให้คั่นด้วย <code>|</code>
+    เช่น <code>Zebra|คำนี้ขึ้นต้นด้วยตัวอักษรอะไร?</code>
+  </p>
+
   <label style="display:block;margin:.5rem 0">คำอธิบายเฉลย (แสดงเมื่อเด็กตอบผิด)
     <input type="text" name="explanation" value="{{ q.explanation or '' if q else '' }}"
            placeholder="เช่น 12 + 9 ให้บวกหลักหน่วยก่อน 2+9=11 ทดไป 1">

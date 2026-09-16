@@ -304,6 +304,8 @@ def save_question(quiz_id: str | int, data: dict,
         "prompt": prompt,
         "image_url": image_url or None,
         "hint": _txt(data.get("hint"), 300) or None,
+        # ข้อความที่ให้เสียงอ่าน แยกจากที่แสดงบนจอ — เช่นจอโชว์ "C c" แต่ให้อ่านว่า "C"
+        "speak_text": _txt(data.get("speak_text"), 300) or None,
         "explanation": _txt(data.get("explanation"), 500) or None,
         "points": points,
         "icon": icon or None,
@@ -498,7 +500,9 @@ def _clean_options(kind: str, raw: list[dict]) -> list[dict]:
             continue
         out.append({
             "sort_order": i,
-            "label": label or f"ตัวเลือก {i}",
+            # ตัวเลือกที่เป็นรูปล้วนให้ปล่อยคำว่าง ๆ ได้ — โจทย์ "จับคู่คำกับภาพ"
+            # ต้องไม่มีตัวหนังสือใต้รูป ไม่งั้นเด็กอ่านคำตอบได้โดยไม่ต้องดูรูป
+            "label": label or ("" if image else f"ตัวเลือก {i}"),
             "image_url": image or None,
             "is_correct": bool(o.get("is_correct")) if kind != "match" else True,
             "match_value": match_value or None,
@@ -785,6 +789,8 @@ def public_questions(questions: list[dict]) -> list[dict]:
             "prompt": q.get("prompt") or "",
             "image_url": q.get("image_url"),
             "hint": q.get("hint"),
+            # ถ้าไม่ได้ตั้งไว้ ให้หน้าเว็บอ่านจากโจทย์ตามปกติ
+            "speak": q.get("speak_text") or None,
             "points": float(q.get("points") or 1),
             # โจทย์นับจำนวน — ส่งรูปกับจำนวนไปให้หน้าเว็บวาดแถวรูปเอง
             "icon": q.get("icon") if q.get("kind") in ("count", "model3d") else None,

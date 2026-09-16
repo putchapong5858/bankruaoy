@@ -344,20 +344,75 @@
     }
   }
 
-  // ── อ่านโจทย์ให้ฟัง (เด็กเล็กยังอ่านไม่คล่อง) ──
-  function speak(text) {
-    if (!READ || !window.speechSynthesis || !text) return;
+  /* ══ อ่านออกเสียง — เลือกภาษาให้เองระหว่างไทยกับอังกฤษ ══
+     แบบฝึกหัดคำศัพท์อังกฤษต้องอ่านด้วยเสียงอังกฤษ ถ้าใช้เสียงไทยอ่าน "Cat"
+     เด็กจะได้ยินเป็น "แคท" แบบไทย ๆ ซึ่งไม่ช่วยเรื่องการออกเสียงเลย */
+  var voices = [];
+  function loadVoices() {
+    try { voices = window.speechSynthesis.getVoices() || []; } catch (e) { voices = []; }
+  }
+  if (window.speechSynthesis) {
+    loadVoices();
+    // บางเบราว์เซอร์คืนรายการเสียงช้า ต้องรอสัญญาณนี้อีกที
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  }
+
+  function langOf(text) {
+    return /[฀-๿]/.test(text) ? "th" : "en";
+  }
+
+  function voiceFor(lang) {
+    var want = (lang === "th") ? "th" : "en";
+    for (var n = 0; n < voices.length; n++) {
+      var v = voices[n];
+      if (v.lang && v.lang.toLowerCase().indexOf(want) === 0) return v;
+    }
+    return null;
+  }
+
+  // "C c" ให้อ่านว่า "C" เฉย ๆ ไม่ใช่ "ซี ซี"
+  function sayable(text) {
+    var t = (text || "").trim();
+    var m = t.match(/^([A-Za-z])\s+([A-Za-z])$/);
+    if (m && m[1].toLowerCase() === m[2].toLowerCase()) return m[1].toUpperCase();
+    return t;
+  }
+
+  /* พูดต่อท้ายคิวเดิม ไม่ตัดเสียงที่กำลังพูดอยู่ — ใช้เวลาต้องพูดสองภาษาติดกัน
+     เช่น "คำตอบที่ถูกคือ" (เสียงไทย) แล้วตามด้วย "Cat" (เสียงอังกฤษ)
+     ถ้ารวมเป็นประโยคเดียว เสียงไทยจะอ่าน Cat เป็น "แคท" ซึ่งไม่ช่วยเรื่องสำเนียง */
+  function enqueue(text) {
+    if (!READ || !window.speechSynthesis) return;
+    var t = sayable(text);
+    if (!t) return;
     try {
-      window.speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(text);
-      u.lang = "th-TH";
-      u.rate = 0.9;
+      var u = new SpeechSynthesisUtterance(t);
+      var lang = langOf(t);
+      u.lang = (lang === "th") ? "th-TH" : "en-US";
+      var v = voiceFor(lang);
+      if (v) u.voice = v;
+      // อังกฤษอ่านช้ากว่านิดหนึ่ง เด็กจะได้จับเสียงทัน
+      u.rate = (lang === "th") ? 0.9 : 0.78;
+      u.pitch = 1.05;
       window.speechSynthesis.speak(u);
     } catch (e) { /* เบราว์เซอร์ไม่รองรับก็ข้ามไป */ }
   }
+
+  /* คั่นด้วย | เพื่อให้อ่านหลายท่อนคนละภาษาได้
+     เช่น "Zebra|คำนี้ขึ้นต้นด้วยตัวอักษรอะไร?" จะอ่าน Zebra ด้วยเสียงอังกฤษ
+     แล้วต่อด้วยคำถามด้วยเสียงไทย */
+  function speak(text) {
+    if (!READ || !window.speechSynthesis) return;
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    String(text || "").split("|").forEach(function (part) { enqueue(part); });
+  }
+
+  // ข้อความที่จะอ่านของข้อนี้ — ครูตั้ง speak_text ทับได้
+  function saidFor(q) { return q.speak || q.prompt || ""; }
+
   if (el("speak")) {
     el("speak").addEventListener("click", function () {
-      speak(QS[i].prompt || "");
+      speak(saidFor(QS[i]));
     });
   }
 
@@ -370,7 +425,10 @@
     // โจทย์คิดเลขเร็วโชว์อยู่บนก้อนเมฆแล้ว ไม่ต้องเขียนซ้ำอีกบรรทัด
     el("prompt").textContent = (q.kind === "mathrun") ? "" : ptext;
     // โจทย์ที่เป็นอีโมจิหรือตัวอักษรสั้น ๆ (เช่น 🐶 หรือ Dd) ให้ขยายใหญ่กลางจอ
-    el("prompt").classList.toggle("big", ptext.replace(/\s/g, "").length <= 4);
+    // ตัวใหญ่เมื่อโจทย์เป็นอีโมจิ/ตัวอักษรสั้น ๆ หรือเป็นคำศัพท์คำเดียว เช่น "Elephant"
+    el("prompt").classList.toggle("big",
+      ptext.replace(/\s/g, "").length <= 4 ||
+      (ptext.trim().split(/\s+/).length === 1 && ptext.trim().length <= 12));
     el("hint").textContent = q.hint || "";
 
     var img = el("qimg");
@@ -662,7 +720,11 @@
           });
           b.classList.add("on");
           picked = o.id;
-          play("tap");
+          // คำศัพท์อังกฤษ/ตัวอักษร — กดแล้วได้ยินเสียงคำนั้นเลย ช่วยให้จำการออกเสียง
+          // (ไม่ใช่การบอกเฉลย เพราะได้ยินทุกตัวเลือกเหมือนกัน)
+          var lab = (o.label || "").trim();
+          if (READ && lab && lab.length <= 15 && !/[0-9]/.test(lab)) speak(lab);
+          else play("tap");
           el("submit").disabled = false;
         });
         box.appendChild(b);
@@ -674,13 +736,20 @@
       box.classList.toggle("piccards", pics);
       box.classList.toggle("mathrow", q.kind === "mathrun");
       box.classList.toggle("findrow", q.kind === "findshape");
+      // มี 2 ตัวเลือก = วางซ้าย-ขวาเป็นการ์ดใหญ่ เด็กเล็กเลือกง่ายกว่าอ่านรายการยาว ๆ
+      var duo = !numbers && !signs && q.options.length === 2;
+      box.classList.toggle("duo", duo);
+      // ตัวเลือกเป็นตัวอักษรสั้น ๆ (เช่น "C c") ให้ตัวโตเต็มการ์ด
+      box.classList.toggle("letters", duo && q.options.every(function (o) {
+        return !o.image_url && (o.label || "").replace(/\s/g, "").length <= 2;
+      }));
     }
 
     el("submit").disabled = true;
     paintDots(null);
     el("bar").style.width = Math.round(i / QS.length * 100) + "%";
     buddy("idle", pick(CHEER_GO));
-    speak(q.prompt || "");
+    speak(saidFor(q));
 
     stopTimer();
     if (q.kind === "mathrun" && q.math) startTimer(q.math.seconds);
@@ -771,8 +840,10 @@
     el("next").textContent = (i + 1 >= QS.length) ? "ดูคะแนนของหนู →" : "ข้อต่อไป →";
     el("sheet").hidden = false;
     if (res.correct) setTimeout(confetti, 60);
+    // พูดเป็นท่อน ๆ เพื่อให้คำอังกฤษได้เสียงอังกฤษจริง ๆ ไม่ใช่เสียงไทยอ่านอังกฤษ
     speak(res.correct ? "เก่งมาก ตอบถูกค่ะ"
-                      : (res.answer ? "คำตอบที่ถูกคือ " + res.answer : "ยังไม่ถูกนะคะ"));
+                      : (res.answer ? "คำตอบที่ถูกคือ" : "ยังไม่ถูกนะคะ"));
+    if (res.answer) enqueue(res.answer);
   }
 
   el("next").addEventListener("click", function () {
@@ -981,6 +1052,31 @@
 .shape3d.failed{display:flex;align-items:center;justify-content:center}
 .shape3d.failed::after{content:"📦";font-size:3rem;opacity:.4}
 @media(max-width:480px){ .shape3d{height:240px} }
+
+/* ══════ 2 ตัวเลือก วางซ้าย-ขวา ══════
+   ใช้กับแบบฝึกหัดคำศัพท์ที่ตัดเหลือ 2 ตัวเลือก — นิ้วเด็กอนุบาลกดพลาดยาก
+   และสายตาเทียบสองอย่างพร้อมกันได้ ดีกว่าอ่านรายการเรียงลงมา */
+#answers.duo{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+#answers.duo .opt{margin:0;flex-direction:column;justify-content:center;align-items:center;
+                  text-align:center;min-height:104px;padding:1rem .7rem;border-radius:22px;
+                  border-width:3px}
+#answers.duo .opt span{font-size:1.5rem;font-weight:700;color:#0e3b57;line-height:1.3;
+                       word-break:break-word}
+/* แบบที่ตัวเลือกเป็นรูป — รูปใหญ่เต็มการ์ด ไม่ต้องมีคำกำกับก็ได้ */
+#answers.duo.piccards{grid-template-columns:1fr 1fr}
+#answers.duo .opt.pic img{max-width:100%;width:100%}
+#answers.duo .opt.pic span:empty{display:none}
+/* แบบตัวอักษรขึ้นต้น — ตัวโตเต็มการ์ด เห็นชัดจากระยะไกล */
+#answers.duo.letters .opt{min-height:132px}
+#answers.duo.letters .opt span{font-family:'Mali',cursive;font-size:3.4rem;line-height:1.1;
+                               letter-spacing:.06em;color:#0c6b9e}
+@media(max-width:480px){
+  #answers.duo{gap:.6rem}
+  #answers.duo .opt{min-height:92px;padding:.8rem .5rem;border-radius:18px}
+  #answers.duo .opt span{font-size:1.3rem}
+  #answers.duo.letters .opt{min-height:112px}
+  #answers.duo.letters .opt span{font-size:2.8rem}
+}
 
 /* ══════ โจทย์นับรูปทรงในภาพรวม (เชาวน์ปัญญา) ══════ */
 #answers.findrow > .findwrap{flex:0 0 100%;width:100%;margin-bottom:.9rem}
