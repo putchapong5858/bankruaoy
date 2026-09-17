@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Logic Grid - ป.1</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .opt { position: relative; }
+    .mark { position:absolute; top:-14px; right:-12px; width:44px; height:44px; border-radius:9999px;
+      display:flex; align-items:center; justify-content:center; color:#fff; font-size:26px; font-weight:900;
+      box-shadow:0 4px 10px rgba(0,0,0,.2); animation:stamp .4s cubic-bezier(.3,1.7,.5,1); }
+    .mark.ok { background:#16a34a; } .mark.no { background:#dc2626; }
+    .clue.done { background:#dcfce7; border-color:#86efac; }
+    .clue.done .num { background:#16a34a; color:#fff; }
+    @keyframes stamp { from { transform:scale(2.2) rotate(-20deg); opacity:0; } to { transform:none; opacity:1; } }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+    .shake { animation: shake .4s; }
+  </style>
+</head>
+<body class="bg-sky-50 flex items-center justify-center min-h-screen p-4">
+  <div id="app" class="max-w-lg w-full bg-white rounded-3xl shadow-xl p-6 sm:p-8">
+    <h1 class="text-3xl font-bold text-sky-700 text-center mb-1">Mini Logic Grid</h1>
+    <p class="text-center text-sky-600 mb-4">ชั้น ป.1 • อ่านเบาะแสแล้วหาคำตอบ • 10 ข้อ</p>
+    <div class="flex justify-between items-center mb-4 text-sm">
+      <div class="text-gray-500">ข้อที่ <span id="current" class="font-bold">1</span>/10</div>
+      <div id="score" class="text-sky-700 font-semibold">คะแนน: 0</div>
+    </div>
+
+    <div id="question-area"></div>
+    <div id="options" class="grid grid-cols-2 gap-4 mt-5"></div>
+    <div id="result" class="hidden mt-5 text-center p-4 rounded-2xl"></div>
+
+    <button id="nextBtn" onclick="nextQuestion()" disabled
+            class="mt-5 w-full bg-sky-600 hover:bg-sky-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-2xl text-lg">
+      ข้อต่อไป
+    </button>
+  </div>
+
+  <script>
+    let current = 0;
+    let score = 0;
+    let answered = false;     // ตอบแล้ว 1 ครั้งต่อข้อ กันกดซ้ำแล้วคะแนนเพิ่ม
+    let audioContext;
+    let noiseBuffer = null;
+
+    function ctx() {
+      if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === "suspended") audioContext.resume();
+      return audioContext;
+    }
+    function tone(freq, start, dur, vol, type) {
+      const c = ctx(), o = c.createOscillator(), g = c.createGain(), t0 = c.currentTime + start;
+      o.type = type || "sine"; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(c.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+    }
+    function clap(start, vol) {
+      const c = ctx();
+      if (!noiseBuffer) {
+        noiseBuffer = c.createBuffer(1, Math.floor(c.sampleRate * 0.2), c.sampleRate);
+        const d = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(), t0 = c.currentTime + start;
+      s.buffer = noiseBuffer; f.type = "bandpass"; f.frequency.value = 1100 + Math.random() * 900; f.Q.value = 0.9;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.11);
+      s.connect(f); f.connect(g); g.connect(c.destination); s.start(t0); s.stop(t0 + 0.14);
+    }
+    function playSound(type) {
+      try {
+        if (type === "click") tone(650, 0, 0.08, 0.12);
+        else if (type === "correct") {            // เสียงปรบมือ
+          for (let i = 0; i < 16; i++) clap(i * 0.065 + Math.random() * 0.03, 0.55 * (1 - i / 22));
+          tone(784, 0, 0.2, 0.07); tone(1047, 0.1, 0.25, 0.07);
+        } else if (type === "wrong") {             // เสียงเตือน
+          tone(233, 0, 0.18, 0.12, "square"); tone(185, 0.22, 0.3, 0.12, "square");
+        }
+      } catch (e) {}
+    }
+
+    // โจทย์ทุกข้อบอกข้อมูลของทุกตัวเลือก และมีคำตอบที่ตรงครบทั้ง 2 เงื่อนไขเพียงตัวเดียว
+    const puzzles = [
+      {
+        "question": "ใครชอบสีแดง และมีลูกบอล?",
+        "clues": [
+          "👦 น้องบอยชอบสีน้ำเงิน และมีลูกบอล",
+          "👧 น้องมิ้นท์ชอบสีแดง และมีลูกบอล",
+          "👦 น้องตั้มชอบสีแดง และมีตุ๊กตา",
+          "👧 น้องฟ้าชอบสีเขียว และมีว่าว"
+        ],
+        "options": [
+          "👦 น้องบอย",
+          "👧 น้องมิ้นท์",
+          "👦 น้องตั้ม",
+          "👧 น้องฟ้า"
+        ],
+        "answer": "👧 น้องมิ้นท์",
+        "explain": "น้องมิ้นท์ชอบสีแดงและมีลูกบอลครบทั้ง 2 อย่าง · น้องบอยมีลูกบอลแต่ชอบสีน้ำเงิน · น้องตั้มชอบสีแดงแต่มีตุ๊กตา"
+      },
+      {
+        "question": "สัตว์ตัวไหนกินกล้วย และชอบปีนต้นไม้?",
+        "clues": [
+          "🐘 ช้างกินกล้วย แต่ปีนต้นไม้ไม่ได้",
+          "🐦 นกชอบเกาะบนต้นไม้ แต่ไม่กินกล้วย",
+          "🐵 ลิงกินกล้วย และชอบปีนต้นไม้",
+          "🐰 กระต่ายกินแครอท และชอบวิ่งบนพื้นหญ้า"
+        ],
+        "options": [
+          "🐵 ลิง",
+          "🐘 ช้าง",
+          "🐰 กระต่าย",
+          "🐦 นก"
+        ],
+        "answer": "🐵 ลิง",
+        "explain": "ลิงกินกล้วยและปีนต้นไม้ครบทั้ง 2 อย่าง · ช้างกินกล้วยแต่ปีนต้นไม้ไม่ได้ · นกอยู่บนต้นไม้แต่ไม่กินกล้วย"
+      },
+      {
+        "question": "ใครมีหมวกสีน้ำตาล และชอบสีเหลือง?",
+        "clues": [
+          "👦 น้องบีมมีหมวกสีน้ำตาล และชอบสีฟ้า",
+          "👧 น้องกี้มีหมวกสีขาว และชอบสีเหลือง",
+          "👦 น้องวินมีหมวกสีน้ำตาล และชอบสีเหลือง",
+          "👧 น้องจินไม่มีหมวก และชอบสีชมพู"
+        ],
+        "options": [
+          "👦 น้องบีม",
+          "👧 น้องกี้",
+          "👦 น้องวิน",
+          "👧 น้องจิน"
+        ],
+        "answer": "👦 น้องวิน",
+        "explain": "น้องวินมีหมวกสีน้ำตาลและชอบสีเหลืองครบทั้ง 2 อย่าง · น้องบีมหมวกสีน้ำตาลแต่ชอบสีฟ้า · น้องกี้ชอบสีเหลืองแต่หมวกสีขาว"
+      },
+      {
+        "question": "สัตว์ตัวไหนบินได้ และชอบทำรังบนต้นไม้?",
+        "clues": [
+          "🦋 ผีเสื้อบินได้ แต่ชอบเกาะดอกไม้ ไม่ได้ทำรัง",
+          "🐱 แมวปีนขึ้นต้นไม้ได้ แต่บินไม่ได้",
+          "🐟 ปลาบินไม่ได้ และอยู่ในน้ำ",
+          "🐦 นกบินได้ และชอบทำรังบนต้นไม้"
+        ],
+        "options": [
+          "🐦 นก",
+          "🐟 ปลา",
+          "🐱 แมว",
+          "🦋 ผีเสื้อ"
+        ],
+        "answer": "🐦 นก",
+        "explain": "นกบินได้และทำรังบนต้นไม้ครบทั้ง 2 อย่าง · ผีเสื้อบินได้แต่ไม่ได้ทำรัง · แมวปีนต้นไม้ได้แต่บินไม่ได้"
+      },
+      {
+        "question": "ใครชอบกินไอศกรีม และใส่เสื้อสีชมพู?",
+        "clues": [
+          "👦 น้องปันชอบกินเค้ก และใส่เสื้อสีชมพู",
+          "👧 น้องบัวชอบกินไอศกรีม และใส่เสื้อสีชมพู",
+          "👦 น้องไทน์ชอบกินไอศกรีม และใส่เสื้อสีเขียว",
+          "👧 น้องพลอยชอบกินผลไม้ และใส่เสื้อสีขาว"
+        ],
+        "options": [
+          "👦 น้องปัน",
+          "👧 น้องบัว",
+          "👦 น้องไทน์",
+          "👧 น้องพลอย"
+        ],
+        "answer": "👧 น้องบัว",
+        "explain": "น้องบัวชอบไอศกรีมและใส่เสื้อสีชมพูครบทั้ง 2 อย่าง · น้องปันใส่เสื้อสีชมพูแต่ชอบเค้ก · น้องไทน์ชอบไอศกรีมแต่ใส่เสื้อสีเขียว"
+      },
+      {
+        "question": "สัตว์ตัวไหนกินแครอท และวิ่งเร็ว?",
+        "clues": [
+          "🐶 สุนัขวิ่งเร็ว แต่ไม่ชอบกินแครอท",
+          "🐘 ช้างกินแครอทได้ แต่เดินช้า",
+          "🐰 กระต่ายกินแครอท และวิ่งเร็ว",
+          "🐵 ลิงกินกล้วย และชอบปีนต้นไม้"
+        ],
+        "options": [
+          "🐰 กระต่าย",
+          "🐵 ลิง",
+          "🐘 ช้าง",
+          "🐶 สุนัข"
+        ],
+        "answer": "🐰 กระต่าย",
+        "explain": "กระต่ายกินแครอทและวิ่งเร็วครบทั้ง 2 อย่าง · สุนัขวิ่งเร็วแต่ไม่กินแครอท · ช้างกินแครอทแต่เดินช้า"
+      },
+      {
+        "question": "ใครชอบสีเหลือง และมีหมวก?",
+        "clues": [
+          "👧 น้องจินชอบสีเหลือง แต่ไม่มีหมวก",
+          "👦 น้องเจมส์ชอบสีฟ้า และมีหมวก",
+          "👦 น้องอาชอบสีเหลือง และมีหมวก",
+          "👧 น้องน้ำชอบสีชมพู และไม่มีหมวก"
+        ],
+        "options": [
+          "👧 น้องจิน",
+          "👦 น้องอา",
+          "👧 น้องน้ำ",
+          "👦 น้องเจมส์"
+        ],
+        "answer": "👦 น้องอา",
+        "explain": "น้องอาชอบสีเหลืองและมีหมวกครบทั้ง 2 อย่าง · น้องจินชอบสีเหลืองแต่ไม่มีหมวก · น้องเจมส์มีหมวกแต่ชอบสีฟ้า"
+      },
+      {
+        "question": "สัตว์ตัวไหนว่ายน้ำได้ และอยู่ใต้น้ำตลอดเวลา?",
+        "clues": [
+          "🦆 เป็ดว่ายน้ำได้ แต่ลอยอยู่บนผิวน้ำ และขึ้นมาเดินบนบก",
+          "🐦 นกบินได้ และชอบอยู่บนต้นไม้",
+          "🐟 ปลาว่ายน้ำได้ และอยู่ใต้น้ำตลอดเวลา",
+          "🐱 แมวไม่ชอบน้ำ และชอบนอนบนพื้น"
+        ],
+        "options": [
+          "🐟 ปลา",
+          "🐦 นก",
+          "🐱 แมว",
+          "🦆 เป็ด"
+        ],
+        "answer": "🐟 ปลา",
+        "explain": "ปลาว่ายน้ำและอยู่ใต้น้ำตลอดเวลาครบทั้ง 2 อย่าง · เป็ดว่ายน้ำได้แต่ลอยบนผิวน้ำและขึ้นบก"
+      },
+      {
+        "question": "ใครชอบสีแดง และมีลูกบอลสีน้ำเงิน?",
+        "clues": [
+          "👦 น้องบอยชอบสีแดง และมีลูกบอลสีเหลือง",
+          "👧 น้องมิ้นท์ชอบสีเขียว และมีลูกบอลสีน้ำเงิน",
+          "👦 น้องตั้มชอบสีขาว และมีลูกบอลสีแดง",
+          "👧 น้องฟ้าชอบสีแดง และมีลูกบอลสีน้ำเงิน"
+        ],
+        "options": [
+          "👦 น้องบอย",
+          "👧 น้องมิ้นท์",
+          "👦 น้องตั้ม",
+          "👧 น้องฟ้า"
+        ],
+        "answer": "👧 น้องฟ้า",
+        "explain": "น้องฟ้าชอบสีแดงและมีลูกบอลสีน้ำเงินครบทั้ง 2 อย่าง · ระวังน้องตั้มมีลูกบอลสีแดง แต่ชอบสีขาว"
+      },
+      {
+        "question": "สัตว์ตัวไหนกินหญ้า และตัวใหญ่?",
+        "clues": [
+          "🐰 กระต่ายกินหญ้า แต่ตัวเล็ก",
+          "🐯 เสือตัวใหญ่ แต่กินเนื้อ ไม่กินหญ้า",
+          "🐵 ลิงตัวเล็ก และชอบกินกล้วย",
+          "🐘 ช้างกินหญ้า และตัวใหญ่มาก"
+        ],
+        "options": [
+          "🐘 ช้าง",
+          "🐰 กระต่าย",
+          "🐯 เสือ",
+          "🐵 ลิง"
+        ],
+        "answer": "🐘 ช้าง",
+        "explain": "ช้างกินหญ้าและตัวใหญ่ครบทั้ง 2 อย่าง · กระต่ายกินหญ้าแต่ตัวเล็ก · เสือตัวใหญ่แต่ไม่กินหญ้า"
+      }
+    ];
+
+    function showPuzzle() {
+      const puzzle = puzzles[current];
+      answered = false;
+      document.getElementById("current").innerText = current + 1;
+      document.getElementById("nextBtn").disabled = true;
+
+      const area = document.getElementById("question-area");
+      area.innerHTML = "";
+      const title = document.createElement("p");
+      title.className = "text-xl font-bold text-sky-800 mb-3";
+      title.textContent = puzzle.question;
+      area.appendChild(title);
+
+      const box = document.createElement("div");
+      box.className = "bg-sky-50 border-2 border-sky-100 p-3 rounded-2xl";
+      const head = document.createElement("p");
+      head.className = "text-sm font-semibold text-sky-700 mb-2";
+      head.textContent = "🔎 เบาะแส — แตะเพื่อติ๊กข้อที่อ่านแล้ว";
+      box.appendChild(head);
+      puzzle.clues.forEach((c, k) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "clue w-full flex items-center gap-3 text-left bg-white border-2 border-sky-100 rounded-xl px-3 py-2 mb-2 text-base";
+        row.innerHTML = `<span class="num w-7 h-7 shrink-0 rounded-full bg-sky-100 text-sky-700 text-sm font-bold flex items-center justify-center">${k + 1}</span>`;
+        const t = document.createElement("span");
+        t.textContent = c;
+        row.appendChild(t);
+        row.onclick = () => { row.classList.toggle("done"); playSound("click"); };
+        box.appendChild(row);
+      });
+      area.appendChild(box);
+
+      const optDiv = document.getElementById("options");
+      optDiv.innerHTML = "";
+      puzzle.options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.className = "opt bg-white border-2 border-sky-200 hover:border-sky-500 p-4 rounded-2xl text-xl font-semibold shadow-sm";
+        btn.textContent = opt;
+        btn.onclick = () => checkAnswer(btn, opt, puzzle);
+        optDiv.appendChild(btn);
+      });
+
+      document.getElementById("result").classList.add("hidden");
+    }
+
+    function addMark(btn, ok) {
+      const m = document.createElement("span");
+      m.className = "mark " + (ok ? "ok" : "no");
+      m.textContent = ok ? "✓" : "✗";
+      btn.appendChild(m);
+    }
+
+    function checkAnswer(btn, selected, puzzle) {
+      if (answered) return;
+      answered = true;
+      document.querySelectorAll("#options button").forEach(b => b.disabled = true);
+      const result = document.getElementById("result");
+      result.classList.remove("hidden");
+
+      if (selected === puzzle.answer) {
+        score++;
+        btn.classList.add("border-green-500", "bg-green-100");
+        addMark(btn, true);
+        playSound("correct");
+        result.className = "mt-5 text-center p-4 rounded-2xl bg-green-50 text-green-700";
+        result.innerHTML = `<p class="font-bold text-xl">✓ เก่งมาก! 👏</p>`;
+      } else {
+        btn.classList.add("border-red-500", "bg-red-100", "shake");
+        addMark(btn, false);
+        playSound("wrong");
+        result.className = "mt-5 text-center p-4 rounded-2xl bg-red-50 text-red-700";
+        result.innerHTML = `<p class="font-bold text-xl">✗ ยังไม่ถูกนะ</p><p>คำตอบที่ถูกคือ <strong></strong></p>`;
+        result.querySelector("strong").textContent = puzzle.answer;
+      }
+      const why = document.createElement("p");
+      why.className = "text-sm text-gray-600 mt-2";
+      why.textContent = puzzle.explain;
+      result.appendChild(why);
+      document.getElementById("score").innerText = `คะแนน: ${score}`;
+      document.getElementById("nextBtn").disabled = false;
+    }
+
+    function nextQuestion() {
+      if (!answered) return;
+      playSound("click");
+      current++;
+      if (current < puzzles.length) showPuzzle();
+      else showEnd();
+    }
+
+    function showEnd() {
+      document.getElementById("app").innerHTML = `
+        <div class="text-center py-8">
+          <h2 class="text-3xl font-bold text-sky-700 mb-4">จบแล้ว! 🎉</h2>
+          <p class="text-5xl font-bold text-sky-600 mb-2">${score}</p>
+          <p class="text-xl text-gray-600 mb-6">จาก ${puzzles.length} ข้อ</p>
+          <button onclick="location.reload()" class="bg-sky-600 text-white px-8 py-3 rounded-2xl font-bold">ทำใหม่</button>
+        </div>`;
+    }
+
+    window.onload = showPuzzle;
+  </script>
+</body>
+</html>

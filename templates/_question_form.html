@@ -20,6 +20,7 @@
         <option value="compare"   {{ 'selected' if kind == 'compare' }}>เทียบเลข มากกว่า/น้อยกว่า (จระเข้)</option>
         <option value="mathrun"   {{ 'selected' if kind == 'mathrun' }}>คิดเลขเร็ว บนก้อนเมฆ (จับเวลา)</option>
         <option value="pattern"   {{ 'selected' if kind == 'pattern' }}>ต่อรูปแบบให้ครบ (เชาวน์ปัญญา)</option>
+        <option value="logic"     {{ 'selected' if kind == 'logic' }}>อ่านเบาะแสแล้วหาคำตอบ (เชาวน์ปัญญา)</option>
         <option value="findshape" {{ 'selected' if kind == 'findshape' }}>นับรูปทรงในภาพรวม (เชาวน์ปัญญา)</option>
       </select>
     </label>
@@ -47,7 +48,7 @@
   </label>
 
   {# ───── เลือกตอบ / ถูกผิด ───── #}
-  <div class="kindbox" data-for="choice,truefalse,model3d,compare,pattern">
+  <div class="kindbox" data-for="choice,truefalse,model3d,compare,pattern,logic">
     <p class="muted" style="font-size:.88rem;margin:.3rem 0">
       กรอกตัวเลือกแล้วกดวงกลมหน้าข้อที่เป็นคำตอบที่ถูก (เว้นว่างไว้ = ไม่ใช้ตัวเลือกนั้น)<br>
       ถ้าใส่รูปให้ <b>ครบทุกตัวเลือก</b> ระบบจะแสดงเป็นการ์ดรูปใหญ่ให้เด็กกดเลือก
@@ -146,6 +147,18 @@
     </p>
   </div>
 
+
+  {# ───── อ่านเบาะแสแล้วหาคำตอบ ───── #}
+  <div class="kindbox" data-for="logic">
+    <p class="muted" style="font-size:.88rem;margin:.3rem 0">
+      พิมพ์เบาะแส <b>บรรทัดละ 1 ข้อ</b> (2–8 บรรทัด) เด็กจะเห็นเป็นการ์ดเบาะแส แตะติ๊กทีละข้อได้ระหว่างคิด<br>
+      เคล็ดลับให้โจทย์ถูกต้อง: บอกข้อมูลของ<b>ทุกตัวเลือก</b> และให้มีคำตอบที่ตรงทั้ง 2 เงื่อนไขเพียงตัวเดียว
+      ตัวลวงควรตรงแค่เงื่อนไขเดียว เด็กจะได้ฝึกเช็กให้ครบ
+    </p>
+    <label>เบาะแส
+      <textarea name="logic_clues" rows="5" placeholder="👦 น้องบอยชอบสีน้ำเงิน และมีลูกบอล&#10;👧 น้องมิ้นท์ชอบสีแดง และมีลูกบอล">{{ (q.icon or '').replace('|', '\n') if q and q.kind == 'logic' else '' }}</textarea>
+    </label>
+  </div>
 
   {# ───── ต่อรูปแบบให้ครบ ───── #}
   <div class="kindbox" data-for="pattern">

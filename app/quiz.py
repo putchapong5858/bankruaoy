@@ -36,11 +36,12 @@ KINDS = {
     "mathrun":   "คิดเลขเร็ว บนก้อนเมฆ (จับเวลา)",
     "findshape": "นับรูปทรงในภาพรวม (เชาวน์ปัญญา)",
     "pattern":   "ต่อรูปแบบให้ครบ (เชาวน์ปัญญา)",
+    "logic":     "อ่านเบาะแสแล้วหาคำตอบ (เชาวน์ปัญญา)",
 }
 
 # รูปแบบที่ตรวจคำตอบเหมือนกัน คือเลือกตัวเลือกที่ถูก 1 ตัว
 PICK_KINDS = ("choice", "truefalse", "count", "model3d", "compare",
-              "mathrun", "findshape", "pattern")
+              "mathrun", "findshape", "pattern", "logic")
 
 # อีโมจิยอดนิยมสำหรับโจทย์นับจำนวน — ครูกดเลือกได้เลยไม่ต้องพิมพ์
 ICON_SETS = {
@@ -297,7 +298,8 @@ def save_question(quiz_id: str | int, data: dict,
     except (TypeError, ValueError):
         points = 1.0
 
-    icon = _txt(data.get("icon"), 200)
+    # โจทย์ใช้เหตุผลเก็บเบาะแสหลายบรรทัดในช่อง icon จึงยอมให้ยาวกว่าชนิดอื่น
+    icon = _txt(data.get("icon"), 800 if kind == "logic" else 200)
     icon_count = _int(data.get("icon_count"), 0)
 
     fields = {
@@ -378,7 +380,12 @@ def save_question(quiz_id: str | int, data: dict,
                 'เช่น "🔴 🔵 🔴 🔵 ?"'
             )
         fields["icon"] = " ".join(seq)
-    if kind in ("choice", "truefalse", "pattern"):
+    if kind == "logic":
+        clues = logic_clues(icon)
+        if not clues:
+            raise SupabaseError("กรุณาใส่เบาะแสอย่างน้อย 2 บรรทัด (บรรทัดละ 1 เบาะแส ไม่เกิน 8 บรรทัด)")
+        fields["icon"] = "|".join(clues)
+    if kind in ("choice", "truefalse", "pattern", "logic"):
         if len(options) < 2:
             raise SupabaseError("ต้องมีตัวเลือกอย่างน้อย 2 ตัวเลือก")
         if not any(o["is_correct"] for o in options):
@@ -658,6 +665,17 @@ def level_matches(quiz_level: str, student_level: str) -> bool:
     return False
 
 
+def logic_clues(raw: str) -> list[str] | None:
+    """
+    อ่านเบาะแสของโจทย์ "อ่านเบาะแสแล้วหาคำตอบ" เก็บในช่อง icon คั่นด้วย |
+    เช่น "น้องบอยชอบสีแดง|น้องมิ้นท์มีลูกบอล" — เบาะแสไม่ใช่เฉลย ส่งให้เบราว์เซอร์ได้
+    """
+    lines = [t.strip()[:160] for t in re.split(r"[|\r\n]+", raw or "") if t.strip()]
+    if len(lines) < 2 or len(lines) > 8:
+        return None
+    return lines
+
+
 def pattern_seq(raw: str) -> list[str] | None:
     """
     อ่านแถวรูปแบบของโจทย์ "ต่อรูปแบบ" เก็บในช่อง icon คั่นด้วยเว้นวรรค
@@ -826,6 +844,8 @@ def public_questions(questions: list[dict]) -> list[dict]:
             "dots": bool(q.get("icon_count")) if q.get("kind") == "compare" else False,
             # โจทย์ต่อรูปแบบ — แถวรูปที่มีช่อง ? (ไม่มีเฉลยอยู่ในนี้)
             "seq": pattern_seq(q.get("icon")) if q.get("kind") == "pattern" else None,
+            # โจทย์อ่านเบาะแส — รายการเบาะแสให้เด็กอ่าน (คำตอบยังตรวจที่เซิร์ฟเวอร์)
+            "clues": logic_clues(q.get("icon")) if q.get("kind") == "logic" else None,
             "model": (MODELS.get(q.get("icon") or "") or None)
                      if q.get("kind") == "model3d" else None,
             "model_url": model_url(q["icon"]) if q.get("kind") == "model3d"

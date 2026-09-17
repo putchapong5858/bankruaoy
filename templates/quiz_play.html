@@ -786,6 +786,33 @@
         box.appendChild(strip);
       }
 
+      // โจทย์อ่านเบาะแส — การ์ดเบาะแส แตะแต่ละข้อเพื่อติ๊กว่าอ่าน/เช็กแล้ว
+      if (q.kind === "logic" && q.clues) {
+        var card = document.createElement("div");
+        card.className = "cluecard";
+        var head = document.createElement("div");
+        head.className = "cluehead";
+        head.textContent = "🔎 เบาะแส — แตะเพื่อติ๊กข้อที่อ่านแล้ว";
+        card.appendChild(head);
+        q.clues.forEach(function (c, k) {
+          var row = document.createElement("button");
+          row.type = "button";
+          row.className = "clue";
+          row.style.animationDelay = (k * 80) + "ms";
+          var no = document.createElement("b");
+          no.textContent = (k + 1);
+          var tx = document.createElement("span");
+          tx.textContent = c;
+          row.appendChild(no); row.appendChild(tx);
+          row.addEventListener("click", function () {
+            row.classList.toggle("done");
+            play("tap");
+          });
+          card.appendChild(row);
+        });
+        box.appendChild(card);
+      }
+
       // โจทย์ต่อรูปแบบ — วางแถวรูปเรียงกัน มีช่อง ? ให้เด็กหาว่าอะไรหายไป
       if (q.kind === "pattern" && q.seq) {
         var prow = document.createElement("div");
@@ -822,6 +849,7 @@
         b.className = numbers ? "opt num"
                     : signs ? "opt sign"
                     : (q.kind === "pattern") ? "opt emo"
+                    : (q.kind === "logic") ? "opt who"
                     : (pics ? "opt pic" : "opt");
         b.innerHTML = "";
         if (o.image_url) {
@@ -856,10 +884,11 @@
       box.classList.toggle("mathrow", q.kind === "mathrun");
       box.classList.toggle("findrow", q.kind === "findshape");
       box.classList.toggle("emorow", q.kind === "pattern");
+      box.classList.toggle("whorow", q.kind === "logic");
       box.classList.toggle("numopts", q.kind === "pattern" && !!q.seq &&
         q.seq.every(function (t) { return t === "?" || /^-?\d+$/.test(t); }));
       // มี 2 ตัวเลือก = วางซ้าย-ขวาเป็นการ์ดใหญ่ เด็กเล็กเลือกง่ายกว่าอ่านรายการยาว ๆ
-      var duo = !numbers && !signs && q.kind !== "pattern" && q.options.length === 2;
+      var duo = !numbers && !signs && q.kind !== "pattern" && q.kind !== "logic" && q.options.length === 2;
       box.classList.toggle("duo", duo);
       // ตัวเลือกเป็นตัวอักษรสั้น ๆ (เช่น "C c") ให้ตัวโตเต็มการ์ด
       box.classList.toggle("letters", duo && q.options.every(function (o) {
@@ -938,7 +967,7 @@
   function showResult(res) {
     paintDots(res.correct ? "ok" : "no");
     // โจทย์ต่อรูปแบบ/เรียงลำดับ — ถูกได้เสียงปรบมือ + ✓ สีเขียว · ผิดได้เสียงเตือน + ✗ สีแดงที่ตัวที่เลือก
-    var marked = (QS[i].kind === "pattern") && markPicked(res.correct);
+    var marked = (QS[i].kind === "pattern" || QS[i].kind === "logic") && markPicked(res.correct);
     play(res.correct ? (marked ? "clap" : "correct") : (marked ? "buzz" : "wrong"));
     buddy(res.correct ? "happy" : "cheerup",
           pick(res.correct ? CHEER_OK : CHEER_NO));
@@ -1192,6 +1221,24 @@
 .patrow.nums .pcell.blank{color:#f0a030}
 .patrow.nums .pcell.blank.filled{color:#0e6b54}
 #answers.numopts .opt.emo span{font-weight:800;color:#0e6b54;font-size:2.3rem}
+/* ── อ่านเบาะแสแล้วหาคำตอบ ── */
+.cluecard{grid-column:1 / -1;margin:0 0 .8rem;padding:.8rem;border-radius:20px;
+  background:linear-gradient(180deg,#f0f8ff,#fffaf0);box-shadow:inset 0 0 0 2px #d9ecfb}
+.cluehead{font-size:.85rem;font-weight:700;color:#0c6b9e;margin:0 0 .5rem .2rem}
+.clue{display:flex;align-items:center;gap:.6rem;width:100%;text-align:left;margin:0 0 .45rem;
+  padding:.65rem .8rem;border:2px solid #e2eef8;border-radius:14px;background:#fff;
+  font:inherit;font-size:1.08rem;line-height:1.5;color:#1d3b53;cursor:pointer;
+  animation:pin .4s cubic-bezier(.3,1.5,.5,1) both}
+.clue:last-child{margin-bottom:0}
+.clue b{flex:0 0 30px;height:30px;border-radius:50%;display:grid;place-items:center;
+  background:#e3f2fd;color:#0c6b9e;font-size:.9rem}
+.clue.done{background:#effbf3;border-color:#bfe8cf}
+.clue.done b{background:#22b35e;color:#fff;font-size:0}
+.clue.done b::after{content:"✓";font-size:1rem}
+.clue.done span{color:#4b6a5a}
+#answers.whorow{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem}
+#answers.whorow .opt.who{margin:0;min-height:74px;justify-content:center;text-align:center;
+  font-size:1.15rem;font-weight:700}
 #answers.emorow{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem}
 #answers.emorow .opt.emo{min-height:84px;display:grid;place-items:center;padding:.4rem}
 #answers.emorow .opt.emo span{font-size:2.6rem;line-height:1}
@@ -1212,7 +1259,7 @@
 .opt.is-wrong{border-color:#e53935 !important;background:#fdecec !important;box-shadow:0 0 0 4px rgba(229,57,53,.15) !important;
   animation:nope .4s ease}
 @keyframes stamp{0%{transform:scale(2.2) rotate(-20deg);opacity:0}100%{transform:none;opacity:1}}
-@media(prefers-reduced-motion:reduce){.pcell,.pcell.blank,.patrow.wave .pcell,.opt .mark,.opt.is-wrong{animation:none}}
+@media(prefers-reduced-motion:reduce){.pcell,.pcell.blank,.patrow.wave .pcell,.opt .mark,.opt.is-wrong,.clue{animation:none}}
 @media(prefers-reduced-motion:reduce){
   .buddy svg,.buddy[data-mood] svg{animation:none}
 }

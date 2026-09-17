@@ -1012,8 +1012,12 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
     if kind == "pattern":
         # แถวรูปแบบ เช่น "🔴 🔵 🔴 🔵 ?" เก็บในช่อง icon เดิม
         data["icon"] = (form.get("pattern_seq") or "").strip()
+    if kind == "logic":
+        # เบาะแสบรรทัดละข้อ เก็บรวมในช่อง icon คั่นด้วย |
+        data["icon"] = "|".join(
+            ln.strip() for ln in (form.get("logic_clues") or "").splitlines() if ln.strip())
 
-    if kind in ("choice", "truefalse", "model3d", "compare", "pattern"):
+    if kind in ("choice", "truefalse", "model3d", "compare", "pattern", "logic"):
         # โจทย์ 3 มิติใช้ตัวเลือกแบบเดียวกับข้อเลือกตอบ ต่างแค่มีรูปทรงให้ดู
         labels = form.getlist("opt_label")
         images = form.getlist("opt_image")
