@@ -189,12 +189,50 @@
     osc.stop(actx.currentTime + startAt + dur + 0.02);
   }
 
+  // เสียงปรบมือ — สร้างจากเสียงซ่า (noise) สั้น ๆ หลายครั้งเหลื่อมกัน เหมือนหลายคนตบมือพร้อมกัน
+  var noiseBuf = null;
+  function clapAt(t, vol) {
+    if (!noiseBuf) {
+      noiseBuf = actx.createBuffer(1, Math.floor(actx.sampleRate * 0.2), actx.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var k = 0; k < d.length; k++) d[k] = Math.random() * 2 - 1;
+    }
+    var src = actx.createBufferSource(), bp = actx.createBiquadFilter(), g = actx.createGain();
+    src.buffer = noiseBuf;
+    bp.type = "bandpass"; bp.frequency.value = 1100 + Math.random() * 900; bp.Q.value = 0.9;
+    var t0 = actx.currentTime + t;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.11);
+    src.connect(bp); bp.connect(g); g.connect(actx.destination);
+    src.start(t0); src.stop(t0 + 0.14);
+  }
+  function buzz(freq, startAt, dur, vol) {      // เสียงเตือนแบบแตรเบา ๆ ไม่แหลมจนเด็กตกใจ
+    var osc = actx.createOscillator(), lp = actx.createBiquadFilter(), g = actx.createGain();
+    osc.type = "square"; osc.frequency.value = freq;
+    lp.type = "lowpass"; lp.frequency.value = 900;
+    var t0 = actx.currentTime + startAt;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.015);
+    g.gain.setValueAtTime(vol, t0 + dur - 0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(lp); lp.connect(g); g.connect(actx.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }
+
   function play(what) {
     if (!soundOn) return;
     try {
       if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
       if (actx.state === "suspended") actx.resume();
-      if (what === "correct") {                 // โด-มี-ซอล ไล่ขึ้น ฟังแล้วดีใจ
+      if (what === "clap") {                    // ปรบมือราว 1 วินาที ดังแล้วค่อย ๆ เบาลง
+        for (var c = 0; c < 16; c++) {
+          clapAt(c * 0.065 + Math.random() * 0.03, 0.55 * (1 - c / 22));
+        }
+        [784, 1047].forEach(function (f, n) { tone(f, n * 0.1, 0.2, 0.07); });
+      } else if (what === "buzz") {             // ตื๊ด-ตื๊ด เสียงเตือนว่ายังไม่ถูก
+        buzz(233, 0, 0.18, 0.12); buzz(185, 0.22, 0.3, 0.12);
+      } else if (what === "correct") {                 // โด-มี-ซอล ไล่ขึ้น ฟังแล้วดีใจ
         [523, 659, 784, 1047].forEach(function (f, n) { tone(f, n * 0.09, 0.22, 0.16); });
       } else if (what === "wrong") {            // เสียงนุ่ม ๆ ไม่ดุ ไม่ทำให้เด็กกลัว
         tone(392, 0, 0.16, 0.11); tone(330, 0.13, 0.24, 0.11);
@@ -753,6 +791,9 @@
         var prow = document.createElement("div");
         prow.className = "patrow";
         prow.style.setProperty("--n", q.seq.length);
+        // แถวตัวเลข (เช่น 2 4 6 ?) ใช้ตัวหนาสีเขียวเข้ม อ่านง่ายกว่าตัวบางปกติ
+        var isNums = q.seq.every(function (t) { return t === "?" || /^-?\d+$/.test(t); });
+        prow.classList.toggle("nums", isNums);
         q.seq.forEach(function (t, k) {
           var cell = document.createElement("span");
           cell.style.animationDelay = (k * 70) + "ms";
@@ -815,6 +856,8 @@
       box.classList.toggle("mathrow", q.kind === "mathrun");
       box.classList.toggle("findrow", q.kind === "findshape");
       box.classList.toggle("emorow", q.kind === "pattern");
+      box.classList.toggle("numopts", q.kind === "pattern" && !!q.seq &&
+        q.seq.every(function (t) { return t === "?" || /^-?\d+$/.test(t); }));
       // มี 2 ตัวเลือก = วางซ้าย-ขวาเป็นการ์ดใหญ่ เด็กเล็กเลือกง่ายกว่าอ่านรายการยาว ๆ
       var duo = !numbers && !signs && q.kind !== "pattern" && q.options.length === 2;
       box.classList.toggle("duo", duo);
@@ -873,10 +916,30 @@
   }
   el("submit").addEventListener("click", send);
 
+  // ── ติดเครื่องหมาย ✓ / ✗ ที่ปุ่มคำตอบที่เด็กเลือก ──
+  function markPicked(ok) {
+    var btn = document.querySelector("#answers .opt.on");
+    if (!btn) return false;
+    var old = btn.querySelector(".mark");
+    if (old) old.remove();
+    var m = document.createElement("i");
+    m.className = "mark " + (ok ? "ok" : "no");
+    m.setAttribute("aria-hidden", "true");
+    m.textContent = ok ? "✓" : "✗";
+    btn.appendChild(m);
+    btn.classList.add(ok ? "is-right" : "is-wrong");
+    Array.prototype.forEach.call(document.querySelectorAll("#answers .opt"), function (b) {
+      b.disabled = true;
+    });
+    return true;
+  }
+
   // ── ป๊อปอัพบอกผลรายข้อ ──
   function showResult(res) {
     paintDots(res.correct ? "ok" : "no");
-    play(res.correct ? "correct" : "wrong");
+    // โจทย์ต่อรูปแบบ/เรียงลำดับ — ถูกได้เสียงปรบมือ + ✓ สีเขียว · ผิดได้เสียงเตือน + ✗ สีแดงที่ตัวที่เลือก
+    var marked = (QS[i].kind === "pattern") && markPicked(res.correct);
+    play(res.correct ? (marked ? "clap" : "correct") : (marked ? "buzz" : "wrong"));
     buddy(res.correct ? "happy" : "cheerup",
           pick(res.correct ? CHEER_OK : CHEER_NO));
     if (!res.correct) {
@@ -935,7 +998,8 @@
       (res.answer ? "คำตอบที่ถูกคือ " + res.answer : "");
     el("explain").textContent = res.explanation || "";
     el("next").textContent = (i + 1 >= QS.length) ? "ดูคะแนนของหนู →" : "ข้อต่อไป →";
-    el("sheet").hidden = false;
+    // เว้นจังหวะให้เด็กเห็น ✓ / ✗ ที่ปุ่มก่อน แล้วค่อยเลื่อนป๊อปอัพขึ้นมา
+    setTimeout(function () { el("sheet").hidden = false; }, document.querySelector("#answers .mark") ? 750 : 0);
     if (res.correct) setTimeout(confetti, 60);
     // พูดเป็นท่อน ๆ เพื่อให้คำอังกฤษได้เสียงอังกฤษจริง ๆ ไม่ใช่เสียงไทยอ่านอังกฤษ
     speak(res.correct ? "เก่งมาก ตอบถูกค่ะ"
@@ -1124,6 +1188,10 @@
 .patrow.wave .pcell:nth-child(4){animation-delay:.21s}.patrow.wave .pcell:nth-child(5){animation-delay:.28s}
 .patrow.wave .pcell:nth-child(6){animation-delay:.35s}.patrow.wave .pcell:nth-child(7){animation-delay:.42s}
 .patrow.wave .pcell:nth-child(8){animation-delay:.49s}.patrow.wave .pcell:nth-child(9){animation-delay:.56s}
+.patrow.nums .pcell{font-weight:800;color:#0e6b54;font-family:"Fredoka","Noto Sans Thai",system-ui,sans-serif}
+.patrow.nums .pcell.blank{color:#f0a030}
+.patrow.nums .pcell.blank.filled{color:#0e6b54}
+#answers.numopts .opt.emo span{font-weight:800;color:#0e6b54;font-size:2.3rem}
 #answers.emorow{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem}
 #answers.emorow .opt.emo{min-height:84px;display:grid;place-items:center;padding:.4rem}
 #answers.emorow .opt.emo span{font-size:2.6rem;line-height:1}
@@ -1132,7 +1200,19 @@
 @keyframes fillpop{0%{transform:scale(.3)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
 @keyframes hop{0%,100%{transform:translateY(0)}40%{transform:translateY(-12px)}}
 @media(max-width:420px){ #answers.emorow{grid-template-columns:repeat(2,1fr)} }
-@media(prefers-reduced-motion:reduce){.pcell,.pcell.blank,.patrow.wave .pcell{animation:none}}
+/* ── ✓ / ✗ ที่ปุ่มคำตอบ ── */
+.opt{position:relative}
+.opt:disabled{cursor:default;opacity:1;color:inherit}
+.opt .mark{position:absolute;top:-12px;right:-10px;width:42px;height:42px;border-radius:50%;
+  display:grid;place-items:center;font-style:normal;font-weight:900;font-size:1.6rem;line-height:1;
+  color:#fff;box-shadow:0 4px 10px rgba(0,0,0,.18);z-index:2;animation:stamp .4s cubic-bezier(.3,1.7,.5,1)}
+.opt .mark.ok{background:#22b35e}
+.opt .mark.no{background:#e53935}
+.opt.is-right{border-color:#22b35e !important;background:#eafaf0 !important;box-shadow:0 0 0 4px rgba(34,179,94,.18) !important}
+.opt.is-wrong{border-color:#e53935 !important;background:#fdecec !important;box-shadow:0 0 0 4px rgba(229,57,53,.15) !important;
+  animation:nope .4s ease}
+@keyframes stamp{0%{transform:scale(2.2) rotate(-20deg);opacity:0}100%{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.pcell,.pcell.blank,.patrow.wave .pcell,.opt .mark,.opt.is-wrong{animation:none}}
 @media(prefers-reduced-motion:reduce){
   .buddy svg,.buddy[data-mood] svg{animation:none}
 }

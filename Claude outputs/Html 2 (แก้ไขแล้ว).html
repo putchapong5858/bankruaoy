@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Number Sequence - อนุบาล 3–ป.1 ระดับง่าย</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .opt { position: relative; transition: transform .15s; }
+    .opt:disabled { cursor: default; }
+    .mark {
+      position: absolute; top: -14px; right: -12px;
+      width: 46px; height: 46px; border-radius: 9999px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 28px; font-weight: 900; line-height: 1;
+      box-shadow: 0 4px 10px rgba(0,0,0,.2);
+      animation: stamp .4s cubic-bezier(.3,1.7,.5,1);
+    }
+    .mark.ok { background: #16a34a; }
+    .mark.no { background: #dc2626; }
+    .is-right { border-color: #16a34a !important; background: #dcfce7 !important; }
+    .is-wrong { border-color: #dc2626 !important; background: #fee2e2 !important; animation: shake .4s; }
+    .blank-ok { border-style: solid !important; border-color: #16a34a !important; color: #065f46 !important; animation: pop .5s; }
+    @keyframes stamp { from { transform: scale(2.2) rotate(-20deg); opacity: 0; } to { transform: none; opacity: 1; } }
+    @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+    @keyframes pop { 0% { transform: scale(.4); } 70% { transform: scale(1.15); } 100% { transform: none; } }
+  </style>
+</head>
+<body class="bg-emerald-50 flex items-center justify-center min-h-screen">
+  <div class="max-w-md w-full bg-white rounded-3xl shadow-xl p-8">
+    <h1 class="text-3xl font-bold text-emerald-700 text-center mb-1">Number Sequence</h1>
+    <p class="text-center text-emerald-600 mb-6">อนุบาล 3 – ป.1 • ระดับง่าย • 10 ข้อ</p>
+
+    <div class="flex justify-between items-center mb-4">
+      <div class="text-sm text-gray-500">ข้อที่ <span id="current" class="font-bold">1</span>/10</div>
+      <div id="score" class="text-emerald-600 font-semibold">คะแนน: 0</div>
+    </div>
+
+    <div class="bg-emerald-100 rounded-2xl p-6 mb-6">
+      <p class="text-center text-gray-700 mb-4 text-lg">เติมตัวเลขที่หายไป</p>
+      <div id="sequence" class="flex justify-center gap-3 text-4xl font-bold text-emerald-800 mb-6"></div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mb-6" id="options"></div>
+
+    <div id="result" class="hidden text-center py-4 rounded-2xl mb-4"></div>
+
+    <button onclick="checkAnswer()" 
+            class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl text-lg mb-3">
+      ตรวจคำตอบ
+    </button>
+    
+    <button onclick="nextQuestion()" 
+            class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-2xl">
+      ข้อต่อไป
+    </button>
+  </div>
+
+  <script>
+    let currentQuestion = 0;
+    let score = 0;
+    let selectedAnswer = null;
+    let correctAnswer = "";
+
+    let audioContext;
+    let noiseBuffer = null;
+
+    function getCtx() {
+      if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === "suspended") audioContext.resume();
+      return audioContext;
+    }
+
+    // เสียงคลิกสั้น ๆ ตอนกดปุ่ม
+    function beep(freq, start, dur, vol, type) {
+      const ctx = getCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const t0 = ctx.currentTime + start;
+      osc.type = type || "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.015);
+      gain.gain.setValueAtTime(vol, t0 + Math.max(0.02, dur - 0.05));
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.02);
+    }
+
+    // ตบมือ 1 ครั้ง = เสียงซ่า (noise) สั้นมาก ผ่านตัวกรองความถี่กลาง
+    function clap(start, vol) {
+      const ctx = getCtx();
+      if (!noiseBuffer) {
+        noiseBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.2), ctx.sampleRate);
+        const data = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      }
+      const src = ctx.createBufferSource();
+      const filter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+      const t0 = ctx.currentTime + start;
+      src.buffer = noiseBuffer;
+      filter.type = "bandpass";
+      filter.frequency.value = 1100 + Math.random() * 900;
+      filter.Q.value = 0.9;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.004);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.11);
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      src.start(t0);
+      src.stop(t0 + 0.14);
+    }
+
+    function playSound(type) {
+      try {
+        if (type === "click") {
+          beep(600, 0, 0.08, 0.15);
+        } else if (type === "correct") {
+          // เสียงปรบมือ: ตบมือ 16 ครั้งเหลื่อมกันเล็กน้อย เหมือนหลายคนปรบมือพร้อมกัน
+          for (let i = 0; i < 16; i++) {
+            clap(i * 0.065 + Math.random() * 0.03, 0.55 * (1 - i / 22));
+          }
+          beep(784, 0, 0.2, 0.08);
+          beep(1047, 0.1, 0.25, 0.08);
+        } else if (type === "wrong") {
+          // เสียงเตือน: ตื๊ด-ตื๊ด ต่ำลง
+          const ctx = getCtx();
+          [[233, 0, 0.18], [185, 0.22, 0.3]].forEach(([f, s, d]) => {
+            const osc = ctx.createOscillator();
+            const lp = ctx.createBiquadFilter();
+            const g = ctx.createGain();
+            const t0 = ctx.currentTime + s;
+            osc.type = "square";
+            osc.frequency.value = f;
+            lp.type = "lowpass";
+            lp.frequency.value = 900;
+            g.gain.setValueAtTime(0.0001, t0);
+            g.gain.exponentialRampToValueAtTime(0.14, t0 + 0.015);
+            g.gain.setValueAtTime(0.14, t0 + d - 0.04);
+            g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+            osc.connect(lp); lp.connect(g); g.connect(ctx.destination);
+            osc.start(t0); osc.stop(t0 + d + 0.02);
+          });
+        }
+      } catch (e) { /* บางเครื่องปิดเสียงไว้ ข้ามไป */ }
+    }
+
+    const questions = [
+      { sequence: ["1", "2", "3", "?"], options: ["3", "4", "5", "6"], answer: "4" },
+      { sequence: ["2", "4", "6", "?"], options: ["6", "7", "8", "9"], answer: "8" },
+      { sequence: ["5", "6", "7", "?"], options: ["7", "8", "9", "10"], answer: "8" },
+      { sequence: ["10", "9", "8", "?"], options: ["6", "7", "8", "9"], answer: "7" },
+      { sequence: ["1", "3", "5", "?"], options: ["5", "6", "7", "8"], answer: "7" },
+      { sequence: ["3", "5", "7", "?"], options: ["7", "8", "9", "10"], answer: "9" },
+      { sequence: ["4", "5", "6", "?"], options: ["6", "7", "8", "9"], answer: "7" },
+      { sequence: ["20", "19", "18", "?"], options: ["16", "17", "18", "19"], answer: "17" },
+      { sequence: ["1", "2", "3", "4", "?"], options: ["4", "5", "6", "7"], answer: "5" },
+      { sequence: ["8", "9", "10", "?"], options: ["10", "11", "12", "13"], answer: "11" }
+    ];
+
+    function showQuestion() {
+      const q = questions[currentQuestion];
+      document.getElementById("current").innerText = currentQuestion + 1;
+      
+      const seqDiv = document.getElementById("sequence");
+      seqDiv.innerHTML = "";
+      q.sequence.forEach(item => {
+        const span = document.createElement("span");
+        if (item === "?") {
+          span.id = "blank";
+          span.className = "bg-white border-4 border-dashed border-emerald-400 text-emerald-400 w-16 h-16 flex items-center justify-center rounded-2xl";
+          span.innerText = "?";
+        } else {
+          span.className = "bg-white w-16 h-16 flex items-center justify-center rounded-2xl shadow";
+          span.innerText = item;
+        }
+        seqDiv.appendChild(span);
+      });
+
+      const optDiv = document.getElementById("options");
+      optDiv.innerHTML = "";
+      q.options.forEach(opt => {
+        const btn = document.createElement("button");
+        btn.className = "opt bg-white border-2 border-emerald-200 hover:border-emerald-500 p-4 rounded-2xl text-3xl font-bold shadow-sm";
+        btn.innerText = opt;
+        btn.onclick = () => {
+          if (checked) return;
+          playSound("click");
+          selectAnswer(btn, opt);
+        };
+        optDiv.appendChild(btn);
+      });
+
+      correctAnswer = q.answer;
+      selectedAnswer = null;
+      selectedButton = null;
+      checked = false;
+      document.getElementById("result").classList.add("hidden");
+    }
+
+    let selectedButton = null;
+    let checked = false;   // กันกดตรวจซ้ำแล้วได้คะแนนเพิ่ม
+
+    function selectAnswer(btn, value) {
+      if (checked) return;
+      selectedButton = btn;
+      document.querySelectorAll("#options button").forEach(b => {
+        b.classList.remove("border-emerald-600", "bg-emerald-100");
+        b.classList.add("border-emerald-200");
+      });
+      btn.classList.add("border-emerald-600", "bg-emerald-100");
+      btn.classList.remove("border-emerald-200");
+      selectedAnswer = value;
+    }
+
+    function addMark(btn, ok) {
+      const mark = document.createElement("span");
+      mark.className = "mark " + (ok ? "ok" : "no");
+      mark.textContent = ok ? "✓" : "✗";
+      btn.appendChild(mark);
+      btn.classList.add(ok ? "is-right" : "is-wrong");
+    }
+
+    function checkAnswer() {
+      const result = document.getElementById("result");
+      result.classList.remove("hidden");
+
+      if (!selectedAnswer) {
+        playSound("click");
+        result.innerHTML = `<p class="text-orange-600">กรุณาเลือกคำตอบก่อน</p>`;
+        return;
+      }
+      if (checked) return;
+      checked = true;
+      document.querySelectorAll("#options button").forEach(b => b.disabled = true);
+
+      if (selectedAnswer === correctAnswer) {
+        score++;
+        playSound("correct");
+        addMark(selectedButton, true);
+        const blank = document.getElementById("blank");
+        blank.innerText = correctAnswer;
+        blank.classList.add("blank-ok");
+        result.innerHTML = `
+          <div class="bg-green-100 text-green-700 p-4 rounded-2xl">
+            <p class="font-bold text-xl">✓ เก่งมาก! 👏</p>
+          </div>
+        `;
+      } else {
+        playSound("wrong");
+        addMark(selectedButton, false);
+        result.innerHTML = `
+          <div class="bg-red-100 text-red-700 p-4 rounded-2xl">
+            <p class="font-bold text-xl">✗ ยังไม่ถูกนะ</p>
+            <p>คำตอบที่ถูกคือ <strong>${correctAnswer}</strong></p>
+          </div>
+        `;
+      }
+      document.getElementById("score").innerText = `คะแนน: ${score}`;
+    }
+
+    function nextQuestion() {
+      playSound("click");
+      currentQuestion++;
+      if (currentQuestion < questions.length) {
+        showQuestion();
+      } else {
+        showFinalScore();
+      }
+    }
+
+    function showFinalScore() {
+      const container = document.querySelector(".max-w-md");
+      container.innerHTML = `
+        <div class="text-center py-10">
+          <h2 class="text-3xl font-bold text-emerald-700 mb-4">จบแล้ว!</h2>
+          <p class="text-5xl font-bold text-emerald-600 mb-2">${score}</p>
+          <p class="text-xl text-gray-600 mb-6">จาก 10 ข้อ</p>
+          <button onclick="location.reload()" 
+                  class="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-bold">
+            ทำใหม่
+          </button>
+        </div>
+      `;
+    }
+
+    window.onload = showQuestion;
+  </script>
+</body>
+</html>
