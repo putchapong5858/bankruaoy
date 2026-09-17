@@ -360,7 +360,11 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
         </p>
         {% endif %}
 
-        {% if q.kind in ('choice', 'truefalse', 'count', 'mathrun', 'findshape') %}
+        {% if q.kind == 'pattern' and q.icon %}
+        <p style="font-size:1.6rem;letter-spacing:.25rem;margin:.2rem 0 .3rem">{{ q.icon }}</p>
+        {% endif %}
+
+        {% if q.kind in ('choice', 'truefalse', 'count', 'mathrun', 'findshape', 'pattern') %}
         <ul class="qopts">
           {% for o in q.options %}
           <li class="{{ 'right' if o.is_correct }}">

@@ -1009,7 +1009,11 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
             await upload.read(), upload.filename, upload.content_type or ""
         )
 
-    if kind in ("choice", "truefalse", "model3d", "compare"):
+    if kind == "pattern":
+        # แถวรูปแบบ เช่น "🔴 🔵 🔴 🔵 ?" เก็บในช่อง icon เดิม
+        data["icon"] = (form.get("pattern_seq") or "").strip()
+
+    if kind in ("choice", "truefalse", "model3d", "compare", "pattern"):
         # โจทย์ 3 มิติใช้ตัวเลือกแบบเดียวกับข้อเลือกตอบ ต่างแค่มีรูปทรงให้ดู
         labels = form.getlist("opt_label")
         images = form.getlist("opt_image")

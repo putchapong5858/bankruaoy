@@ -19,6 +19,7 @@
         <option value="model3d"   {{ 'selected' if kind == 'model3d' }}>รูปทรง 3 มิติ / ส่องกล้อง AR</option>
         <option value="compare"   {{ 'selected' if kind == 'compare' }}>เทียบเลข มากกว่า/น้อยกว่า (จระเข้)</option>
         <option value="mathrun"   {{ 'selected' if kind == 'mathrun' }}>คิดเลขเร็ว บนก้อนเมฆ (จับเวลา)</option>
+        <option value="pattern"   {{ 'selected' if kind == 'pattern' }}>ต่อรูปแบบให้ครบ (เชาวน์ปัญญา)</option>
         <option value="findshape" {{ 'selected' if kind == 'findshape' }}>นับรูปทรงในภาพรวม (เชาวน์ปัญญา)</option>
       </select>
     </label>
@@ -46,7 +47,7 @@
   </label>
 
   {# ───── เลือกตอบ / ถูกผิด ───── #}
-  <div class="kindbox" data-for="choice,truefalse,model3d,compare">
+  <div class="kindbox" data-for="choice,truefalse,model3d,compare,pattern">
     <p class="muted" style="font-size:.88rem;margin:.3rem 0">
       กรอกตัวเลือกแล้วกดวงกลมหน้าข้อที่เป็นคำตอบที่ถูก (เว้นว่างไว้ = ไม่ใช้ตัวเลือกนั้น)<br>
       ถ้าใส่รูปให้ <b>ครบทุกตัวเลือก</b> ระบบจะแสดงเป็นการ์ดรูปใหญ่ให้เด็กกดเลือก
@@ -145,6 +146,20 @@
     </p>
   </div>
 
+
+  {# ───── ต่อรูปแบบให้ครบ ───── #}
+  <div class="kindbox" data-for="pattern">
+    <p class="muted" style="font-size:.88rem;margin:.3rem 0">
+      พิมพ์แถวรูปแบบ คั่นแต่ละช่องด้วยเว้นวรรค และใส่ <b>?</b> ตรงช่องที่ให้เด็กเติม 1 ช่อง
+      เช่น <b>🔴 🔵 🔴 🔵 ?</b> หรือ <b>🐶 🐱 🐱 🐶 ? 🐱</b><br>
+      ตัวเลือกด้านบนให้ใส่อีโมจิ 3–4 ตัว แล้วเลือกตัวที่ถูก — ตอบถูกแล้วรูปจะเด้งเข้าไปเติมช่อง ? ให้เห็น
+    </p>
+    <label>แถวรูปแบบ
+      <input type="text" name="pattern_seq" maxlength="200" placeholder="🔴 🔵 🔴 🔵 ?"
+             style="font-size:1.4rem"
+             value="{{ q.icon if q and q.kind == 'pattern' and q.icon else '' }}">
+    </label>
+  </div>
 
   {# ───── เทียบเลข มากกว่า/น้อยกว่า ───── #}
   <div class="kindbox" data-for="compare">

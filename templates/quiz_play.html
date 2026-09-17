@@ -748,6 +748,27 @@
         box.appendChild(strip);
       }
 
+      // โจทย์ต่อรูปแบบ — วางแถวรูปเรียงกัน มีช่อง ? ให้เด็กหาว่าอะไรหายไป
+      if (q.kind === "pattern" && q.seq) {
+        var prow = document.createElement("div");
+        prow.className = "patrow";
+        prow.style.setProperty("--n", q.seq.length);
+        q.seq.forEach(function (t, k) {
+          var cell = document.createElement("span");
+          cell.style.animationDelay = (k * 70) + "ms";
+          if (t === "?") {
+            cell.className = "pcell blank";
+            cell.id = "patBlank";
+            cell.textContent = "?";
+          } else {
+            cell.className = "pcell";
+            cell.textContent = t;
+          }
+          prow.appendChild(cell);
+        });
+        box.appendChild(prow);
+      }
+
       var numbers = (q.kind === "count" || q.kind === "mathrun" ||
                      q.kind === "findshape");
       var signs = (q.kind === "compare");
@@ -759,6 +780,7 @@
         b.type = "button";
         b.className = numbers ? "opt num"
                     : signs ? "opt sign"
+                    : (q.kind === "pattern") ? "opt emo"
                     : (pics ? "opt pic" : "opt");
         b.innerHTML = "";
         if (o.image_url) {
@@ -779,7 +801,7 @@
           // คำศัพท์อังกฤษ/ตัวอักษร — กดแล้วได้ยินเสียงคำนั้นเลย ช่วยให้จำการออกเสียง
           // (ไม่ใช่การบอกเฉลย เพราะได้ยินทุกตัวเลือกเหมือนกัน)
           var lab = (o.label || "").trim();
-          if (READ && lab && lab.length <= 15 && !/[0-9]/.test(lab)) speak(lab);
+          if (READ && q.kind !== "pattern" && lab && lab.length <= 15 && !/[0-9]/.test(lab)) speak(lab);
           else play("tap");
           el("submit").disabled = false;
         });
@@ -792,8 +814,9 @@
       box.classList.toggle("piccards", pics);
       box.classList.toggle("mathrow", q.kind === "mathrun");
       box.classList.toggle("findrow", q.kind === "findshape");
+      box.classList.toggle("emorow", q.kind === "pattern");
       // มี 2 ตัวเลือก = วางซ้าย-ขวาเป็นการ์ดใหญ่ เด็กเล็กเลือกง่ายกว่าอ่านรายการยาว ๆ
-      var duo = !numbers && !signs && q.options.length === 2;
+      var duo = !numbers && !signs && q.kind !== "pattern" && q.options.length === 2;
       box.classList.toggle("duo", duo);
       // ตัวเลือกเป็นตัวอักษรสั้น ๆ (เช่น "C c") ให้ตัวโตเต็มการ์ด
       box.classList.toggle("letters", duo && q.options.every(function (o) {
@@ -871,6 +894,21 @@
         croc.classList.add(L === R ? "eq" : (L > R ? "left" : "right"));
         el("numL").classList.add(L >= R ? "win" : "lose");
         el("numR").classList.add(R >= L ? "win" : "lose");
+      }
+    }
+    // โจทย์ต่อรูปแบบ — เอารูปที่ถูกเด้งเข้าไปเติมช่อง ? แล้วให้ทั้งแถวเต้นเป็นจังหวะ
+    if (q.kind === "pattern") {
+      var pb = el("patBlank");
+      var chosen = null;
+      (q.options || []).forEach(function (o) { if (o.id === picked) chosen = o.label; });
+      var fillWith = res.correct ? chosen : (res.answer || "");
+      if (pb && fillWith) {
+        pb.textContent = fillWith;
+        pb.classList.add("filled", res.correct ? "ok" : "no");
+        if (res.correct) {
+          var row = pb.parentNode;
+          if (row) { row.classList.remove("wave"); void row.offsetWidth; row.classList.add("wave"); }
+        }
       }
     }
     // โจทย์คิดเลขเร็ว — เฉลยตัวเลขลงบนก้อนเมฆ แล้วแจกดาวความเร็ว
@@ -1066,6 +1104,35 @@
                border-radius:999px;padding:.28rem .85rem;font-size:.9rem;font-weight:700;
                color:#0c6b9e;box-shadow:0 3px 10px rgba(14,59,87,.08);
                transition:opacity .2s;white-space:nowrap}
+/* ── ต่อรูปแบบให้ครบ ── */
+.patrow{grid-column:1 / -1;display:flex;flex-wrap:nowrap;justify-content:center;gap:2%;
+  container-type:inline-size;padding:1rem .6rem;margin:0 0 .6rem;border-radius:22px;
+  background:linear-gradient(180deg,#eef8ff,#fff7ec);box-shadow:inset 0 0 0 2px #d9ecfb}
+.pcell{flex:1 1 0;max-width:78px;aspect-ratio:1;border-radius:18%;background:#fff;
+  display:grid;place-items:center;line-height:1;
+  font-size:min(calc(62cqi / var(--n,5)),48px);
+  box-shadow:0 3px 0 #d6e6f3,0 6px 14px rgba(40,90,140,.10);
+  animation:pin .45s cubic-bezier(.3,1.5,.5,1) both}
+.pcell.blank{background:#fffdf5;color:#f0a030;font-weight:800;
+  border:3px dashed #f5b94a;box-shadow:none;animation:pin .45s both,ask 1.6s ease-in-out .6s infinite}
+.pcell.blank.filled{border-style:solid;color:inherit;font-weight:400;
+  animation:fillpop .55s cubic-bezier(.3,1.6,.5,1)}
+.pcell.blank.ok{border-color:#3cb371;background:#effbf3}
+.pcell.blank.no{border-color:#f0a030;background:#fff6e6}
+.patrow.wave .pcell{animation:hop .5s ease both}
+.patrow.wave .pcell:nth-child(2){animation-delay:.07s}.patrow.wave .pcell:nth-child(3){animation-delay:.14s}
+.patrow.wave .pcell:nth-child(4){animation-delay:.21s}.patrow.wave .pcell:nth-child(5){animation-delay:.28s}
+.patrow.wave .pcell:nth-child(6){animation-delay:.35s}.patrow.wave .pcell:nth-child(7){animation-delay:.42s}
+.patrow.wave .pcell:nth-child(8){animation-delay:.49s}.patrow.wave .pcell:nth-child(9){animation-delay:.56s}
+#answers.emorow{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem}
+#answers.emorow .opt.emo{min-height:84px;display:grid;place-items:center;padding:.4rem}
+#answers.emorow .opt.emo span{font-size:2.6rem;line-height:1}
+@keyframes pin{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+@keyframes ask{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes fillpop{0%{transform:scale(.3)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+@keyframes hop{0%,100%{transform:translateY(0)}40%{transform:translateY(-12px)}}
+@media(max-width:420px){ #answers.emorow{grid-template-columns:repeat(2,1fr)} }
+@media(prefers-reduced-motion:reduce){.pcell,.pcell.blank,.patrow.wave .pcell{animation:none}}
 @media(prefers-reduced-motion:reduce){
   .buddy svg,.buddy[data-mood] svg{animation:none}
 }

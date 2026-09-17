@@ -35,11 +35,12 @@ KINDS = {
     "compare":   "เทียบเลข มากกว่า/น้อยกว่า (จระเข้กินเลข)",
     "mathrun":   "คิดเลขเร็ว บนก้อนเมฆ (จับเวลา)",
     "findshape": "นับรูปทรงในภาพรวม (เชาวน์ปัญญา)",
+    "pattern":   "ต่อรูปแบบให้ครบ (เชาวน์ปัญญา)",
 }
 
 # รูปแบบที่ตรวจคำตอบเหมือนกัน คือเลือกตัวเลือกที่ถูก 1 ตัว
 PICK_KINDS = ("choice", "truefalse", "count", "model3d", "compare",
-              "mathrun", "findshape")
+              "mathrun", "findshape", "pattern")
 
 # อีโมจิยอดนิยมสำหรับโจทย์นับจำนวน — ครูกดเลือกได้เลยไม่ต้องพิมพ์
 ICON_SETS = {
@@ -369,7 +370,15 @@ def save_question(quiz_id: str | int, data: dict,
             raise SupabaseError("กรุณาเลือกรูปทรง 3 มิติที่จะให้เด็กดู")
         if len(options) < 2:
             raise SupabaseError("ต้องมีตัวเลือกอย่างน้อย 2 ตัวเลือก")
-    if kind in ("choice", "truefalse"):
+    if kind == "pattern":
+        seq = pattern_seq(icon)
+        if not seq:
+            raise SupabaseError(
+                'รูปแบบต้องมีอย่างน้อย 3 ช่อง คั่นด้วยเว้นวรรค และมีช่อง ? 1 ช่อง '
+                'เช่น "🔴 🔵 🔴 🔵 ?"'
+            )
+        fields["icon"] = " ".join(seq)
+    if kind in ("choice", "truefalse", "pattern"):
         if len(options) < 2:
             raise SupabaseError("ต้องมีตัวเลือกอย่างน้อย 2 ตัวเลือก")
         if not any(o["is_correct"] for o in options):
@@ -649,6 +658,19 @@ def level_matches(quiz_level: str, student_level: str) -> bool:
     return False
 
 
+def pattern_seq(raw: str) -> list[str] | None:
+    """
+    อ่านแถวรูปแบบของโจทย์ "ต่อรูปแบบ" เก็บในช่อง icon คั่นด้วยเว้นวรรค
+    เช่น "🔴 🔵 🔴 🔵 ?" — เครื่องหมาย ? คือช่องที่เด็กต้องเติม (ต้องมี 1 ช่องพอดี)
+    แถวนี้ไม่มีเฉลยอยู่ข้างใน จึงส่งให้เบราว์เซอร์ได้ปลอดภัย
+    """
+    parts = [t for t in re.split(r"[\s|]+", (raw or "").strip()) if t]
+    parts = ["?" if t in ("?", "？", "❓") else t[:40] for t in parts]
+    if len(parts) < 3 or len(parts) > 12 or parts.count("?") != 1:
+        return None
+    return parts
+
+
 def compare_pair(raw: str) -> tuple[int, int] | None:
     """อ่านคู่ตัวเลขของโจทย์เทียบเลข เก็บในช่อง icon เป็น "12|10" """
     parts = (raw or "").split("|")
@@ -802,6 +824,8 @@ def public_questions(questions: list[dict]) -> list[dict]:
             # โจทย์นับรูปทรง — ส่งภาพ SVG กับชื่อเป้าหมายไป ไม่ได้ส่งจำนวนที่ถูก
             "find": shapes.scene_of(q.get("icon")) if q.get("kind") == "findshape" else None,
             "dots": bool(q.get("icon_count")) if q.get("kind") == "compare" else False,
+            # โจทย์ต่อรูปแบบ — แถวรูปที่มีช่อง ? (ไม่มีเฉลยอยู่ในนี้)
+            "seq": pattern_seq(q.get("icon")) if q.get("kind") == "pattern" else None,
             "model": (MODELS.get(q.get("icon") or "") or None)
                      if q.get("kind") == "model3d" else None,
             "model_url": model_url(q["icon"]) if q.get("kind") == "model3d"
