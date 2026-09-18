@@ -522,7 +522,9 @@
     // ตัวใหญ่เมื่อโจทย์เป็นอีโมจิ/ตัวอักษรสั้น ๆ หรือเป็นคำศัพท์คำเดียว เช่น "Elephant"
     el("prompt").classList.toggle("big",
       ptext.replace(/\s/g, "").length <= 4 ||
-      (ptext.trim().split(/\s+/).length === 1 && ptext.trim().length <= 12));
+      (ptext.trim().split(/\s+/).length === 1 && ptext.trim().length <= 12) ||
+      // คำเว้นช่องให้เติมตัวอักษร เช่น "H _ n d" ก็ขึ้นตัวใหญ่
+      /^[A-Za-z_](\s[A-Za-z_]){1,7}$/.test(ptext.trim()));
     el("hint").textContent = q.hint || "";
 
     var img = el("qimg");
@@ -889,7 +891,16 @@
         q.seq.every(function (t) { return t === "?" || /^-?\d+$/.test(t); }));
       // มี 2 ตัวเลือก = วางซ้าย-ขวาเป็นการ์ดใหญ่ เด็กเล็กเลือกง่ายกว่าอ่านรายการยาว ๆ
       var duo = !numbers && !signs && q.kind !== "pattern" && q.kind !== "logic" && q.options.length === 2;
+      // มี 3 ตัวเลือกที่เป็นคำอังกฤษสั้น ๆ / ตัวอักษร (ไม่มีรูป) = วาง 3 การ์ดเรียงกันแบบเดียวกับซ้าย-ขวา
+      // เด็กอนุบาลแตะง่ายกว่ารายการเรียงลงมา — รูปภาพ 3 ตัวเลือกยังใช้ piccards เหมือนเดิม
+      var trio = !numbers && !signs && q.kind === "choice" && q.options.length === 3 &&
+        q.options.every(function (o) {
+          var t = (o.label || "").trim();
+          return !o.image_url && t.length <= 8 && /^[A-Za-z][A-Za-z'-]*$/.test(t);
+        });
+      if (trio) duo = true;
       box.classList.toggle("duo", duo);
+      box.classList.toggle("trio", trio);
       // ตัวเลือกเป็นตัวอักษรสั้น ๆ (เช่น "C c") ให้ตัวโตเต็มการ์ด
       box.classList.toggle("letters", duo && q.options.every(function (o) {
         return !o.image_url && (o.label || "").replace(/\s/g, "").length <= 2;
@@ -1339,6 +1350,8 @@
 #answers.duo .opt.pic img{max-width:100%;width:100%}
 #answers.duo .opt.pic span:empty{display:none}
 /* แบบตัวอักษรขึ้นต้น — ตัวโตเต็มการ์ด เห็นชัดจากระยะไกล */
+#answers.duo.trio{grid-template-columns:repeat(3,1fr)}
+#answers.duo.trio .opt{min-width:0;padding-left:.3rem;padding-right:.3rem}
 #answers.duo.letters .opt{min-height:132px}
 #answers.duo.letters .opt span{font-family:'Mali',cursive;font-size:3.4rem;line-height:1.1;
                                letter-spacing:.06em;color:#0c6b9e}
