@@ -891,12 +891,13 @@
         q.seq.every(function (t) { return t === "?" || /^-?\d+$/.test(t); }));
       // มี 2 ตัวเลือก = วางซ้าย-ขวาเป็นการ์ดใหญ่ เด็กเล็กเลือกง่ายกว่าอ่านรายการยาว ๆ
       var duo = !numbers && !signs && q.kind !== "pattern" && q.kind !== "logic" && q.options.length === 2;
-      // มี 3 ตัวเลือกที่เป็นคำอังกฤษสั้น ๆ / ตัวอักษร (ไม่มีรูป) = วาง 3 การ์ดเรียงกันแบบเดียวกับซ้าย-ขวา
+      // มี 3 ตัวเลือกที่เป็นคำอังกฤษสั้น ๆ / ตัวอักษร / ตัวเลข 1-2 หลัก (ไม่มีรูป) = วาง 3 การ์ดเรียงกันแบบเดียวกับซ้าย-ขวา
       // เด็กอนุบาลแตะง่ายกว่ารายการเรียงลงมา — รูปภาพ 3 ตัวเลือกยังใช้ piccards เหมือนเดิม
       var trio = !numbers && !signs && q.kind === "choice" && q.options.length === 3 &&
         q.options.every(function (o) {
           var t = (o.label || "").trim();
-          return !o.image_url && t.length <= 8 && /^[A-Za-z][A-Za-z'-]*$/.test(t);
+          return !o.image_url && t.length <= 8 &&
+            /^([A-Za-z][A-Za-z'-]*|[0-9]{1,2}|[\u0E50-\u0E59]{1,2})$/.test(t);
         });
       if (trio) duo = true;
       box.classList.toggle("duo", duo);
@@ -1095,7 +1096,7 @@
 .speak{border:2px solid #bfe6fc;background:#f2faff;color:#0c6b9e;border-radius:999px;
        padding:.45rem 1rem;font:inherit;font-size:.92rem;cursor:pointer}
 .speak:active{transform:scale(.96)}
-.q-img{max-width:100%;max-height:240px;width:auto;border-radius:16px;
+.q-img{max-width:100%;max-height:300px;width:auto;border-radius:16px;
        margin:.4rem auto .6rem;display:block}
 .q-img[hidden]{display:none}          /* เหตุผลเดียวกับ .sheet[hidden] ด้านล่าง */
 .q-prompt{font-size:1.35rem;line-height:1.6;font-weight:600;margin:.2rem 0 1rem;white-space:pre-wrap}
