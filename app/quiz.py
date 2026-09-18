@@ -737,12 +737,14 @@ def by_subject(rows: list[dict]) -> list[dict]:
     return out
 
 
-def quizzes_for_student(student: dict, limit: int = 40) -> list[dict]:
+def quizzes_for_student(student: dict, limit: int = 200) -> list[dict]:
     """แบบฝึกหัดที่เผยแพร่แล้วและตรงระดับชั้นของเด็ก พร้อมผลที่เคยทำ"""
     level = (student.get("level") or "").strip()
+    # ดึงชุดที่เผยแพร่ทั้งหมดก่อน แล้วค่อยกรองระดับชั้น จากนั้นจึงตัดจำนวน
+    # (เดิมตัด limit ก่อนกรอง — พอมีชุดเผยแพร่เกิน 40 ชุด ชุดเก่าของบางชั้นจะหายไปเงียบ ๆ)
     rows = select("quizzes", status="eq.published",
-                  order="published_at.desc,id.desc", limit=limit)
-    rows = [q for q in rows if level_matches(q.get("level"), level)]
+                  order="published_at.desc,id.desc", limit=1000)
+    rows = [q for q in rows if level_matches(q.get("level"), level)][:limit]
     if not rows:
         return []
 
