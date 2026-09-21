@@ -24,6 +24,11 @@ LINE_MESSAGING_TOKEN = os.environ.get("LINE_MESSAGING_TOKEN", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "")
 
+# ─── เสียงอ่านแบบฝึกหัด (Gemini TTS) ───
+# ใช้กุญแจ GEMINI_API_KEY ตัวเดียวกับผู้ช่วยสร้างข้อสอบ ไม่ต้องตั้งเพิ่ม
+# ตั้ง GEMINI_TTS_MODEL เฉพาะตอนอยากล็อกรุ่นเอง ปกติปล่อยว่างให้ระบบเลือกให้
+GEMINI_TTS_MODEL = os.environ.get("GEMINI_TTS_MODEL", "")
+
 # ─── Supabase ───
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://ncpretfileknkhpfvfif.supabase.co")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")

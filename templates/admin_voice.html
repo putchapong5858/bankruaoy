@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}เลือกเสียงอ่านแบบฝึกหัด{% endblock %}
+
+{% block topright %}
+<div class="who">
+  <a class="btn btn-ghost btn-sm" href="/admin">← กลับหน้าจัดการ</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<main class="portal">
+
+  <div class="hello">
+    <h1>🔊 เสียงอ่านแบบฝึกหัด</h1>
+    <p class="muted">
+      กดปุ่ม ▶ ฟังทีละเสียง แล้วเลือกเสียงที่ชอบที่สุด —
+      เสียงที่เลือกจะใช้กับแบบฝึกหัดทุกชุดที่เปิด “อ่านออกเสียง” ไว้
+    </p>
+  </div>
+
+  {% if saved %}
+  <p class="flash">บันทึกเสียงใหม่เรียบร้อยแล้วค่ะ</p>
+  {% endif %}
+  {% if err %}
+  <p class="flash warn">{{ err }}</p>
+  {% endif %}
+
+  {% if not ready %}
+  <section class="panel">
+    <h2><i>⚠️</i> ยังใช้เสียงใหม่ไม่ได้</h2>
+    <p class="muted">
+      ยังไม่ได้ตั้งค่า <code>GEMINI_API_KEY</code> ที่ Vercel — ตอนนี้แบบฝึกหัด
+      จะใช้เสียงที่ติดมากับเครื่องของเด็กไปก่อน ซึ่งบางเครื่องไม่มีเสียงภาษาไทย
+    </p>
+  </section>
+  {% else %}
+
+  <!-- ══════ เลือกเสียง ══════ -->
+  <form method="post" action="/admin/voice">
+  <section class="panel">
+    <h2><i>🎙️</i> เลือกเสียง</h2>
+
+    <div class="vlist">
+      {% for v in voices %}
+      <label class="vcard {% if v.id == current %}on{% endif %}">
+        <input type="radio" name="voice" value="{{ v.id }}"
+               {% if v.id == current %}checked{% endif %}>
+        <span class="vtick" aria-hidden="true"></span>
+        <span class="vbody">
+          <b>{{ v.name }}</b>
+          <small>{{ v.note }}</small>
+        </span>
+        <button type="button" class="vplay" data-voice="{{ v.id }}"
+                title="ฟังเสียงนี้">▶</button>
+      </label>
+      {% endfor %}
+    </div>
+
+    <p class="muted vnote" id="vnote" hidden></p>
+
+    <div class="row-end">
+      <button class="btn btn-primary" type="submit">บันทึกเสียงที่เลือก</button>
+    </div>
+  </section>
+  </form>
+
+  <!-- ══════ สร้างเสียงล่วงหน้า ══════ -->
+  <section class="panel">
+    <h2><i>⚡</i> สร้างเสียงล่วงหน้า</h2>
+    <p class="muted" style="margin-top:-.6rem">
+      ครั้งแรกที่เด็กกดฟังข้อไหน ระบบต้องสร้างเสียงข้อนั้นก่อน ทำให้รอ 1–2 วินาที
+      ถ้ากดสร้างล่วงหน้าไว้ก่อน เด็กจะได้ยินเสียงทันทีทุกข้อ
+      <b>ทำครั้งเดียวต่อชุดก็พอ</b> — และต้องทำใหม่เมื่อเปลี่ยนเสียงหรือแก้โจทย์
+    </p>
+
+    {% if quizzes %}
+    <div class="table-wrap">
+      <table class="tbl">
+        <thead>
+          <tr><th>ชุดแบบฝึกหัด</th><th>ระดับชั้น</th><th style="width:210px">เสียง</th></tr>
+        </thead>
+        <tbody>
+          {% for q in quizzes %}
+          <tr>
+            <td><b>{{ q.title }}</b></td>
+            <td>{{ q.level or 'ทุกระดับชั้น' }}</td>
+            <td>
+              <button type="button" class="btn btn-ghost btn-sm vbuild"
+                      data-quiz="{{ q.id }}">สร้างเสียง</button>
+              <span class="vstat" data-for="{{ q.id }}"></span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted">ยังไม่มีชุดไหนเปิด “อ่านออกเสียง” ไว้ค่ะ</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+</main>
+
+<style>
+.vlist{display:grid;gap:.7rem;margin:.2rem 0 1rem}
+.vcard{display:flex;align-items:center;gap:.85rem;padding:.9rem 1rem;cursor:pointer;
+  border:2px solid #e3eef6;border-radius:18px;background:#fff;transition:.15s}
+.vcard.on{border-color:#26a5e0;background:#f5fbff;box-shadow:0 0 0 4px rgba(38,165,224,.12)}
+.vcard input{position:absolute;opacity:0;pointer-events:none}
+.vtick{flex:0 0 22px;height:22px;border-radius:50%;border:2px solid #cbdced;background:#fff}
+.vcard.on .vtick{border-color:#26a5e0;background:#26a5e0;
+  box-shadow:inset 0 0 0 4px #fff}
+.vbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:.15rem}
+.vbody b{font-size:1.08rem;color:#0e3b57}
+.vbody small{color:#5d7d92;line-height:1.5}
+.vplay{flex:0 0 46px;height:46px;border-radius:50%;border:2px solid #bfe6fc;
+  background:#f2faff;color:#0c6b9e;font-size:1.1rem;cursor:pointer;transition:.15s}
+.vplay:hover{background:#e3f4ff}
+.vplay:active{transform:scale(.94)}
+.vplay.busy{opacity:.55;cursor:progress}
+.vnote{margin:.2rem 0 .8rem}
+.vnote[hidden]{display:none}
+.row-end{display:flex;justify-content:flex-end}
+.vstat{margin-left:.5rem;font-size:.88rem;color:#5d7d92}
+@media(max-width:480px){
+  .vbody b{font-size:1rem}
+  .vcard{padding:.75rem .8rem;gap:.6rem}
+}
+</style>
+
+<script>
+(function () {
+  "use strict";
+  var SAMPLES = {{ samples | tojson }};
+  var player = new Audio();
+  var note = document.getElementById("vnote");
+
+  function say(msg) {
+    if (!note) return;
+    note.textContent = msg || "";
+    note.hidden = !msg;
+  }
+
+  // ── ฟังตัวอย่างเสียง ──
+  // สุ่มประโยคตัวอย่าง จะได้ฟังได้หลายแบบโดยไม่ต้องมีหลายปุ่ม
+  var turn = 0;
+  document.querySelectorAll(".vplay").forEach(function (btn) {
+    btn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      var text = SAMPLES[turn % SAMPLES.length];
+      turn += 1;
+      btn.classList.add("busy");
+      say("กำลังสร้างเสียงตัวอย่าง รอสักครู่นะคะ…");
+      try { player.pause(); } catch (e) {}
+      player.onended = player.onerror = null;
+      player.src = "/tts?t=" + encodeURIComponent(text) +
+                   "&v=" + encodeURIComponent(btn.dataset.voice);
+      player.onended = function () { btn.classList.remove("busy"); say(""); };
+      player.onerror = function () {
+        btn.classList.remove("busy");
+        say("สร้างเสียงไม่สำเร็จ — อาจใช้เกินโควตาของ Gemini ในช่วงนี้ ลองใหม่อีกครั้งค่ะ");
+      };
+      player.play().then(function () { say("กำลังเล่น: " + text); })
+                   .catch(function () { btn.classList.remove("busy"); });
+    });
+  });
+
+  // ── ติ๊กการ์ดที่เลือก ──
+  document.querySelectorAll('.vcard input[name="voice"]').forEach(function (r) {
+    r.addEventListener("change", function () {
+      document.querySelectorAll(".vcard").forEach(function (c) {
+        c.classList.toggle("on", c.contains(r) && r.checked);
+      });
+    });
+  });
+
+  // ── สร้างเสียงล่วงหน้าทั้งชุด ──
+  // เซิร์ฟเวอร์ทำได้ทีละ 2-3 ข้อต่อรอบ (มีเวลาจำกัดต่อคำขอ) จึงยิงซ้ำจนครบ
+  document.querySelectorAll(".vbuild").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var id = btn.dataset.quiz;
+      var stat = document.querySelector('.vstat[data-for="' + id + '"]');
+      btn.disabled = true;
+
+      function round() {
+        fetch("/admin/voice/build", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quiz_id: id })
+        }).then(function (r) { return r.json(); }).then(function (d) {
+          if (d.error) {
+            stat.textContent = "หยุดไว้ก่อน: " + d.error;
+            btn.disabled = false;
+            return;
+          }
+          stat.textContent = "สร้างแล้ว " + d.done + " / " + d.total;
+          if (d.done < d.total && d.made > 0) { round(); return; }
+          if (d.done < d.total) {
+            stat.textContent = "ค้างอยู่ " + d.done + " / " + d.total + " — ลองกดอีกครั้ง";
+            btn.disabled = false;
+            return;
+          }
+          stat.textContent = "✓ ครบแล้ว " + d.total + " เสียง";
+          btn.textContent = "สร้างใหม่";
+          btn.disabled = false;
+        }).catch(function () {
+          stat.textContent = "ต่อกับเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง";
+          btn.disabled = false;
+        });
+      }
+
+      stat.textContent = "กำลังเริ่ม…";
+      round();
+    });
+  });
+})();
+</script>
+{% endblock %}

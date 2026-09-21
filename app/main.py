@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import random
 import re
+import time
 from datetime import date
 from pathlib import Path
 from urllib.parse import quote
@@ -18,7 +19,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import (config, content, db, gemini, line_auth, line_push, quiz,
-               quiz_import)
+               quiz_import, tts)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -154,6 +155,32 @@ def healthz_ai():
     ไม่เคยส่งค่ากุญแจออกมา และไม่ได้สั่งให้ AI สร้างข้อความ จึงไม่มีค่าใช้จ่าย
     """
     return JSONResponse(gemini.status())
+
+
+@app.get("/healthz/tts")
+def healthz_tts():
+    """สถานะเสียงอ่าน — บอกว่าพร้อมไหม เลือกเสียงไหนอยู่ ไม่เคยส่งค่ากุญแจออกมา"""
+    return JSONResponse(tts.status())
+
+
+@app.get("/tts")
+def tts_audio(request: Request, t: str = "", v: str = ""):
+    """สร้างเสียงอ่านให้ถ้ายังไม่เคยสร้าง แล้วพาไปที่ไฟล์บน CDN
+
+    ปกติหน้าแบบฝึกหัดจะโหลดเสียงจาก CDN ตรง ๆ ไม่ผ่านตรงนี้เลย
+    เส้นทางนี้ใช้เฉพาะครั้งแรกที่ยังไม่มีไฟล์ กับตอนครูกดฟังตัวอย่างเสียง
+    """
+    # ต้องล็อกอินก่อน กันคนนอกยิงรัว ๆ จนโควตาหมด
+    if not current_line_user(request):
+        return JSONResponse({"error": "ต้องเข้าสู่ระบบก่อน"}, status_code=403)
+    try:
+        url = tts.ensure(t, v)
+    except tts.TtsError as exc:
+        # ส่งรหัสผิดพลาดกลับไปเฉย ๆ หน้าเว็บจะถอยไปใช้เสียงของเครื่องเอง
+        return JSONResponse({"error": str(exc)}, status_code=503)
+    # ที่อยู่นี้ผูกกับข้อความและเสียงแล้ว เนื้อหาไม่มีวันเปลี่ยน จำไว้ได้ยาว ๆ
+    return RedirectResponse(url, status_code=307,
+                            headers={"Cache-Control": "public, max-age=604800"})
 
 
 @app.get("/ping")
@@ -464,6 +491,78 @@ def admin(request: Request, saved: str = "", err: str = ""):
         saved=saved,
         err=err,
     )
+
+
+# ── เสียงอ่านแบบฝึกหัด ────────────────────────────────────────
+
+@app.get("/admin/voice", response_class=HTMLResponse)
+def admin_voice(request: Request, saved: str = "", err: str = ""):
+    """หน้าให้ครูอ้อยฟังเสียงทั้ง 5 แบบ แล้วเลือกเสียงที่ใช้ทั้งเว็บ"""
+    user, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    quizzes = [q for q in quiz.list_quizzes(200) if q.get("read_aloud")]
+    return page(request, "admin_voice.html",
+                user=user, voices=tts.VOICES, current=tts.current_voice(True),
+                ready=tts.is_ready(), samples=tts.SAMPLES,
+                quizzes=quizzes, saved=saved, err=err)
+
+
+@app.post("/admin/voice")
+def admin_voice_save(request: Request, voice: str = Form("")):
+    _, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    try:
+        tts.set_voice(voice.strip())
+    except (tts.TtsError, db.SupabaseError) as exc:
+        return RedirectResponse(f"/admin/voice?err={quote(str(exc))}",
+                                status_code=303)
+    return RedirectResponse("/admin/voice?saved=1", status_code=303)
+
+
+@app.post("/admin/voice/build")
+async def admin_voice_build(request: Request):
+    """สร้างเสียงล่วงหน้าทีละนิด แล้วบอกว่าเหลืออีกกี่ข้อ
+
+    ทำทีละ 2-3 ข้อต่อรอบ เพราะเซิร์ฟเวอร์ของ Vercel มีเวลาจำกัดต่อ 1 คำขอ
+    ถ้าสร้างรวดเดียว 30 ข้อจะถูกตัดกลางคัน หน้าเว็บจึงยิงซ้ำจนกว่าจะครบ
+    """
+    _, blocked = require_admin(request)
+    if blocked:
+        return JSONResponse({"error": "ต้องเข้าสู่ระบบเป็นครูก่อน"}, status_code=403)
+
+    body = await request.json()
+    quiz_id = str(body.get("quiz_id") or "").strip()
+    if not quiz_id.isdigit():
+        return JSONResponse({"error": "ไม่พบชุดแบบฝึกหัด"}, status_code=400)
+
+    voice = tts.current_voice(True)
+    # รวมประโยคชมเชยที่ใช้ซ้ำทุกข้อเข้าไปด้วย จะได้ครบจบในรอบเดียว
+    texts = tts.PHRASES + quiz.spoken_texts(quiz.list_questions(quiz_id))
+    have = tts.stored(voice)
+    todo = [t for t in texts
+            if tts.path_for(t, voice).split("/")[-1] not in have]
+
+    made, failed = 0, ""
+    started = time.monotonic()
+    for text in todo:
+        # เผื่อเวลาไว้ตอบกลับก่อนโดนตัด — ค่อยไปต่อในรอบหน้า
+        if made >= 3 or (time.monotonic() - started) > 7:
+            break
+        try:
+            tts.ensure(text, voice)
+            made += 1
+        except tts.TtsError as exc:
+            failed = str(exc)
+            break
+
+    return JSONResponse({
+        "total": len(texts),
+        "done": len(texts) - len(todo) + made,
+        "made": made,
+        "error": failed,
+    })
 
 
 @app.post("/admin/parent/{parent_id}/{action}")
@@ -1460,7 +1559,9 @@ def quiz_play(request: Request, attempt_id: str, child: int = 0):
 
     return page(request, "quiz_play.html",
                 quiz=item, attempt=attempt, student=student, child=child,
-                questions=quiz.public_questions(questions))
+                questions=quiz.public_questions(questions),
+                tts_ready=tts.is_ready(),
+                tts_phrases=tts.phrase_urls())
 
 
 @app.post("/quiz/{attempt_id}/answer")

@@ -20,7 +20,7 @@ import re
 import unicodedata
 from datetime import datetime, timezone
 
-from . import config, shapes
+from . import config, shapes, tts
 from .db import (SupabaseError, delete, gather, insert, select,
                  select_one, update)
 
@@ -816,6 +816,27 @@ def start_attempt(quiz_id: str | int, student_id: str,
     return {"quiz": quiz, "attempt": attempt, "questions": questions}
 
 
+def _label_spoken(label: str | None) -> bool:
+    """กติกาเดียวกับหน้าเว็บ — อ่านเฉพาะตัวเลือกที่เป็นคำสั้น ๆ ไม่ใช่ตัวเลข"""
+    text = (label or "").strip()
+    return bool(text) and len(text) <= 15 and not re.search(r"\d", text)
+
+
+def spoken_texts(questions: list[dict]) -> list[str]:
+    """ข้อความทั้งหมดของชุดนี้ที่ต้องมีไฟล์เสียง — ใช้ตอนสร้างเสียงล่วงหน้า"""
+    seen, out = set(), []
+    for q in questions:
+        texts = [q.get("speak_text") or q.get("prompt") or ""]
+        texts += [o.get("label") or "" for o in (q.get("options") or [])
+                  if _label_spoken(o.get("label"))]
+        for t in texts:
+            key = tts.clean(t)
+            if key and key not in seen and tts.speakable(t):
+                seen.add(key)
+                out.append(t)
+    return out
+
+
 def public_questions(questions: list[dict]) -> list[dict]:
     """
     ตัดเฉลยออกก่อนส่งให้เบราว์เซอร์
@@ -823,12 +844,18 @@ def public_questions(questions: list[dict]) -> list[dict]:
     สำคัญมาก — ถ้าส่งเฉลยไปด้วย เด็ก (หรือผู้ปกครอง) กด View Source ก็เห็นคำตอบหมด
     การตรวจคำตอบจึงทำที่เซิร์ฟเวอร์ทีละข้อแทน
     """
+    voice = tts.current_voice()
     out = []
     for q in questions:
+        said = q.get("speak_text") or q.get("prompt") or ""
         out.append({
             "id": q["id"],
             "kind": q.get("kind") or "choice",
             "prompt": q.get("prompt") or "",
+            # ที่อยู่ไฟล์เสียงบน CDN คำนวณจากข้อความได้เลย ไม่ต้องถาม Storage ก่อน
+            # (ถามทีละข้อ 30 ข้อจะช้ามาก) ถ้าไฟล์ยังไม่มี หน้าเว็บจะเจอ 404
+            # แล้วถอยไปเรียก /tts ให้สร้างให้เอง
+            "audio": tts.public_url(said, voice),
             "image_url": q.get("image_url"),
             "hint": q.get("hint"),
             # ถ้าไม่ได้ตั้งไว้ ให้หน้าเว็บอ่านจากโจทย์ตามปกติ
@@ -855,8 +882,12 @@ def public_questions(questions: list[dict]) -> list[dict]:
             "model_ios": model_url(q["icon"], True) if q.get("kind") == "model3d"
                          and q.get("icon") in MODELS else None,
             "icon_count": q.get("icon_count") if q.get("kind") == "count" else None,
+            # ตัวเลือกที่เป็นคำสั้น ๆ จะถูกอ่านออกเสียงตอนเด็กแตะ จึงเตรียมเสียงไว้ด้วย
+            # ตัวเลือกที่เป็นตัวเลขหรือยาวเกินไปไม่ต้องอ่าน จะได้ไม่เปลืองโควตา
             "options": [
-                {"id": o["id"], "label": o["label"], "image_url": o.get("image_url")}
+                {"id": o["id"], "label": o["label"], "image_url": o.get("image_url"),
+                 "audio": tts.public_url(o["label"], voice)
+                          if _label_spoken(o.get("label")) else ""}
                 for o in (q.get("options") or [])
             ],
             # ข้อจับคู่ต้องส่งตัวเลือกฝั่งขวาไปให้เลือก (สลับลำดับแล้ว)

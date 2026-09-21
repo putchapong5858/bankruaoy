@@ -107,6 +107,22 @@ def delete(table: str, **filters: str) -> None:
     _check(_conn().delete(_url(table), headers=_headers(), params=filters))
 
 
+def upsert_setting(key: str, value: str) -> None:
+    """เก็บค่าตั้งระบบทั่วเว็บ มีอยู่แล้วก็ทับ ยังไม่มีก็เพิ่มให้
+
+    ใช้ Prefer: resolution=merge-duplicates ของ PostgREST แทนการ
+    select ก่อนแล้วค่อยเลือก insert/update จะได้จบในรอบเดียว
+    """
+    headers = _headers() | {"Prefer": "resolution=merge-duplicates"}
+    _check(_conn().post(_url("site_settings"), headers=headers,
+                        json={"key": key, "value": value}))
+
+
+def get_setting(key: str, default: str = "") -> str:
+    row = select_one("site_settings", "value", key=f"eq.{key}")
+    return (row or {}).get("value") or default
+
+
 def gather(**jobs):
     """
     ยิงหลาย query พร้อมกันแทนการรอทีละอัน

@@ -95,6 +95,9 @@
   var ATTEMPT  = {{ attempt.id }};
   var CHILD    = {{ child }};
   var READ     = {{ 'true' if quiz.read_aloud else 'false' }};
+  var TTS_ON   = {{ 'true' if tts_ready else 'false' }};
+  // ประโยคชมเชย/ให้กำลังใจ ใช้ซ้ำทุกข้อ เซิร์ฟเวอร์เตรียมที่อยู่ไฟล์เสียงมาให้แล้ว
+  var PHRASES  = {{ tts_phrases | tojson }};
   var started  = Date.now();
 
   /* เจ้าจระเข้ — วาดด้วย SVG ตัวเดียว แล้วพลิกซ้าย/ขวาด้วย CSS
@@ -421,7 +424,7 @@
   /* พูดต่อท้ายคิวเดิม ไม่ตัดเสียงที่กำลังพูดอยู่ — ใช้เวลาต้องพูดสองภาษาติดกัน
      เช่น "คำตอบที่ถูกคือ" (เสียงไทย) แล้วตามด้วย "Cat" (เสียงอังกฤษ)
      ถ้ารวมเป็นประโยคเดียว เสียงไทยจะอ่าน Cat เป็น "แคท" ซึ่งไม่ช่วยเรื่องสำเนียง */
-  function enqueue(text) {
+  function webEnqueue(text) {
     if (!READ || !window.speechSynthesis) return;
     var t = sayable(text);
     if (!t) return;
@@ -463,13 +466,114 @@
     n.hidden = false;
   }
 
-  /* คั่นด้วย | เพื่อให้อ่านหลายท่อนคนละภาษาได้
-     เช่น "Zebra|คำนี้ขึ้นต้นด้วยตัวอักษรอะไร?" จะอ่าน Zebra ด้วยเสียงอังกฤษ
-     แล้วต่อด้วยคำถามด้วยเสียงไทย */
-  function speak(text) {
-    if (!READ || !window.speechSynthesis) return;
+  /* ══ เสียงอ่านหลัก — ไฟล์เสียงที่เซิร์ฟเวอร์สร้างไว้ด้วย Gemini ══
+     ดีกว่าเสียงที่ติดมากับเครื่องตรงที่
+       • เด็กทุกคนได้ยินเสียงเดียวกัน ไม่ว่าจะใช้มือถือยี่ห้อไหน
+       • เครื่องที่ไม่มีเสียงอ่านภาษาไทยก็ฟังได้ (เดิมจะเงียบสนิท)
+       • อ่านไทยปนอังกฤษในประโยคเดียวได้ ไม่ต้องหั่นเป็นท่อน ๆ อีกแล้ว
+     ถ้าโหลดไฟล์ไม่สำเร็จ (เน็ตหลุด/ระบบเสียงล่ม) จะถอยไปใช้เสียงของเครื่องให้เอง
+     เด็กจะไม่เจอหน้าเงียบสนิทเด็ดขาด */
+  var player = new Audio();
+  player.preload = "auto";
+  var queue = [], playing = false, useWeb = !TTS_ON;
+  /* หมายเลขรอบการเล่น — กันเข้าใจผิดตอนเด็กกดข้ามเร็ว ๆ
+     เวลาเราสั่งหยุดเสียงกลางคัน เบราว์เซอร์จะแจ้ง "เล่นไม่สำเร็จ" กลับมา
+     ถ้าไม่แยกว่าเป็นเสียงรอบเก่า ระบบจะนึกว่าเสียงใหม่พัง แล้วถอยไปใช้
+     เสียงของเครื่องทั้งที่ไม่มีอะไรเสียเลย */
+  var run = 0;
+
+  // ที่อยู่ไฟล์เสียง — ปกติเซิร์ฟเวอร์ส่งมาให้แล้ว (โหลดจาก CDN ตรง ๆ เร็วที่สุด)
+  // ถ้าไม่มีก็ให้ /tts สร้างให้ครั้งแรกครั้งเดียว ครั้งต่อไปจะมีไฟล์รออยู่แล้ว
+  function srcFor(item) {
+    return item.url || ("/tts?t=" + encodeURIComponent(item.text));
+  }
+
+  function stopAll() {
+    run += 1;                          // ตั้งแต่นี้ไป เสียงรอบเก่าที่ค้างอยู่ไม่นับแล้ว
+    queue = [];
+    playing = false;
+    player.onended = player.onerror = null;
+    try { player.pause(); } catch (e) {}
     try { window.speechSynthesis.cancel(); } catch (e) {}
-    String(text || "").split("|").forEach(function (part) { enqueue(part); });
+  }
+
+  function webSay(item) {
+    String(item.text || "").split("|").forEach(webEnqueue);
+  }
+
+  function step() {
+    if (playing || !queue.length) return;
+    var item = queue.shift();
+    playing = true;
+
+    if (useWeb) {                      // โหมดสำรอง — ใช้เสียงของเครื่อง
+      playing = false;
+      webSay(item);
+      step();
+      return;
+    }
+
+    var mine = run, retried = false;
+    function stale() { return mine !== run; }
+
+    function fail() {
+      if (stale()) return;             // เสียงรอบเก่า ปล่อยผ่าน ไม่ใช่ความผิดพลาด
+      if (!retried && item.url) {      // ไฟล์ยังไม่ถูกสร้าง — ขอให้สร้างให้ก่อน
+        retried = true;
+        player.src = "/tts?t=" + encodeURIComponent(item.text);
+        var r = player.play();
+        if (r && r.catch) r.catch(fail);
+        return;
+      }
+      useWeb = true;                   // ใช้ไม่ได้จริง เลิกลองแล้วถอยไปเสียงเครื่อง
+      playing = false;
+      webSay(item);
+      step();
+    }
+
+    player.onerror = fail;
+    player.onended = function () {
+      if (stale()) return;
+      playing = false;
+      step();
+    };
+    player.src = srcFor(item);
+    var p = player.play();
+    if (p && p.catch) p.catch(function () {
+      if (stale()) return;
+      // บางเครื่อง (โดยเฉพาะ iPhone) ห้ามเล่นเสียงก่อนเด็กแตะจอ — ไม่ใช่ความผิดพลาด
+      // เก็บไว้ก่อน รอให้แตะแล้วค่อยเล่น ไม่ต้องถอยไปใช้เสียงเครื่อง
+      if (!unlocked) { playing = false; pending = item; return; }
+      fail();
+    });
+  }
+
+  /* ปลดล็อกเสียงตอนเด็กแตะจอครั้งแรก
+     เบราว์เซอร์มือถือห้ามเว็บเล่นเสียงเองก่อนผู้ใช้แตะ ถ้าไม่ปลดล็อกไว้
+     เสียงอ่านโจทย์ข้อแรกจะหายไปเฉย ๆ */
+  var unlocked = false, pending = null;
+  function unlock() {
+    if (unlocked) return;
+    unlocked = true;
+    try { player.load(); } catch (e) {}
+    if (pending) { queue.unshift(pending); pending = null; step(); }
+  }
+  ["pointerdown", "touchstart", "keydown"].forEach(function (ev) {
+    document.addEventListener(ev, unlock, { once: true, passive: true });
+  });
+
+  /* พูดต่อท้ายคิวเดิม ไม่ตัดเสียงที่กำลังพูดอยู่
+     ใช้ตอนต้องอ่านสองท่อนติดกัน เช่น "คำตอบที่ถูกคือ" แล้วตามด้วย "Cat" */
+  function enqueue(text, url) {
+    if (!READ || !String(text || "").trim()) return;
+    queue.push({ text: String(text), url: url || "" });
+    step();
+  }
+
+  function speak(text, url) {
+    if (!READ) return;
+    stopAll();
+    enqueue(text, url);
   }
 
   // ข้อความที่จะอ่านของข้อนี้ — ครูตั้ง speak_text ทับได้
@@ -477,13 +581,18 @@
 
   if (el("speak")) {
     el("speak").addEventListener("click", function () {
-      var text = saidFor(QS[i]);
+      unlock();
+      var q = QS[i];
+      var text = saidFor(q);
       noteArmed = true;
-      speak(text);
-      // ถ้ากดปุ่มแล้วยังไม่มีเสียงออกเลยภายใน 1.8 วินาที แปลว่าเครื่องอ่านไม่ได้จริง
-      // (กดปุ่มเองแบบนี้เบราว์เซอร์ไม่บล็อก จึงสรุปได้ว่าไม่ใช่เรื่องการกดปุ่ม)
+      speak(text, q.audio);
+      // ถ้ากดปุ่มแล้วยังไม่มีเสียงออกเลยภายใน 2.5 วินาที และตกไปใช้เสียงเครื่องแล้ว
+      // แปลว่าเครื่องนี้อ่านออกเสียงไม่ได้จริง ค่อยขึ้นคำแนะนำให้ครูเห็น
       var lang = langOf(sayable(String(text || "").split("|")[0]));
-      setTimeout(function () { noteTts(lang); noteArmed = false; }, 1800);
+      setTimeout(function () {
+        if (useWeb) noteTts(lang);
+        noteArmed = false;
+      }, 2500);
     });
   }
 
@@ -891,7 +1000,7 @@
           // คำศัพท์อังกฤษ/ตัวอักษร — กดแล้วได้ยินเสียงคำนั้นเลย ช่วยให้จำการออกเสียง
           // (ไม่ใช่การบอกเฉลย เพราะได้ยินทุกตัวเลือกเหมือนกัน)
           var lab = (o.label || "").trim();
-          if (READ && q.kind !== "pattern" && lab && lab.length <= 15 && !/[0-9]/.test(lab)) speak(lab);
+          if (READ && q.kind !== "pattern" && lab && lab.length <= 15 && !/[0-9]/.test(lab)) speak(lab, o.audio);
           else play("tap");
           el("submit").disabled = false;
         });
@@ -934,7 +1043,7 @@
     paintDots(null);
     el("bar").style.width = Math.round(i / QS.length * 100) + "%";
     buddy("idle", pick(CHEER_GO));
-    speak(saidFor(q));
+    speak(saidFor(q), q.audio);
 
     stopTimer();
     if (q.kind === "mathrun" && q.math) startTimer(q.math.seconds);
@@ -1062,14 +1171,15 @@
     setTimeout(function () { el("sheet").hidden = false; }, document.querySelector("#answers .mark") ? 750 : 0);
     if (res.correct) setTimeout(confetti, 60);
     // พูดเป็นท่อน ๆ เพื่อให้คำอังกฤษได้เสียงอังกฤษจริง ๆ ไม่ใช่เสียงไทยอ่านอังกฤษ
-    speak(res.correct ? "เก่งมาก ตอบถูกค่ะ"
-                      : (res.answer ? "คำตอบที่ถูกคือ" : "ยังไม่ถูกนะคะ"));
+    var line = res.correct ? "เก่งมาก ตอบถูกค่ะ"
+                           : (res.answer ? "คำตอบที่ถูกคือ" : "ยังไม่ถูกนะคะ");
+    speak(line, PHRASES[line]);
     if (res.answer) enqueue(res.answer);
   }
 
   el("next").addEventListener("click", function () {
     el("sheet").hidden = true;
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    stopAll();
     i += 1;
     if (i < QS.length) { render(); return; }
     finish();
