@@ -57,6 +57,7 @@
 
     <p class="ttsnote" id="ttsnote" hidden></p>
     <img id="qimg" class="q-img" alt="" hidden>
+    <p class="q-emoji" id="qemoji" hidden></p>
     <p class="q-prompt" id="prompt"></p>
     {# คำใบ้ต้องอยู่ก่อนตัวเลือก เด็กจะได้อ่านคำสั่งก่อนเลือกคำตอบ #}
     <p class="hintline" id="hint"></p>
@@ -516,6 +517,21 @@
     picked = null;
     el("qno").textContent = "ข้อ " + (i + 1) + " / " + QS.length;
     var ptext = q.prompt || "";
+
+    /* บรรทัดแรกที่เป็นอีโมจิล้วน ให้ยกออกมาโชว์ตัวใหญ่แทนรูปภาพ
+       เช่น "\ud83d\udc36\nThis is a ______."  →  อีโมจิใหญ่กลางจอ แล้วประโยคอยู่ใต้ */
+    var emoji = "";
+    var nlpos = ptext.indexOf("\n");
+    if (nlpos > 0) {
+      var ehead = ptext.slice(0, nlpos).trim();
+      if (ehead && ehead.length <= 12 && !/[A-Za-z0-9\u0E00-\u0E7F]/.test(ehead)) {
+        emoji = ehead;
+        ptext = ptext.slice(nlpos + 1).replace(/^\s+/, "");
+      }
+    }
+    el("qemoji").textContent = emoji;
+    el("qemoji").hidden = !emoji;
+
     // โจทย์คิดเลขเร็วโชว์อยู่บนก้อนเมฆแล้ว ไม่ต้องเขียนซ้ำอีกบรรทัด
     paintPrompt(el("prompt"), (q.kind === "mathrun") ? "" : ptext);
     // โจทย์ที่เป็นอีโมจิหรือตัวอักษรสั้น ๆ (เช่น 🐶 หรือ Dd) ให้ขยายใหญ่กลางจอ
@@ -525,7 +541,10 @@
       (ptext.trim().split(/\s+/).length === 1 && ptext.trim().length <= 12) ||
       // คำเว้นช่องให้เติมตัวอักษร เช่น "H _ n d" ก็ขึ้นตัวใหญ่
       /^[A-Za-z_](\s[A-Za-z_]){1,7}$/.test(ptext.trim()));
-    el("hint").textContent = q.hint || "";
+    // คำใบ้ที่ขึ้นต้นด้วย \ud83d\udcd6 คือเรื่องให้อ่าน วางเป็นกล่องชิดซ้ายอ่านง่าย ไม่ใช่บรรทัดเล็กกลางจอ
+    var hinttext = q.hint || "";
+    el("hint").textContent = hinttext;
+    el("hint").classList.toggle("passage", hinttext.indexOf("\ud83d\udcd6") === 0);
 
     var img = el("qimg");
     if (q.image_url) { img.src = q.image_url; img.hidden = false; }
@@ -1154,6 +1173,15 @@
 .btn.big:disabled{opacity:.45;cursor:not-allowed;transform:none}
 .hintline{color:#3e6b85;font-size:.9rem;text-align:center;margin:0 0 .8rem}
 .hintline:empty{display:none;margin:0}
+/* เรื่องให้อ่าน (ตอน Reading) — ชิดซ้าย ตัวโตกว่าคำใบ้ธรรมดา บรรทัดห่างสบายตา */
+.hintline.passage{text-align:left;background:#f8fcff;border:2px solid #dbeefc;
+                  border-radius:16px;padding:.85rem 1rem;font-size:1rem;line-height:1.75;
+                  color:#0e3b57;white-space:pre-wrap;margin-bottom:1rem}
+/* อีโมจิประกอบโจทย์ — ใช้แทนรูปภาพ เห็นชัดบนมือถือ */
+.q-emoji{font-size:4rem;line-height:1.15;text-align:center;margin:.3rem 0 .5rem;
+         letter-spacing:.06em}
+.q-emoji[hidden]{display:none}
+@media(max-width:480px){ .q-emoji{font-size:3.3rem} }
 .waiting{text-align:center;font-size:1.1rem;color:#3e6b85;padding:2rem 0}
 
 .sheet{position:fixed;inset:0;background:rgba(14,59,87,.45);display:grid;place-items:end center;
