@@ -37,11 +37,14 @@ KINDS = {
     "findshape": "นับรูปทรงในภาพรวม (เชาวน์ปัญญา)",
     "pattern":   "ต่อรูปแบบให้ครบ (เชาวน์ปัญญา)",
     "logic":     "อ่านเบาะแสแล้วหาคำตอบ (เชาวน์ปัญญา)",
+    "scenepeek": "ดูภาพแล้วจำ (สังเกตและความจำ)",
+    "whatsgone": "อะไรหายไปจากถาด (สังเกตและความจำ)",
 }
 
 # รูปแบบที่ตรวจคำตอบเหมือนกัน คือเลือกตัวเลือกที่ถูก 1 ตัว
 PICK_KINDS = ("choice", "truefalse", "count", "model3d", "compare",
-              "mathrun", "findshape", "pattern", "logic")
+              "mathrun", "findshape", "pattern", "logic",
+              "scenepeek", "whatsgone")
 
 # อีโมจิยอดนิยมสำหรับโจทย์นับจำนวน — ครูกดเลือกได้เลยไม่ต้องพิมพ์
 ICON_SETS = {
@@ -290,7 +293,7 @@ def save_question(quiz_id: str | int, data: dict,
     image_url = _txt(data.get("image_url"), 500)
 
     # โจทย์ที่เป็นรูปล้วน (เช่น ถ่ายจากหนังสือ) ไม่ต้องมีข้อความก็ได้
-    if not prompt and not image_url:
+    if not prompt and not image_url and kind != "whatsgone":
         raise SupabaseError("กรุณากรอกโจทย์ หรือแนบรูปโจทย์อย่างน้อยหนึ่งอย่าง")
 
     try:
@@ -385,7 +388,22 @@ def save_question(quiz_id: str | int, data: dict,
         if not clues:
             raise SupabaseError("กรุณาใส่เบาะแสอย่างน้อย 2 บรรทัด (บรรทัดละ 1 เบาะแส ไม่เกิน 8 บรรทัด)")
         fields["icon"] = "|".join(clues)
-    if kind in ("choice", "truefalse", "pattern", "logic"):
+    if kind == "scenepeek":
+        if not peek_spec(icon):
+            raise SupabaseError(
+                'โจทย์ดูภาพแล้วจำต้องกรอกในรูปแบบ "ฉาก|วินาทีที่ให้ดู|เปิดภาพก่อนไหม" '
+                "เช่น park|18|1 (ฉากที่มี: %s)" % ", ".join(MEMORY_SCENES)
+            )
+    if kind == "whatsgone":
+        if not gone_spec(icon):
+            raise SupabaseError(
+                'โจทย์อะไรหายไปต้องกรอกในรูปแบบ "ของบนถาด|ชิ้นที่หาย" '
+                "เช่น apple,ball,star,cup|ball — ของบนถาดต้องมีอย่างน้อย 3 ชิ้น "
+                "และชิ้นที่หายต้องอยู่บนถาดด้วย"
+            )
+        if not fields["prompt"]:
+            fields["prompt"] = "อะไรหายไปจากถาดเอ่ย"
+    if kind in ("choice", "truefalse", "pattern", "logic", "scenepeek", "whatsgone"):
         if len(options) < 2:
             raise SupabaseError("ต้องมีตัวเลือกอย่างน้อย 2 ตัวเลือก")
         if not any(o["is_correct"] for o in options):
@@ -837,6 +855,86 @@ def spoken_texts(questions: list[dict]) -> list[str]:
     return out
 
 
+# ════════════════════════════════════════════════════════
+#  เกมฝึกสังเกตและความจำ (อนุบาล) — ดูภาพแล้วจำ / อะไรหายไป
+# ════════════════════════════════════════════════════════
+# ภาพทั้งหมดวาดขึ้นเอง เก็บไว้ที่ static/img/memory/
+MEMORY_SCENES = {
+    "park":    ("ที่สวนสาธารณะ", "/static/img/memory/scene_park.webp"),
+    "kitchen": ("ในห้องครัว",    "/static/img/memory/scene_kitchen.webp"),
+}
+
+MEMORY_OBJECTS = {
+    "apple": "แอปเปิล", "banana": "กล้วย", "orange": "ส้ม", "grape": "องุ่น",
+    "ball": "ลูกบอล", "star": "ดาว", "cup": "ถ้วย", "pencil": "ดินสอ",
+    "flower": "ดอกไม้", "car": "รถ", "fish": "ปลา", "butterfly": "ผีเสื้อ",
+    "key": "กุญแจ", "balloon": "ลูกโป่ง", "leaf": "ใบไม้", "clock": "นาฬิกา",
+    "kite": "ว่าว", "drum": "กลอง",
+}
+
+
+def memory_object_url(key: str) -> str:
+    return "/static/img/memory/obj_%s.webp" % key
+
+
+def peek_spec(raw) -> dict | None:
+    """ช่อง icon ของโจทย์ "ดูภาพแล้วจำ" — "park|18|1"
+
+    ฉาก | วินาทีที่ให้ดูภาพ | 1 = ข้อนี้เปิดภาพให้ดูก่อน, 0 = ถามต่อจากข้อที่แล้วเลย
+    """
+    parts = [p.strip() for p in str(raw or "").split("|")]
+    if not parts or parts[0] not in MEMORY_SCENES:
+        return None
+    name, src = MEMORY_SCENES[parts[0]]
+    try:
+        sec = int(parts[1]) if len(parts) > 1 and parts[1] else 15
+    except ValueError:
+        sec = 15
+    first = (parts[2] == "1") if len(parts) > 2 else True
+    return {"scene": parts[0], "name": name, "src": src,
+            "sec": max(5, min(sec, 60)), "first": first}
+
+
+def gone_spec(raw) -> dict | None:
+    """ช่อง icon ของโจทย์ "อะไรหายไป" — "apple,ball,star,cup|ball"
+
+    ของบนถาด (อย่างน้อย 3 ชิ้น ไม่ซ้ำ) | ชิ้นที่หายไป ซึ่งต้องอยู่บนถาดด้วย
+    """
+    raw = str(raw or "")
+    if "|" not in raw:
+        return None
+    left, gone = raw.split("|", 1)
+    gone = gone.strip()
+    keys, seen = [], set()
+    for k in left.split(","):
+        k = k.strip()
+        if k and k in MEMORY_OBJECTS and k not in seen:
+            seen.add(k)
+            keys.append(k)
+    if len(keys) < 3 or gone not in keys:
+        return None
+
+    def cell(k):
+        return {"key": k, "name": MEMORY_OBJECTS[k], "src": memory_object_url(k)}
+
+    return {"gone": gone,
+            "before": [cell(k) for k in keys],
+            "after": [cell(k) for k in keys if k != gone],
+            "sec": max(4, min(3 + len(keys), 12))}
+
+
+def _gone_public(raw) -> dict | None:
+    """ตัดคีย์ของชิ้นที่หายออกก่อนส่งให้เบราว์เซอร์
+
+    ถาดก่อนและถาดหลังยังต้องส่งไปทั้งคู่ เพราะเกมคือการเทียบสองถาดด้วยตาอยู่แล้ว
+    แต่การตรวจคำตอบยังทำที่เซิร์ฟเวอร์เหมือนชนิดอื่น
+    """
+    spec = gone_spec(raw)
+    if not spec:
+        return None
+    return {"before": spec["before"], "after": spec["after"], "sec": spec["sec"]}
+
+
 def public_questions(questions: list[dict]) -> list[dict]:
     """
     ตัดเฉลยออกก่อนส่งให้เบราว์เซอร์
@@ -875,6 +973,10 @@ def public_questions(questions: list[dict]) -> list[dict]:
             "seq": pattern_seq(q.get("icon")) if q.get("kind") == "pattern" else None,
             # โจทย์อ่านเบาะแส — รายการเบาะแสให้เด็กอ่าน (คำตอบยังตรวจที่เซิร์ฟเวอร์)
             "clues": logic_clues(q.get("icon")) if q.get("kind") == "logic" else None,
+            # โจทย์ดูภาพแล้วจำ — ภาพฉากกับเวลาที่ให้ดู
+            "peek": peek_spec(q.get("icon")) if q.get("kind") == "scenepeek" else None,
+            # โจทย์อะไรหายไป — ถาดก่อนและถาดหลัง (ตัดคีย์ชิ้นที่หายออกแล้ว)
+            "tray": _gone_public(q.get("icon")) if q.get("kind") == "whatsgone" else None,
             "model": (MODELS.get(q.get("icon") or "") or None)
                      if q.get("kind") == "model3d" else None,
             "model_url": model_url(q["icon"]) if q.get("kind") == "model3d"

@@ -2,7 +2,15 @@
    ฟอร์มเพิ่ม/แก้ไขคำถาม 1 ข้อ — ใช้ร่วมกันทั้งตอนเพิ่มและตอนแก้
    q = None คือเพิ่มข้อใหม่
    ───────────────────────────────────────────────────────── #}
-{% macro question_form(quiz, q, icon_sets={}, models={}, model_groups=[]) %}
+{% macro question_form(quiz, q, icon_sets={}, models={}, model_groups=[], memory_objects={}) %}
+<style>
+.gonegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:.4rem}
+.goneitem{display:flex;flex-direction:column;align-items:center;gap:.15rem;
+          border:1.5px solid #dbe6e2;border-radius:10px;padding:.35rem;cursor:pointer;
+          font-size:.8rem;background:#fff}
+.goneitem img{width:44px;height:44px;object-fit:contain}
+.goneitem:has(input:checked){border-color:#f0930f;background:#fff7ec}
+</style>
 {% set opts = (q.options if q else []) %}
 {% set kind = (q.kind if q else 'choice') %}
 <form class="qform" method="post" enctype="multipart/form-data"
@@ -22,6 +30,8 @@
         <option value="pattern"   {{ 'selected' if kind == 'pattern' }}>ต่อรูปแบบให้ครบ (เชาวน์ปัญญา)</option>
         <option value="logic"     {{ 'selected' if kind == 'logic' }}>อ่านเบาะแสแล้วหาคำตอบ (เชาวน์ปัญญา)</option>
         <option value="findshape" {{ 'selected' if kind == 'findshape' }}>นับรูปทรงในภาพรวม (เชาวน์ปัญญา)</option>
+        <option value="scenepeek" {{ 'selected' if kind == 'scenepeek' }}>ดูภาพแล้วจำ (สังเกตและความจำ)</option>
+        <option value="whatsgone" {{ 'selected' if kind == 'whatsgone' }}>อะไรหายไปจากถาด (สังเกตและความจำ)</option>
       </select>
     </label>
     <label>คะแนนของข้อนี้
@@ -48,7 +58,7 @@
   </label>
 
   {# ───── เลือกตอบ / ถูกผิด ───── #}
-  <div class="kindbox" data-for="choice,truefalse,model3d,compare,pattern,logic">
+  <div class="kindbox" data-for="choice,truefalse,model3d,compare,pattern,logic,scenepeek,whatsgone">
     <p class="muted" style="font-size:.88rem;margin:.3rem 0">
       กรอกตัวเลือกแล้วกดวงกลมหน้าข้อที่เป็นคำตอบที่ถูก (เว้นว่างไว้ = ไม่ใช้ตัวเลือกนั้น)<br>
       ถ้าใส่รูปให้ <b>ครบทุกตัวเลือก</b> ระบบจะแสดงเป็นการ์ดรูปใหญ่ให้เด็กกดเลือก
@@ -268,6 +278,63 @@
     <p class="muted" style="font-size:.85rem;margin:.4rem 0 0">
       เลขภาพเดียวกัน = ภาพเดิมเป๊ะทุกครั้ง · อยากได้ภาพใหม่ให้ลบเลขออกแล้วบันทึกซ้ำ
     </p>
+  </div>
+
+  {# ───── ดูภาพแล้วจำ ───── #}
+  {% set ps = (q.icon or '').split('|') if q and q.kind == 'scenepeek' else [] %}
+  <div class="kindbox" data-for="scenepeek">
+    <p class="muted" style="font-size:.88rem;margin:.3rem 0">
+      ระบบจะเปิดภาพฉากให้เด็กดูตามเวลาที่ตั้งไว้ แล้วซ่อนภาพ เด็กจึงต้องตอบจากความจำ
+      (มีปุ่มขอดูซ้ำ 6 วินาที ให้เด็กที่ยังจำไม่ได้)<br>
+      ถามหลายข้อจากฉากเดียวกันได้ — <b>ข้อแรก</b>ของฉากให้ติ๊ก “เปิดภาพให้ดูก่อน”
+      ส่วนข้อถัด ๆ ไปไม่ต้องติ๊ก จะได้ไม่ต้องดูภาพซ้ำทุกข้อ
+    </p>
+    <div class="grid4">
+      <label>ฉาก
+        <select name="peek_scene">
+          <option value="park"    {{ 'selected' if ps and ps[0] == 'park' }}>ที่สวนสาธารณะ</option>
+          <option value="kitchen" {{ 'selected' if ps and ps[0] == 'kitchen' }}>ในห้องครัว</option>
+        </select>
+      </label>
+      <label>ให้ดูภาพกี่วินาที
+        <input type="number" name="peek_sec" min="5" max="60" step="1"
+               value="{{ ps[1] if ps | length > 1 else 15 }}">
+      </label>
+      <label style="display:flex;align-items:center;gap:.4rem;margin-top:1.4rem">
+        <input type="checkbox" name="peek_first" value="1"
+               {{ 'checked' if (not q) or (ps | length > 2 and ps[2] == '1') }}>
+        เปิดภาพให้ดูก่อน (ข้อแรกของฉาก)
+      </label>
+    </div>
+  </div>
+
+  {# ───── อะไรหายไปจากถาด ───── #}
+  {% set gs = (q.icon or '').split('|') if q and q.kind == 'whatsgone' else [] %}
+  {% set gtray = gs[0].split(',') if gs else [] %}
+  <div class="kindbox" data-for="whatsgone">
+    <p class="muted" style="font-size:.88rem;margin:.3rem 0">
+      ติ๊กของที่จะวางบนถาด (อย่างน้อย 3 ชิ้น — 4 ชิ้นสำหรับข้อง่าย เพิ่มเป็น 6 ชิ้นในข้อยาก)
+      แล้วเลือกว่าชิ้นไหนจะหายไป<br>
+      ระบบจะโชว์ถาดให้จำก่อน แล้วเปิดถาดใหม่ที่ของหายไป 1 ชิ้น
+      · <b>ตัวลวงในตัวเลือกควรเป็นของที่ยังอยู่บนถาด</b> ไม่งั้นเด็กจะตอบถูกได้หลายทาง
+    </p>
+    <div class="gonegrid">
+      {% for key, name in memory_objects.items() %}
+      <label class="goneitem">
+        <input type="checkbox" name="gone_items" value="{{ key }}"
+               {{ 'checked' if key in gtray }}>
+        <img src="/static/img/memory/obj_{{ key }}.webp" alt="">
+        <span>{{ name }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <label style="display:block;margin:.6rem 0 0">ชิ้นที่หายไป
+      <select name="gone_pick">
+        {% for key, name in memory_objects.items() %}
+        <option value="{{ key }}" {{ 'selected' if gs | length > 1 and gs[1] == key }}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
   </div>
 
   {# ───── จับคู่ ───── #}

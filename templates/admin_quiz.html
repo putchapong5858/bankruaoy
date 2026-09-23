@@ -396,7 +396,7 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
 
       <details class="editbox">
         <summary>แก้ไขข้อนี้</summary>
-        {{ question_form(quiz, q, icon_sets, models, model_groups) }}
+        {{ question_form(quiz, q, icon_sets, models, model_groups, memory_objects) }}
       </details>
     </div>
     {% else %}
@@ -407,7 +407,7 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
   <!-- ══════ เพิ่มข้อใหม่ ══════ -->
   <section class="panel" id="add">
     <h2><i>➕</i> เพิ่มคำถามใหม่</h2>
-    {{ question_form(quiz, none, icon_sets, models, model_groups) }}
+    {{ question_form(quiz, none, icon_sets, models, model_groups, memory_objects) }}
   </section>
 
 </main>

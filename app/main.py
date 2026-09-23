@@ -1094,6 +1094,18 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
             (form.get("find_color") or "blue").strip(),
             (form.get("find_level") or "easy").strip(),
         )
+    elif kind == "scenepeek":
+        # เก็บเป็น "park|18|1" = ฉาก | วินาทีที่ให้ดูภาพ | เปิดภาพให้ดูก่อนไหม
+        data["icon"] = "%s|%s|%s" % (
+            (form.get("peek_scene") or "park").strip(),
+            (form.get("peek_sec") or "").strip() or "15",
+            "1" if form.get("peek_first") else "0",
+        )
+    elif kind == "whatsgone":
+        # เก็บเป็น "apple,ball,star,cup|ball" = ของบนถาด | ชิ้นที่หายไป
+        keys = form.getlist("gone_items") if hasattr(form, "getlist") else []
+        data["icon"] = "%s|%s" % (",".join(k.strip() for k in keys if k.strip()),
+                                  (form.get("gone_pick") or "").strip())
     elif kind == "mathrun":
         # เก็บเป็น "4+5|20|1" = โจทย์ | วินาทีคิดเร็ว | โชว์จุดช่วยนับ
         data["icon"] = "%s|%s|%s" % (
@@ -1187,6 +1199,7 @@ def admin_quiz_edit(request: Request, quiz_id: str, saved: str = "", err: str = 
                 icon_sets=quiz.ICON_SETS,
                 models=quiz.MODELS,
                 model_groups=quiz.MODEL_GROUPS,
+                memory_objects=quiz.MEMORY_OBJECTS,
                 ai_ready=gemini.is_ready(),
                 saved=saved, err=err)
 

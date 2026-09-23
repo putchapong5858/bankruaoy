@@ -314,6 +314,28 @@
   // ประกาศแบบ function เพื่อให้ถูกยกขึ้นบนสุด — โค้ดด้านบนเรียกใช้ได้ด้วย
   function el(id) { return document.getElementById(id); }
 
+  // ตัวจับเวลาของโจทย์สังเกตและความจำ — ต้องหยุดทุกครั้งที่เปลี่ยนข้อ
+  // ไม่งั้นนาฬิกาของข้อเก่าจะเด้งมาเปลี่ยนหน้าจอของข้อใหม่
+  var MEM_T = null;
+  function stopMemTimer() {
+    if (MEM_T) { cancelAnimationFrame(MEM_T); MEM_T = null; }
+  }
+  function runMemTimer(sec, done) {
+    stopMemTimer();
+    var ring = el("memring"), txt = el("memsec");
+    var C = 2 * Math.PI * 23, t0 = 0;
+    if (ring) { ring.style.strokeDasharray = C.toFixed(1); ring.style.strokeDashoffset = "0"; }
+    function tick(now) {
+      if (!t0) t0 = now;
+      var p = Math.min(1, (now - t0) / (sec * 1000));
+      if (ring) ring.style.strokeDashoffset = (C * p).toFixed(1);
+      if (txt) txt.textContent = Math.max(0, Math.ceil(sec - p * sec));
+      if (p >= 1) { MEM_T = null; done(); return; }
+      MEM_T = requestAnimationFrame(tick);
+    }
+    MEM_T = requestAnimationFrame(tick);
+  }
+
   /* ══════ จับเวลา ══════
      ตั้งใจออกแบบให้ "จับเวลาแบบไม่กดดัน" สำหรับเด็ก 5-7 ขวบ
        · นาฬิกาใหญ่ด้านบน = นับขึ้น ไม่ใช่นับถอยหลัง เด็กจึงไม่รู้สึกถูกไล่
@@ -659,8 +681,10 @@
     if (q.image_url) { img.src = q.image_url; img.hidden = false; }
     else { img.hidden = true; img.removeAttribute("src"); }
 
+    stopMemTimer();
     var box = el("answers");
     box.innerHTML = "";
+    box.classList.remove("memlock");
 
     if (q.kind === "fill") {
       var input = document.createElement("input");
@@ -967,8 +991,81 @@
         box.appendChild(prow);
       }
 
+      // โจทย์สังเกตและความจำ — โชว์ภาพ/ถาดให้ดูตามเวลา แล้วซ่อน ค่อยให้เลือกตอบ
+      if ((q.kind === "scenepeek" && q.peek) || (q.kind === "whatsgone" && q.tray)) {
+        var mem = document.createElement("div");
+        mem.className = "membox";
+        box.appendChild(mem);
+
+        var isScene = (q.kind === "scenepeek");
+        var memSec = isScene ? q.peek.sec : q.tray.sec;
+        var needStudy = isScene ? q.peek.first : true;
+
+        function trayRow(list) {
+          var wide = list.length >= 5 ? " wide" : "";
+          var cells = "";
+          for (var k = 0; k < list.length; k++) {
+            cells += '<span class="memslot"><img src="' + list[k].src +
+                     '" alt="' + list[k].name + '"></span>';
+          }
+          return '<div class="memtray' + wide + '">' + cells + "</div>";
+        }
+
+        function clockHTML(sec) {
+          return '<div class="memclock"><svg viewBox="0 0 54 54" aria-hidden="true">' +
+            '<circle class="cbg" cx="27" cy="27" r="23"></circle>' +
+            '<circle class="cfg" id="memring" cx="27" cy="27" r="23"></circle>' +
+            "</svg><b id=\"memsec\">" + sec + "</b></div>";
+        }
+
+        function studyView() {
+          box.classList.add("memlock");
+          mem.innerHTML = isScene
+            ? '<p class="memtip">ดูภาพ' + (q.peek.name || "") + 'ให้ดีนะ</p>' +
+              '<div class="memscene"><img src="' + q.peek.src + '" alt=""></div>' +
+              '<div class="memrow">' + clockHTML(memSec) +
+                '<span class="memhint">พอหมดเวลา ภาพจะหายไปแล้วให้ตอบจากที่จำได้</span>' +
+                '<button type="button" class="membtn" id="memskip">จำได้แล้ว</button></div>'
+            : '<p class="memtip">จำของบนถาดให้ได้นะ มี ' + q.tray.before.length + ' ชิ้น</p>' +
+              trayRow(q.tray.before) +
+              '<div class="memrow">' + clockHTML(memSec) +
+                '<span class="memhint">เดี๋ยวถาดจะปิด แล้วของจะหายไป 1 ชิ้น</span>' +
+                '<button type="button" class="membtn" id="memskip">จำได้แล้ว</button></div>';
+          var skip = document.getElementById("memskip");
+          if (skip) skip.addEventListener("click", function () { stopMemTimer(); answerView(); });
+          runMemTimer(memSec, answerView);
+        }
+
+        function answerView() {
+          box.classList.remove("memlock");
+          mem.innerHTML = isScene
+            ? '<p class="memtip done">ภาพหายไปแล้ว ตอบจากที่จำได้เลยนะ</p>' +
+              '<button type="button" class="membtn peek" id="mempeek">🔍 ขอดูภาพอีกครั้ง</button>'
+            : '<p class="memtip done">เปิดถาดแล้ว มีของหายไป 1 ชิ้น ชิ้นไหนเอ่ย</p>' +
+              trayRow(q.tray.after);
+          var pk = document.getElementById("mempeek");
+          if (pk) pk.addEventListener("click", peekAgain);
+        }
+
+        function peekAgain() {
+          box.classList.add("memlock");
+          mem.innerHTML = '<p class="memtip">ดูอีกครั้งนะ แป๊บเดียว</p>' +
+            '<div class="memscene"><img src="' + q.peek.src + '" alt=""></div>' +
+            '<div class="memrow">' + clockHTML(6) +
+              '<span class="memhint">ดูให้ดี ๆ แล้วตอบนะ</span></div>';
+          runMemTimer(6, answerView);
+        }
+
+        needStudy ? studyView() : answerView();
+      }
+
       var numbers = (q.kind === "count" || q.kind === "mathrun" ||
                      q.kind === "findshape");
+      // โจทย์ "ดูภาพแล้วจำ" ที่ถามจำนวน — ตัวเลือกเป็นตัวเลขล้วน วางเป็นแถวเลขจะกดง่ายกว่า
+      if (q.kind === "scenepeek" && q.options.length > 0 &&
+          q.options.every(function (o) {
+            return !o.image_url && /^\d{1,2}$/.test((o.label || "").trim());
+          })) { numbers = true; }
       var signs = (q.kind === "compare");
       // ถ้าทุกตัวเลือกมีรูป ให้วางเป็นการ์ดรูปใหญ่ ๆ เด็กอนุบาลกดง่ายกว่าอ่านตัวหนังสือ
       var pics = !numbers && q.options.length > 0 &&
@@ -1011,6 +1108,9 @@
       box.classList.toggle("numrow", numbers);
       box.classList.toggle("signrow", signs);
       box.classList.toggle("piccards", pics);
+      // เฉพาะเกมสังเกต-จำ ที่มีตัวเลือกรูป 4 ตัว — วาง 2x2 ไม่ใช่ 3+1 ที่เหลื่อมกัน
+      box.classList.toggle("memgrid",
+        (q.kind === "scenepeek" || q.kind === "whatsgone") && pics && q.options.length === 4);
       box.classList.toggle("mathrow", q.kind === "mathrun");
       box.classList.toggle("findrow", q.kind === "findshape");
       box.classList.toggle("emorow", q.kind === "pattern");
@@ -1225,6 +1325,41 @@
 .speak{border:2px solid #bfe6fc;background:#f2faff;color:#0c6b9e;border-radius:999px;
        padding:.45rem 1rem;font:inherit;font-size:.92rem;cursor:pointer}
 .speak:active{transform:scale(.96)}
+/* ── เกมสังเกตและความจำ ─────────────────────────────── */
+.membox{grid-column:1 / -1;display:flex;flex-direction:column;gap:.55rem;align-items:center;
+        width:100%}
+.memtip{margin:0;font-weight:700;color:#0f5c46;text-align:center;font-size:1.02rem}
+.memtip.done{color:#8a5a12}
+.memscene{width:100%;border-radius:16px;overflow:hidden;background:#eef6f2;line-height:0;
+          box-shadow:0 6px 18px -10px rgba(15,60,46,.55)}
+.memscene img{width:100%;height:auto;display:block}
+.memtray{width:100%;display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;
+         background:#fdf6e6;border:2.5px dashed #d9b775;border-radius:16px;padding:.8rem .7rem;
+         justify-items:center}
+.memtray.wide{grid-template-columns:repeat(3,1fr)}
+.memslot{display:grid;place-items:center;width:100%;aspect-ratio:1/1;padding:4px}
+.memslot img{max-width:100%;max-height:100%;width:auto;height:auto;display:block}
+.memrow{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;justify-content:center;
+        width:100%}
+.memhint{font-size:.86rem;color:#5b7a70;flex:1;min-width:140px}
+.memclock{position:relative;width:54px;height:54px;flex:0 0 54px}
+.memclock svg{width:54px;height:54px;transform:rotate(-90deg)}
+.memclock circle{fill:none;stroke-width:7;stroke-linecap:round}
+.memclock .cbg{stroke:#dbe8e2}
+.memclock .cfg{stroke:#f0930f}
+.memclock b{position:absolute;inset:0;display:grid;place-items:center;font-size:1.05rem;
+            color:#0f3c2e}
+.membtn{font:inherit;font-weight:700;border:2px solid #cfe3da;background:#fff;color:#0f3c2e;
+        border-radius:14px;padding:.5rem 1rem;cursor:pointer}
+.membtn:active{transform:translateY(1px)}
+.membtn.peek{border-color:#f0930f;color:#8a5a12}
+/* ระหว่างยังให้ดูภาพอยู่ ปุ่มตัวเลือกต้องกดไม่ได้ เด็กจะได้ไม่เผลอกดข้ามไปก่อน */
+#answers.memlock .opt{opacity:.3;pointer-events:none}
+@media (max-width:420px){
+  .memtray{gap:.45rem;padding:.6rem .5rem}
+  .memhint{min-width:100%;text-align:center;order:3}
+}
+
 .q-img{max-width:100%;max-height:300px;width:auto;border-radius:16px;
        margin:.4rem auto .6rem;display:block}
 .q-img[hidden]{display:none}          /* เหตุผลเดียวกับ .sheet[hidden] ด้านล่าง */
@@ -1244,6 +1379,7 @@
 /* ── ตัวเลือกแบบการ์ดรูป (ใช้เมื่อทุกตัวเลือกมีรูป) ──
    เด็กอนุบาลยังอ่านไม่คล่อง จึงให้รูปใหญ่ ๆ นำ แล้ววางคำอยู่ใต้รูป */
 #answers.piccards{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem}
+#answers.piccards.memgrid{grid-template-columns:repeat(2,1fr)}
 .opt.pic{flex-direction:column;gap:.45rem;text-align:center;margin:0;
          padding:.8rem .5rem;justify-content:flex-start}
 .opt.pic img{height:auto;width:100%;max-width:150px;aspect-ratio:1/1;object-fit:contain;
