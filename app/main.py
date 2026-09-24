@@ -158,9 +158,19 @@ def healthz_ai():
 
 
 @app.get("/healthz/tts")
-def healthz_tts():
-    """สถานะเสียงอ่าน — บอกว่าพร้อมไหม เลือกเสียงไหนอยู่ ไม่เคยส่งค่ากุญแจออกมา"""
-    return JSONResponse(tts.status())
+def healthz_tts(request: Request, probe: str = ""):
+    """สถานะเสียงอ่าน — บอกว่าพร้อมไหม เลือกเสียงไหนอยู่ ไม่เคยส่งค่ากุญแจออกมา
+
+    ต่อท้าย ?probe=1 จะลองสร้างเสียงจริง 1 ครั้งแล้วบอกว่าติดตรงไหน
+    (ต้องเข้าสู่ระบบเป็นครูก่อน กันคนนอกยิงจนโควตาหมด)
+    """
+    want = probe in ("1", "true", "yes")
+    if want:
+        _, blocked = require_admin(request)
+        if blocked:
+            return JSONResponse({"error": "ต้องเข้าสู่ระบบเป็นครูก่อนจึงจะทดสอบได้"},
+                                status_code=403)
+    return JSONResponse(tts.status(probe=want))
 
 
 @app.get("/tts")
@@ -538,13 +548,20 @@ async def admin_voice_build(request: Request):
         return JSONResponse({"error": "ไม่พบชุดแบบฝึกหัด"}, status_code=400)
 
     voice = tts.current_voice(True)
+    # ข้อความที่สร้างไม่สำเร็จไปแล้ว หน้าเว็บส่งกลับมาด้วย จะได้ไม่วนลองซ้ำไม่จบ
+    skip = {str(x) for x in (body.get("skip") or [])}
+
     # รวมประโยคชมเชยที่ใช้ซ้ำทุกข้อเข้าไปด้วย จะได้ครบจบในรอบเดียว
     texts = tts.PHRASES + quiz.spoken_texts(quiz.list_questions(quiz_id))
     have = tts.stored(voice)
     todo = [t for t in texts
-            if tts.path_for(t, voice).split("/")[-1] not in have]
+            if t not in skip
+            and tts.path_for(t, voice).split("/")[-1] not in have]
 
-    made, failed = 0, ""
+    made = 0
+    bad: list[dict] = []
+    quota = 0.0
+    error = ""
     started = time.monotonic()
     for text in todo:
         # เผื่อเวลาไว้ตอบกลับก่อนโดนตัด — ค่อยไปต่อในรอบหน้า
@@ -553,15 +570,26 @@ async def admin_voice_build(request: Request):
         try:
             tts.ensure(text, voice)
             made += 1
-        except tts.TtsError as exc:
-            failed = str(exc)
+        except tts.QuotaError as exc:
+            # โควตาเต็มเป็นเรื่องชั่วคราว — หยุดรอบนี้ไว้ แล้วให้หน้าเว็บรอแล้วไปต่อเอง
+            quota = exc.retry_after
+            error = str(exc)
             break
+        except tts.TtsError as exc:
+            # ข้อความนี้สร้างไม่ได้จริง ๆ — ข้ามไปทำข้ออื่นต่อ ไม่หยุดทั้งชุด
+            bad.append({"text": text[:60], "why": str(exc)})
+            error = error or str(exc)
 
+    skipped = len(skip) + len(bad)
     return JSONResponse({
         "total": len(texts),
-        "done": len(texts) - len(todo) + made,
+        "done": len(texts) - len(todo) + made + len(bad),
         "made": made,
-        "error": failed,
+        "failed": [b["text"] for b in bad],
+        "failed_detail": bad[:3],
+        "skipped": skipped,
+        "retry_after": quota,
+        "error": error,
     })
 
 
@@ -1094,18 +1122,6 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
             (form.get("find_color") or "blue").strip(),
             (form.get("find_level") or "easy").strip(),
         )
-    elif kind == "scenepeek":
-        # เก็บเป็น "park|18|1" = ฉาก | วินาทีที่ให้ดูภาพ | เปิดภาพให้ดูก่อนไหม
-        data["icon"] = "%s|%s|%s" % (
-            (form.get("peek_scene") or "park").strip(),
-            (form.get("peek_sec") or "").strip() or "15",
-            "1" if form.get("peek_first") else "0",
-        )
-    elif kind == "whatsgone":
-        # เก็บเป็น "apple,ball,star,cup|ball" = ของบนถาด | ชิ้นที่หายไป
-        keys = form.getlist("gone_items") if hasattr(form, "getlist") else []
-        data["icon"] = "%s|%s" % (",".join(k.strip() for k in keys if k.strip()),
-                                  (form.get("gone_pick") or "").strip())
     elif kind == "mathrun":
         # เก็บเป็น "4+5|20|1" = โจทย์ | วินาทีคิดเร็ว | โชว์จุดช่วยนับ
         data["icon"] = "%s|%s|%s" % (
@@ -1199,7 +1215,6 @@ def admin_quiz_edit(request: Request, quiz_id: str, saved: str = "", err: str = 
                 icon_sets=quiz.ICON_SETS,
                 models=quiz.MODELS,
                 model_groups=quiz.MODEL_GROUPS,
-                memory_objects=quiz.MEMORY_OBJECTS,
                 ai_ready=gemini.is_ready(),
                 saved=saved, err=err)
 

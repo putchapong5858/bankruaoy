@@ -182,32 +182,78 @@
     btn.addEventListener("click", function () {
       var id = btn.dataset.quiz;
       var stat = document.querySelector('.vstat[data-for="' + id + '"]');
+      var skip = [];          // ข้อความที่สร้างไม่ได้จริง ๆ — ไม่ต้องวนลองซ้ำ
+      var waits = 0;          // จำนวนครั้งที่รอเพราะโควตาเต็ม
+      var timer = null;
       btn.disabled = true;
+
+      function stop(msg) {
+        if (timer) { clearInterval(timer); timer = null; }
+        stat.textContent = msg;
+        btn.disabled = false;
+      }
+
+      // โควตาเต็มไม่ใช่ความผิดพลาด แค่ต้องรอ — นับถอยหลังให้เห็นแล้วไปต่อเอง
+      function waitThen(sec, done, total) {
+        var left = Math.max(5, Math.ceil(sec));
+        if (++waits > 6) {
+          stop("หยุดไว้ที่ " + done + " / " + total +
+               " — โควตา Gemini เต็มนานผิดปกติ ลองใหม่อีกทีภายหลังนะคะ");
+          return;
+        }
+        timer = setInterval(function () {
+          left -= 1;
+          if (left > 0) {
+            stat.textContent = "สร้างแล้ว " + done + " / " + total +
+                               " · โควตาเต็ม รออีก " + left + " วินาทีแล้วไปต่อ";
+            return;
+          }
+          clearInterval(timer); timer = null;
+          round();
+        }, 1000);
+        stat.textContent = "สร้างแล้ว " + done + " / " + total +
+                           " · โควตาเต็ม รออีก " + left + " วินาทีแล้วไปต่อ";
+      }
 
       function round() {
         fetch("/admin/voice/build", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ quiz_id: id })
+          body: JSON.stringify({ quiz_id: id, skip: skip })
         }).then(function (r) { return r.json(); }).then(function (d) {
-          if (d.error) {
-            stat.textContent = "หยุดไว้ก่อน: " + d.error;
-            btn.disabled = false;
+          if (d.error && !d.retry_after && !d.made && !(d.failed || []).length) {
+            stop("หยุดไว้ก่อน: " + d.error);
             return;
           }
-          stat.textContent = "สร้างแล้ว " + d.done + " / " + d.total;
-          if (d.done < d.total && d.made > 0) { round(); return; }
-          if (d.done < d.total) {
-            stat.textContent = "ค้างอยู่ " + d.done + " / " + d.total + " — ลองกดอีกครั้ง";
-            btn.disabled = false;
+          (d.failed || []).forEach(function (t) {
+            if (skip.indexOf(t) < 0) skip.push(t);
+          });
+
+          if (d.retry_after) { waitThen(d.retry_after, d.done, d.total); return; }
+          waits = 0;
+
+          var left = d.total - d.done;
+          if (left > 0 && (d.made > 0 || (d.failed || []).length > 0)) {
+            stat.textContent = "สร้างแล้ว " + d.done + " / " + d.total;
+            round();
             return;
           }
-          stat.textContent = "✓ ครบแล้ว " + d.total + " เสียง";
+          if (left > 0) {
+            stop("ค้างอยู่ " + d.done + " / " + d.total + " — ลองกดอีกครั้ง");
+            return;
+          }
+
+          var note = "✓ ครบแล้ว " + d.total + " เสียง";
+          if (skip.length) {
+            var why = (d.failed_detail && d.failed_detail[0])
+                      ? " (" + d.failed_detail[0].why + ")" : "";
+            note = "เสร็จแล้ว " + (d.total - skip.length) + " / " + d.total +
+                   " · ข้าม " + skip.length + " ข้อที่สร้างไม่ได้" + why;
+          }
+          stop(note);
           btn.textContent = "สร้างใหม่";
-          btn.disabled = false;
         }).catch(function () {
-          stat.textContent = "ต่อกับเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง";
-          btn.disabled = false;
+          stop("ต่อกับเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง");
         });
       }
 
