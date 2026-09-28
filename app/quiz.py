@@ -20,7 +20,7 @@ import re
 import unicodedata
 from datetime import datetime, timezone
 
-from . import config, shapes, tts
+from . import config, shapes
 from .db import (SupabaseError, delete, gather, insert, select,
                  select_one, update)
 
@@ -35,16 +35,12 @@ KINDS = {
     "compare":   "เทียบเลข มากกว่า/น้อยกว่า (จระเข้กินเลข)",
     "mathrun":   "คิดเลขเร็ว บนก้อนเมฆ (จับเวลา)",
     "findshape": "นับรูปทรงในภาพรวม (เชาวน์ปัญญา)",
-    "pattern":   "ต่อรูปแบบให้ครบ (เชาวน์ปัญญา)",
-    "logic":     "อ่านเบาะแสแล้วหาคำตอบ (เชาวน์ปัญญา)",
-    "scenepeek": "ดูภาพแล้วจำ (สังเกตและความจำ)",
-    "whatsgone": "อะไรหายไปจากถาด (สังเกตและความจำ)",
+    "numbond":   "แผนภาพจำนวน แยกส่วน-รวมส่วน (Number Bond)",
 }
 
 # รูปแบบที่ตรวจคำตอบเหมือนกัน คือเลือกตัวเลือกที่ถูก 1 ตัว
 PICK_KINDS = ("choice", "truefalse", "count", "model3d", "compare",
-              "mathrun", "findshape", "pattern", "logic",
-              "scenepeek", "whatsgone")
+              "mathrun", "findshape", "numbond")
 
 # อีโมจิยอดนิยมสำหรับโจทย์นับจำนวน — ครูกดเลือกได้เลยไม่ต้องพิมพ์
 ICON_SETS = {
@@ -293,7 +289,7 @@ def save_question(quiz_id: str | int, data: dict,
     image_url = _txt(data.get("image_url"), 500)
 
     # โจทย์ที่เป็นรูปล้วน (เช่น ถ่ายจากหนังสือ) ไม่ต้องมีข้อความก็ได้
-    if not prompt and not image_url and kind != "whatsgone":
+    if not prompt and not image_url:
         raise SupabaseError("กรุณากรอกโจทย์ หรือแนบรูปโจทย์อย่างน้อยหนึ่งอย่าง")
 
     try:
@@ -301,8 +297,7 @@ def save_question(quiz_id: str | int, data: dict,
     except (TypeError, ValueError):
         points = 1.0
 
-    # โจทย์ใช้เหตุผลเก็บเบาะแสหลายบรรทัดในช่อง icon จึงยอมให้ยาวกว่าชนิดอื่น
-    icon = _txt(data.get("icon"), 800 if kind == "logic" else 200)
+    icon = _txt(data.get("icon"), 200)
     icon_count = _int(data.get("icon_count"), 0)
 
     fields = {
@@ -331,6 +326,28 @@ def save_question(quiz_id: str | int, data: dict,
         if not prompt:
             fields["prompt"] = "%d %s %d = ?" % (
                 spec["a"], "+" if spec["op"] == "+" else "−", spec["b"])
+    elif kind == "numbond":
+        # แผนภาพจำนวน — ระบบคิดคำตอบและสร้างตัวเลือกตัวเลขให้เอง
+        sp = bond_spec(icon)
+        if not sp:
+            raise SupabaseError(
+                'โจทย์แผนภาพจำนวนต้องอยู่ในรูปแบบ "เลข|เลข|p หรือ w|จุดช่วยนับ" '
+                'เช่น 8|3|p|1 (รวม 8 ส่วนหนึ่งคือ 3 หาส่วนที่ขาด) '
+                'หรือ 3|4|w|1 (ส่วนย่อย 3 กับ 4 หาจำนวนรวม) '
+                "— ส่วนย่อยต้องไม่มากกว่าจำนวนรวม และผลรวมไม่เกิน %d" % BOND_MAX
+            )
+        options = _math_choices(sp["answer"])
+        accepted = []
+        if not prompt:
+            fields["prompt"] = (
+                "%d แยกเป็น %d กับเท่าไร?" % (sp["whole"], sp["left"])
+                if sp["mode"] == "p"
+                else "%d กับ %d รวมกันได้เท่าไร?" % (sp["left"], sp["right"])
+            )
+        if not fields.get("hint"):
+            fields["hint"] = ("แตะตัวเลขที่ใส่ในวงกลมว่างแล้วกดตอบ"
+                              if sp["mode"] == "p"
+                              else "นับรวมสองส่วนล่าง แล้วแตะตัวเลขของจำนวนรวม")
     elif kind == "findshape":
         # โจทย์นับรูปทรง — ภาพสร้างจาก seed เซิร์ฟเวอร์จึงนับคำตอบเองได้
         sp = shapes.spec(icon)
@@ -375,35 +392,7 @@ def save_question(quiz_id: str | int, data: dict,
             raise SupabaseError("กรุณาเลือกรูปทรง 3 มิติที่จะให้เด็กดู")
         if len(options) < 2:
             raise SupabaseError("ต้องมีตัวเลือกอย่างน้อย 2 ตัวเลือก")
-    if kind == "pattern":
-        seq = pattern_seq(icon)
-        if not seq:
-            raise SupabaseError(
-                'รูปแบบต้องมีอย่างน้อย 3 ช่อง คั่นด้วยเว้นวรรค และมีช่อง ? 1 ช่อง '
-                'เช่น "🔴 🔵 🔴 🔵 ?"'
-            )
-        fields["icon"] = " ".join(seq)
-    if kind == "logic":
-        clues = logic_clues(icon)
-        if not clues:
-            raise SupabaseError("กรุณาใส่เบาะแสอย่างน้อย 2 บรรทัด (บรรทัดละ 1 เบาะแส ไม่เกิน 8 บรรทัด)")
-        fields["icon"] = "|".join(clues)
-    if kind == "scenepeek":
-        if not peek_spec(icon):
-            raise SupabaseError(
-                'โจทย์ดูภาพแล้วจำต้องกรอกในรูปแบบ "ฉาก|วินาทีที่ให้ดู|เปิดภาพก่อนไหม" '
-                "เช่น park|18|1 (ฉากที่มี: %s)" % ", ".join(MEMORY_SCENES)
-            )
-    if kind == "whatsgone":
-        if not gone_spec(icon):
-            raise SupabaseError(
-                'โจทย์อะไรหายไปต้องกรอกในรูปแบบ "ของบนถาด|ชิ้นที่หาย" '
-                "เช่น apple,ball,star,cup|ball — ของบนถาดต้องมีอย่างน้อย 3 ชิ้น "
-                "และชิ้นที่หายต้องอยู่บนถาดด้วย"
-            )
-        if not fields["prompt"]:
-            fields["prompt"] = "อะไรหายไปจากถาดเอ่ย"
-    if kind in ("choice", "truefalse", "pattern", "logic", "scenepeek", "whatsgone"):
+    if kind in ("choice", "truefalse"):
         if len(options) < 2:
             raise SupabaseError("ต้องมีตัวเลือกอย่างน้อย 2 ตัวเลือก")
         if not any(o["is_correct"] for o in options):
@@ -497,6 +486,55 @@ def _math_choices(answer: int) -> list[dict]:
          "is_correct": n == answer, "match_value": None}
         for i, n in enumerate(numbers)
     ]
+
+
+# ── แผนภาพจำนวน (Number Bond) ───────────────────────────
+# วงกลมบน 1 วงคือ "จำนวนรวม" โยงเส้นลงวงล่าง 2 วงคือ "ส่วนย่อย"
+# เก็บทุกอย่างในช่อง icon ช่องเดียว คั่นด้วย | เหมือนโจทย์ชนิดอื่น
+#
+#     "8|3|p|1"   = รวม 8 · ส่วนที่ให้มา 3 · หาส่วนที่ขาด (8-3=5) · โชว์จุดช่วยนับ
+#     "3|4|w|1"   = ส่วนย่อย 3 กับ 4 · หาจำนวนรวม (3+4=7) · โชว์จุดช่วยนับ
+
+BOND_MAX = 40
+
+
+def bond_spec(raw: str) -> dict | None:
+    """อ่านโจทย์แผนภาพจำนวนจากช่อง icon — คืน None ถ้ารูปแบบไม่ถูก"""
+    parts = [p.strip() for p in (raw or "").split("|")]
+    if len(parts) < 3:
+        return None
+    try:
+        a, b = int(parts[0]), int(parts[1])
+    except ValueError:
+        return None
+
+    mode = parts[2] if parts[2] in ("p", "w") else "p"
+    dots = bool(_int(parts[3], 0)) if len(parts) > 3 else False
+    if a < 0 or b < 0:
+        return None
+
+    if mode == "p":
+        # ให้จำนวนรวมกับส่วนหนึ่งมา แล้วหาส่วนที่ขาด
+        if b > a or a > BOND_MAX:
+            return None
+        whole, left, right, answer = a, b, None, a - b
+    else:
+        # ให้ส่วนย่อยทั้งสองมา แล้วหาจำนวนรวม
+        if a + b > BOND_MAX:
+            return None
+        whole, left, right, answer = None, a, b, a + b
+
+    return {"mode": mode, "whole": whole, "left": left, "right": right,
+            "answer": answer, "dots": dots, "a": a, "b": b}
+
+
+def _bond_public(raw: str) -> dict | None:
+    """ข้อมูลแผนภาพที่ส่งให้เบราว์เซอร์ได้ — ช่องที่ต้องตอบเป็น None ไม่มีเฉลยติดไป"""
+    s = bond_spec(raw)
+    if not s:
+        return None
+    return {"mode": s["mode"], "whole": s["whole"], "left": s["left"],
+            "right": s["right"], "dots": s["dots"]}
 
 
 def _count_choices(answer: int, how_many: int = 4) -> list[dict]:
@@ -683,30 +721,6 @@ def level_matches(quiz_level: str, student_level: str) -> bool:
     return False
 
 
-def logic_clues(raw: str) -> list[str] | None:
-    """
-    อ่านเบาะแสของโจทย์ "อ่านเบาะแสแล้วหาคำตอบ" เก็บในช่อง icon คั่นด้วย |
-    เช่น "น้องบอยชอบสีแดง|น้องมิ้นท์มีลูกบอล" — เบาะแสไม่ใช่เฉลย ส่งให้เบราว์เซอร์ได้
-    """
-    lines = [t.strip()[:160] for t in re.split(r"[|\r\n]+", raw or "") if t.strip()]
-    if len(lines) < 2 or len(lines) > 8:
-        return None
-    return lines
-
-
-def pattern_seq(raw: str) -> list[str] | None:
-    """
-    อ่านแถวรูปแบบของโจทย์ "ต่อรูปแบบ" เก็บในช่อง icon คั่นด้วยเว้นวรรค
-    เช่น "🔴 🔵 🔴 🔵 ?" — เครื่องหมาย ? คือช่องที่เด็กต้องเติม (ต้องมี 1 ช่องพอดี)
-    แถวนี้ไม่มีเฉลยอยู่ข้างใน จึงส่งให้เบราว์เซอร์ได้ปลอดภัย
-    """
-    parts = [t for t in re.split(r"[\s|]+", (raw or "").strip()) if t]
-    parts = ["?" if t in ("?", "？", "❓") else t[:40] for t in parts]
-    if len(parts) < 3 or len(parts) > 12 or parts.count("?") != 1:
-        return None
-    return parts
-
-
 def compare_pair(raw: str) -> tuple[int, int] | None:
     """อ่านคู่ตัวเลขของโจทย์เทียบเลข เก็บในช่อง icon เป็น "12|10" """
     parts = (raw or "").split("|")
@@ -755,13 +769,16 @@ def by_subject(rows: list[dict]) -> list[dict]:
     return out
 
 
-def quizzes_for_student(student: dict, limit: int = 200) -> list[dict]:
-    """แบบฝึกหัดที่เผยแพร่แล้วและตรงระดับชั้นของเด็ก พร้อมผลที่เคยทำ"""
+def quizzes_for_student(student: dict, limit: int = 120) -> list[dict]:
+    """แบบฝึกหัดที่เผยแพร่แล้วและตรงระดับชั้นของเด็ก พร้อมผลที่เคยทำ
+
+    ระวัง: ต้องดึงชุดที่เผยแพร่มาให้ครบ "ก่อน" แล้วค่อยกรองระดับชั้น
+    เดิมตัดที่ 40 ชุดแรกก่อนกรอง พอมีชุดใหม่ ๆ เพิ่มเข้ามา ชุดเก่าของชั้นนั้น
+    ก็หลุดหายไปจากหน้าเด็กทั้งที่ยังเผยแพร่อยู่ (เช่น Animals, English A-Z)
+    """
     level = (student.get("level") or "").strip()
-    # ดึงชุดที่เผยแพร่ทั้งหมดก่อน แล้วค่อยกรองระดับชั้น จากนั้นจึงตัดจำนวน
-    # (เดิมตัด limit ก่อนกรอง — พอมีชุดเผยแพร่เกิน 40 ชุด ชุดเก่าของบางชั้นจะหายไปเงียบ ๆ)
     rows = select("quizzes", status="eq.published",
-                  order="published_at.desc,id.desc", limit=1000)
+                  order="published_at.desc,id.desc", limit=500)
     rows = [q for q in rows if level_matches(q.get("level"), level)][:limit]
     if not rows:
         return []
@@ -834,107 +851,6 @@ def start_attempt(quiz_id: str | int, student_id: str,
     return {"quiz": quiz, "attempt": attempt, "questions": questions}
 
 
-def _label_spoken(label: str | None) -> bool:
-    """กติกาเดียวกับหน้าเว็บ — อ่านเฉพาะตัวเลือกที่เป็นคำสั้น ๆ ไม่ใช่ตัวเลข"""
-    text = (label or "").strip()
-    return bool(text) and len(text) <= 15 and not re.search(r"\d", text)
-
-
-def spoken_texts(questions: list[dict]) -> list[str]:
-    """ข้อความทั้งหมดของชุดนี้ที่ต้องมีไฟล์เสียง — ใช้ตอนสร้างเสียงล่วงหน้า"""
-    seen, out = set(), []
-    for q in questions:
-        texts = [q.get("speak_text") or q.get("prompt") or ""]
-        texts += [o.get("label") or "" for o in (q.get("options") or [])
-                  if _label_spoken(o.get("label"))]
-        for t in texts:
-            key = tts.clean(t)
-            if key and key not in seen and tts.speakable(t):
-                seen.add(key)
-                out.append(t)
-    return out
-
-
-# ════════════════════════════════════════════════════════
-#  เกมฝึกสังเกตและความจำ (อนุบาล) — ดูภาพแล้วจำ / อะไรหายไป
-# ════════════════════════════════════════════════════════
-# ภาพทั้งหมดวาดขึ้นเอง เก็บไว้ที่ static/img/memory/
-MEMORY_SCENES = {
-    "park":    ("ที่สวนสาธารณะ", "/static/img/memory/scene_park.webp"),
-    "kitchen": ("ในห้องครัว",    "/static/img/memory/scene_kitchen.webp"),
-}
-
-MEMORY_OBJECTS = {
-    "apple": "แอปเปิล", "banana": "กล้วย", "orange": "ส้ม", "grape": "องุ่น",
-    "ball": "ลูกบอล", "star": "ดาว", "cup": "ถ้วย", "pencil": "ดินสอ",
-    "flower": "ดอกไม้", "car": "รถ", "fish": "ปลา", "butterfly": "ผีเสื้อ",
-    "key": "กุญแจ", "balloon": "ลูกโป่ง", "leaf": "ใบไม้", "clock": "นาฬิกา",
-    "kite": "ว่าว", "drum": "กลอง",
-}
-
-
-def memory_object_url(key: str) -> str:
-    return "/static/img/memory/obj_%s.webp" % key
-
-
-def peek_spec(raw) -> dict | None:
-    """ช่อง icon ของโจทย์ "ดูภาพแล้วจำ" — "park|18|1"
-
-    ฉาก | วินาทีที่ให้ดูภาพ | 1 = ข้อนี้เปิดภาพให้ดูก่อน, 0 = ถามต่อจากข้อที่แล้วเลย
-    """
-    parts = [p.strip() for p in str(raw or "").split("|")]
-    if not parts or parts[0] not in MEMORY_SCENES:
-        return None
-    name, src = MEMORY_SCENES[parts[0]]
-    try:
-        sec = int(parts[1]) if len(parts) > 1 and parts[1] else 15
-    except ValueError:
-        sec = 15
-    first = (parts[2] == "1") if len(parts) > 2 else True
-    return {"scene": parts[0], "name": name, "src": src,
-            "sec": max(5, min(sec, 60)), "first": first}
-
-
-def gone_spec(raw) -> dict | None:
-    """ช่อง icon ของโจทย์ "อะไรหายไป" — "apple,ball,star,cup|ball"
-
-    ของบนถาด (อย่างน้อย 3 ชิ้น ไม่ซ้ำ) | ชิ้นที่หายไป ซึ่งต้องอยู่บนถาดด้วย
-    """
-    raw = str(raw or "")
-    if "|" not in raw:
-        return None
-    left, gone = raw.split("|", 1)
-    gone = gone.strip()
-    keys, seen = [], set()
-    for k in left.split(","):
-        k = k.strip()
-        if k and k in MEMORY_OBJECTS and k not in seen:
-            seen.add(k)
-            keys.append(k)
-    if len(keys) < 3 or gone not in keys:
-        return None
-
-    def cell(k):
-        return {"key": k, "name": MEMORY_OBJECTS[k], "src": memory_object_url(k)}
-
-    return {"gone": gone,
-            "before": [cell(k) for k in keys],
-            "after": [cell(k) for k in keys if k != gone],
-            "sec": max(4, min(3 + len(keys), 12))}
-
-
-def _gone_public(raw) -> dict | None:
-    """ตัดคีย์ของชิ้นที่หายออกก่อนส่งให้เบราว์เซอร์
-
-    ถาดก่อนและถาดหลังยังต้องส่งไปทั้งคู่ เพราะเกมคือการเทียบสองถาดด้วยตาอยู่แล้ว
-    แต่การตรวจคำตอบยังทำที่เซิร์ฟเวอร์เหมือนชนิดอื่น
-    """
-    spec = gone_spec(raw)
-    if not spec:
-        return None
-    return {"before": spec["before"], "after": spec["after"], "sec": spec["sec"]}
-
-
 def public_questions(questions: list[dict]) -> list[dict]:
     """
     ตัดเฉลยออกก่อนส่งให้เบราว์เซอร์
@@ -942,18 +858,12 @@ def public_questions(questions: list[dict]) -> list[dict]:
     สำคัญมาก — ถ้าส่งเฉลยไปด้วย เด็ก (หรือผู้ปกครอง) กด View Source ก็เห็นคำตอบหมด
     การตรวจคำตอบจึงทำที่เซิร์ฟเวอร์ทีละข้อแทน
     """
-    voice = tts.current_voice()
     out = []
     for q in questions:
-        said = q.get("speak_text") or q.get("prompt") or ""
         out.append({
             "id": q["id"],
             "kind": q.get("kind") or "choice",
             "prompt": q.get("prompt") or "",
-            # ที่อยู่ไฟล์เสียงบน CDN คำนวณจากข้อความได้เลย ไม่ต้องถาม Storage ก่อน
-            # (ถามทีละข้อ 30 ข้อจะช้ามาก) ถ้าไฟล์ยังไม่มี หน้าเว็บจะเจอ 404
-            # แล้วถอยไปเรียก /tts ให้สร้างให้เอง
-            "audio": tts.public_url(said, voice),
             "image_url": q.get("image_url"),
             "hint": q.get("hint"),
             # ถ้าไม่ได้ตั้งไว้ ให้หน้าเว็บอ่านจากโจทย์ตามปกติ
@@ -968,15 +878,9 @@ def public_questions(questions: list[dict]) -> list[dict]:
             "math": _math_public(q.get("icon")) if q.get("kind") == "mathrun" else None,
             # โจทย์นับรูปทรง — ส่งภาพ SVG กับชื่อเป้าหมายไป ไม่ได้ส่งจำนวนที่ถูก
             "find": shapes.scene_of(q.get("icon")) if q.get("kind") == "findshape" else None,
+            # แผนภาพจำนวน — ช่องที่ต้องตอบส่งไปเป็น null เฉลยอยู่ที่เซิร์ฟเวอร์เท่านั้น
+            "bond": _bond_public(q.get("icon")) if q.get("kind") == "numbond" else None,
             "dots": bool(q.get("icon_count")) if q.get("kind") == "compare" else False,
-            # โจทย์ต่อรูปแบบ — แถวรูปที่มีช่อง ? (ไม่มีเฉลยอยู่ในนี้)
-            "seq": pattern_seq(q.get("icon")) if q.get("kind") == "pattern" else None,
-            # โจทย์อ่านเบาะแส — รายการเบาะแสให้เด็กอ่าน (คำตอบยังตรวจที่เซิร์ฟเวอร์)
-            "clues": logic_clues(q.get("icon")) if q.get("kind") == "logic" else None,
-            # โจทย์ดูภาพแล้วจำ — ภาพฉากกับเวลาที่ให้ดู
-            "peek": peek_spec(q.get("icon")) if q.get("kind") == "scenepeek" else None,
-            # โจทย์อะไรหายไป — ถาดก่อนและถาดหลัง (ตัดคีย์ชิ้นที่หายออกแล้ว)
-            "tray": _gone_public(q.get("icon")) if q.get("kind") == "whatsgone" else None,
             "model": (MODELS.get(q.get("icon") or "") or None)
                      if q.get("kind") == "model3d" else None,
             "model_url": model_url(q["icon"]) if q.get("kind") == "model3d"
@@ -984,12 +888,8 @@ def public_questions(questions: list[dict]) -> list[dict]:
             "model_ios": model_url(q["icon"], True) if q.get("kind") == "model3d"
                          and q.get("icon") in MODELS else None,
             "icon_count": q.get("icon_count") if q.get("kind") == "count" else None,
-            # ตัวเลือกที่เป็นคำสั้น ๆ จะถูกอ่านออกเสียงตอนเด็กแตะ จึงเตรียมเสียงไว้ด้วย
-            # ตัวเลือกที่เป็นตัวเลขหรือยาวเกินไปไม่ต้องอ่าน จะได้ไม่เปลืองโควตา
             "options": [
-                {"id": o["id"], "label": o["label"], "image_url": o.get("image_url"),
-                 "audio": tts.public_url(o["label"], voice)
-                          if _label_spoken(o.get("label")) else ""}
+                {"id": o["id"], "label": o["label"], "image_url": o.get("image_url")}
                 for o in (q.get("options") or [])
             ],
             # ข้อจับคู่ต้องส่งตัวเลือกฝั่งขวาไปให้เลือก (สลับลำดับแล้ว)
