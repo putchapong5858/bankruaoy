@@ -53,6 +53,10 @@ def _url(table: str) -> str:
     return f"{config.SUPABASE_URL.rstrip('/')}/rest/v1/{table}"
 
 
+# เพดานแถวต่อ 1 คำขอของ Supabase (ค่า max-rows เริ่มต้นของโปรเจกต์)
+MAX_ROWS = 1000
+
+
 def _check(res: httpx.Response) -> Any:
     if res.status_code >= 400:
         raise SupabaseError(f"Supabase {res.status_code}: {res.text[:300]}")
@@ -76,10 +80,30 @@ def select(
     params.update(filters)
     if order:
         params["order"] = order
-    if limit:
-        params["limit"] = str(limit)
 
-    return _check(_conn().get(_url(table), headers=_headers(), params=params)) or []
+    # Supabase ส่งกลับได้ไม่เกิน MAX_ROWS แถวต่อครั้ง ต่อให้ขอ limit มากกว่านั้นก็ตาม
+    # (เคยทำให้จำนวนข้อของชุดใหม่ ๆ ขึ้น 0 ตอนคำถามทั้งระบบเกิน 1,000 ข้อ)
+    # ขอเกินเพดานเมื่อไหร่ ให้ดึงทีละหน้าจนครบ
+    if not limit or limit <= MAX_ROWS:
+        if limit:
+            params["limit"] = str(limit)
+        return _check(_conn().get(_url(table), headers=_headers(), params=params)) or []
+
+    # เรียงด้วย id ต่อท้ายเสมอ ไม่งั้นแถวอาจซ้ำ/หล่นระหว่างหน้า
+    keys = [k.split(".")[0] for k in (order or "").split(",") if k]
+    if "id" not in keys:
+        params["order"] = f"{order},id.asc" if order else "id.asc"
+
+    out: list[dict] = []
+    while len(out) < limit:
+        want = min(MAX_ROWS, limit - len(out))
+        params["limit"] = str(want)
+        params["offset"] = str(len(out))
+        page = _check(_conn().get(_url(table), headers=_headers(), params=params)) or []
+        out.extend(page)
+        if len(page) < want:
+            break
+    return out
 
 
 def select_one(table: str, columns: str = "*", **filters: str) -> dict | None:
