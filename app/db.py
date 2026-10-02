@@ -254,10 +254,13 @@ def get_student_detail(student: dict) -> dict:
                                   order="date.desc", limit=40),
         scores=lambda: select("scores", student_id=f"eq.{sid}",
                               order="date.desc", limit=40),
-        personal=lambda: select("homework", student_id=f"eq.{sid}",
-                                order="due_date.desc", limit=40),
-        class_wide=lambda: select("homework", student_id="is.null",
-                                  level=f"eq.{level}", order="due_date.desc", limit=40),
+        # การบ้านของทั้งระดับชั้นเป็นคลังใบงานที่สะสมเพิ่มเรื่อย ๆ ไม่ใช่รายการล่าสุด
+        # ถ้าตั้งเพดานต่ำ ใบงานเก่าจะหายจากหน้าของเด็กโดยไม่มีใครรู้
+        # กรอง active ให้เหมือนหน้าแอดมิน ไม่งั้นการบ้านที่ครูปิดไว้ยังโผล่ที่หน้าเด็ก
+        personal=lambda: select("homework", student_id=f"eq.{sid}", active="eq.true",
+                                order="due_date.desc", limit=200),
+        class_wide=lambda: select("homework", student_id="is.null", active="eq.true",
+                                  level=f"eq.{level}", order="due_date.desc", limit=200),
         subs_rows=lambda: select("homework_submissions",
                                  student_id=f"eq.{sid}", limit=200),
         avgs=exam_averages,
@@ -270,11 +273,13 @@ def get_student_detail(student: dict) -> dict:
     personal = got["personal"]
     class_wide = got["class_wide"]
 
+    # เดิมตัดเหลือ 40 รายการ พอใบงานของระดับชั้นหนึ่งเกิน 40 ใบ
+    # ใบเก่าจะหายจากหน้าของเด็กทั้งที่ครูยังเปิดไว้
     homework = sorted(
         personal + class_wide,
         key=lambda h: (h.get("due_date") or ""),
         reverse=True,
-    )[:40]
+    )[:200]
 
     # สถานะการส่งการบ้านของเด็กคนนี้ (ครูเป็นคนกด)
     subs = {str(s["homework_id"]): s for s in got["subs_rows"]}
@@ -719,8 +724,12 @@ def attendance_summary(student_id: str) -> dict:
 #  2) การบ้าน + การตรวจส่ง
 # ════════════════════════════════════════════════════════
 
-def list_homework(limit: int = 30) -> list[dict]:
-    """การบ้านทั้งหมด พร้อมจำนวนคนที่ส่งแล้ว"""
+def list_homework(limit: int = 500) -> list[dict]:
+    """การบ้านทั้งหมด พร้อมจำนวนคนที่ส่งแล้ว
+
+    เพดานเดิมคือ 30 รายการ แต่การบ้านเป็นคลังใบงานที่มีแต่จะเพิ่มขึ้นเรื่อย ๆ
+    พอเกิน 30 รายการแล้ว รายการเก่าจะหายจากหน้าแอดมินเงียบ ๆ ครูจะแก้หรือลบไม่ได้
+    """
     rows = select("homework", active="eq.true", order="assigned_date.desc,id.desc", limit=limit)
     if not rows:
         return []

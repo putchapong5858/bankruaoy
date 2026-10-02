@@ -511,7 +511,8 @@ def admin_voice(request: Request, saved: str = "", err: str = ""):
     user, blocked = require_admin(request)
     if blocked:
         return blocked
-    quizzes = [q for q in quiz.list_quizzes(200) if q.get("read_aloud")]
+    # ไม่กำหนดเพดานเอง ใช้ค่าปกติของ list_quizzes ไม่งั้นชุดเก่าจะหายจากหน้าสร้างเสียง
+    quizzes = [q for q in quiz.list_quizzes() if q.get("read_aloud")]
     return page(request, "admin_voice.html",
                 user=user, voices=tts.VOICES, current=tts.current_voice(True),
                 ready=tts.is_ready(), samples=tts.SAMPLES,
