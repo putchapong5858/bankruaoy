@@ -1216,6 +1216,10 @@ def admin_quiz_edit(request: Request, quiz_id: str, saved: str = "", err: str = 
                 icon_sets=quiz.ICON_SETS,
                 models=quiz.MODELS,
                 model_groups=quiz.MODEL_GROUPS,
+                # ฟอร์มข้อสอบชนิด "อะไรหายไป" วนลูป memory_objects.items()
+                # ถ้าไม่ส่งมา Jinja จะ throw UndefinedError ทั้งหน้า
+                # (หน้าจัดการข้อขึ้น Internal Server Error ทุกชุด)
+                memory_objects=quiz.MEMORY_OBJECTS,
                 ai_ready=gemini.is_ready(),
                 saved=saved, err=err)
 
