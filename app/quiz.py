@@ -763,6 +763,28 @@ def by_subject(rows: list[dict]) -> list[dict]:
     return out
 
 
+def homework_tree(rows: list[dict]) -> list[dict]:
+    """
+    จัดการบ้านเป็น 2 ชั้น: ระดับชั้น → รายวิชา (ใช้ในหน้าแอดมิน)
+
+    คืน [{level, total, subjects:[{name, icon, color, quizzes}]}]
+    เฉพาะชั้นและวิชาที่มีการบ้านจริง — ชั้น/วิชาที่ว่างจะถูกซ่อน
+    (คีย์ "quizzes" ใช้ชื่อเดิมของ by_subject เพื่อไม่ต้องเขียนตัวจัดกลุ่มซ้ำ)
+    """
+    by_level: dict[str, list] = {}
+    for h in rows:
+        lv = (h.get("group_level") or h.get("level") or "").strip()
+        if lv not in config.HOMEWORK_LEVELS:
+            lv = "อื่น ๆ"
+        by_level.setdefault(lv, []).append(h)
+    out = []
+    for lv in config.HOMEWORK_LEVELS + ["อื่น ๆ"]:
+        got = by_level.get(lv)
+        if got:
+            out.append({"level": lv, "total": len(got), "subjects": by_subject(got)})
+    return out
+
+
 def quizzes_for_student(student: dict, limit: int = 200) -> list[dict]:
     """แบบฝึกหัดที่เผยแพร่แล้วและตรงระดับชั้นของเด็ก พร้อมผลที่เคยทำ"""
     level = (student.get("level") or "").strip()

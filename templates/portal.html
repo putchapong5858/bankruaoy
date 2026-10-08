@@ -261,16 +261,34 @@
   <!-- การบ้าน -->
   <section class="panel">
     <h2><i>📚</i> การบ้าน</h2>
-    {% if s.homework %}
+    {% if homework_subjects %}
+    {# แยกกล่องตามรายวิชา แต่ละวิชามีแถบสีของตัวเอง ผู้ปกครองจะไม่สับสนว่าใบไหนวิชาอะไร #}
+    {% if homework_subjects | length > 1 %}
+    <div class="subjnav">
+      {% for g in homework_subjects %}
+      <a class="subjchip" href="#hwsubj-{{ loop.index }}" style="--c:{{ g.color }}">
+        <i>{{ g.icon }}</i> {{ g.name }} <b>{{ g.quizzes | length }}</b>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% for g in homework_subjects %}
+    <div class="subjbox hwbox" id="hwsubj-{{ loop.index }}" style="--c:{{ g.color }}">
+      <div class="subjhead">
+        <span class="subjicon">{{ g.icon }}</span>
+        <b>{{ g.name }}</b>
+        <span class="subjn">{{ g.quizzes | length }} ชิ้น</span>
+      </div>
     <div class="rows">
-      {% for h in s.homework %}
+      {% for h in g.quizzes %}
       <div class="row">
-        <div class="date">{% if h.due_date %}ส่ง {{ h.due_date }}{% else %}—{% endif %}</div>
+        {% if h.due_date %}<div class="date">ส่ง {{ h.due_date }}</div>{% endif %}
         <div class="body">
           <b>{{ h.title }}</b>
           <span>
-            {{ h.subject or '' }}{% if h.detail %} · {{ h.detail }}{% endif %}
-            {%- if h.file_url %} · <a href="{{ h.file_url }}" target="_blank" rel="noopener" class="lnk">📎 เปิดใบงาน</a>{% endif %}
+            {%- if h.detail %}{{ h.detail }}{% endif %}
+            {%- if h.file_url %}{% if h.detail %} · {% endif %}<a href="{{ h.file_url }}" target="_blank" rel="noopener" class="lnk">📎 เปิดใบงาน</a>{% endif %}
             {%- if h.sub_comment %}<br><i>ครู: {{ h.sub_comment }}</i>{% endif %}
           </span>
         </div>
@@ -278,6 +296,8 @@
       </div>
       {% endfor %}
     </div>
+    </div>
+    {% endfor %}
     {% else %}<p class="empty">ยังไม่มีการบ้านที่ต้องส่ง</p>{% endif %}
   </section>
 
@@ -387,6 +407,7 @@
 .subjn{margin-left:auto;font-size:.82rem;font-weight:700;color:#fff;
        background:var(--c);border-radius:999px;padding:.12rem .6rem}
 .subjbox .row{background:#fff}
+.hwbox .row{border-left:5px solid var(--c)}
 @media(max-width:600px){
   .subjbox{padding:.85rem .7rem;border-radius:16px}
   .subjchip{padding:.35rem .7rem;font-size:.84rem}

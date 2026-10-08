@@ -277,7 +277,8 @@ def get_student_detail(student: dict) -> dict:
     # ใบเก่าจะหายจากหน้าของเด็กทั้งที่ครูยังเปิดไว้
     homework = sorted(
         personal + class_wide,
-        key=lambda h: (h.get("due_date") or ""),
+        # ใบงานส่วนใหญ่ไม่ได้ตั้งกำหนดส่ง — เรียงตามวันที่สั่ง ใบใหม่ขึ้นก่อน
+        key=lambda h: (h.get("assigned_date") or "", int(h.get("id") or 0)),
         reverse=True,
     )[:200]
 
@@ -742,8 +743,11 @@ def list_homework(limit: int = 500) -> list[dict]:
             stu = students.get(h["student_id"]) or {}
             h["target"] = f"รายคน · {stu.get('nickname', '-')}"
             h["total"] = 1
+            # การบ้านรายคนไม่มีระดับชั้นในแถว — ใช้ชั้นของเด็กคนนั้นจัดกลุ่มแทน
+            h["group_level"] = stu.get("level") or ""
         else:
             h["target"] = f"ทั้งชั้น · {h.get('level') or 'ทุกระดับ'}"
+            h["group_level"] = h.get("level") or ""
             h["total"] = sum(1 for s in students.values()
                              if s.get("active") and s.get("level") == h.get("level"))
     return rows

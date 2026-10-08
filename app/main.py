@@ -381,6 +381,8 @@ def portal(request: Request, child: int = 0):
         enrolled=enrolled,
         quizzes=got["quizzes"],
         quiz_subjects=quiz.by_subject(got["quizzes"]),
+        # การบ้านของเด็กคนนี้ แยกกล่องตามรายวิชา (ชั้นเดียวอยู่แล้ว ไม่ต้องแยกชั้น)
+        homework_subjects=quiz.by_subject((got["detail"] or {}).get("homework") or []),
         quiz_history=got["quiz_history"],
         quizerr=request.query_params.get("quizerr", ""),
     )
@@ -483,6 +485,8 @@ def admin(request: Request, saved: str = "", err: str = ""):
         all_courses=got["all_courses"],
         sessions=got["sessions"],
         homeworks=got["homeworks"],
+        homework_tree=quiz.homework_tree(got["homeworks"]),
+        homework_levels=config.HOMEWORK_LEVELS,
         exams=got["exams"],
         quizzes=got["quizzes"],
         quiz_subjects=quiz.by_subject(got["quizzes"]),

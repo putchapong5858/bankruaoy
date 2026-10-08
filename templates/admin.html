@@ -429,7 +429,7 @@
       {% if homeworks %}<span class="badge">{{ homeworks | length }}</span>{% endif %}
     </h2>
 
-    <details class="newbox" {{ 'open' if not homeworks }}>
+    <details class="newbox" id="hwNew" {{ 'open' if not homeworks }}>
       <summary>＋ สั่งการบ้านใหม่</summary>
       <form method="post" action="/admin/homework" enctype="multipart/form-data" class="upform">
         <div class="grid4">
@@ -440,8 +440,8 @@
             </select>
           </label>
           <label id="hwLevel">ระดับชั้น
-            <select name="level">
-              {% for lv in levels %}<option>{{ lv }}</option>{% endfor %}
+            <select name="level" id="hwLevelSel">
+              {% for lv in homework_levels %}<option>{{ lv }}</option>{% endfor %}
             </select>
           </label>
           <label id="hwStudent" style="display:none">นักเรียน
@@ -450,7 +450,11 @@
             </select>
           </label>
           <label>กำหนดส่ง<input type="date" name="due_date"></label>
-          <label>วิชา<input type="text" name="subject" placeholder="คณิตศาสตร์"></label>
+          <label>วิชา
+            <select name="subject" id="hwSubject">
+              {% for sj in subjects %}<option>{{ sj.name }}</option>{% endfor %}
+            </select>
+          </label>
         </div>
         <label>เรื่อง <b class="req">*</b><input type="text" name="title" required placeholder="แบบฝึกหัดการคูณ ชุดที่ 3"></label>
         <label>รายละเอียดเพิ่มเติม<input type="text" name="detail" placeholder="ทำข้อ 1–10 ในสมุด"></label>
@@ -468,28 +472,61 @@
       </form>
     </details>
 
-    {% for h in homeworks %}
-    <div class="row rowcard">
-      <div class="body">
-        <b>{{ h.title }}{% if h.subject %} · {{ h.subject }}{% endif %}</b>
-        <span>
-          {{ h.target }} · สั่ง {{ h.assigned_date }}
-          {% if h.due_date %}· กำหนดส่ง {{ h.due_date }}{% endif %}
-          {% if h.total %}
-            · <span class="tag {{ 'green' if h.submitted >= h.total else 'amber' }}">ส่งแล้ว {{ h.submitted }}/{{ h.total }}</span>
-          {% endif %}
-          {% if h.file_url %}· <a href="{{ h.file_url }}" target="_blank" rel="noopener">📎 ใบงาน</a>{% endif %}
-        </span>
-      </div>
-      <a class="btn btn-primary btn-sm" href="/admin/homework/{{ h.id }}">ตรวจการส่ง</a>
-      <form method="post" action="/admin/homework/{{ h.id }}/delete" class="inline"
-            onsubmit="return confirm('ลบการบ้าน “{{ h.title }}” ?')">
-        <button class="btn btn-ghost btn-sm btn-del">ลบ</button>
-      </form>
+    {# ── แยก 2 ชั้น: ระดับชั้น → รายวิชา · ชั้น/วิชาที่ยังไม่มีการบ้านจะไม่แสดง ── #}
+    {% if homework_tree %}
+    <div class="hwlv" role="tablist" aria-label="ระดับชั้น">
+      {% for g in homework_tree %}
+      <button type="button" class="hwlvbtn" data-hwlv="{{ g.level }}">
+        {{ g.level }} <span class="n">{{ g.total }}</span>
+      </button>
+      {% endfor %}
     </div>
+
+    {% for g in homework_tree %}
+    <div class="hwlvbox" data-hwlvbox="{{ g.level }}" hidden>
+      <div class="hwsj" role="tablist" aria-label="รายวิชา">
+        {% for sj in g.subjects %}
+        <button type="button" class="hwsjbtn" data-hwsj="{{ sj.name }}" style="--c:{{ sj.color }}">
+          <i>{{ sj.icon }}</i> {{ sj.name }} <b>{{ sj.quizzes | length }}</b>
+        </button>
+        {% endfor %}
+      </div>
+
+      {% for sj in g.subjects %}
+      <div class="hwsjbox" data-hwsjbox="{{ sj.name }}" style="--c:{{ sj.color }}" hidden>
+        <div class="subjbar">
+          <span>{{ sj.icon }}</span> <b>{{ g.level }} · {{ sj.name }}</b>
+          <span class="n">{{ sj.quizzes | length }} ชิ้น</span>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm hwadd"
+                data-level="{{ g.level }}" data-subject="{{ sj.name }}">＋ สั่งการบ้านในหมวดนี้</button>
+        {% for h in sj.quizzes %}
+        <div class="row rowcard">
+          <div class="body">
+            <b>{{ h.title }}</b>
+            <span>
+              {{ h.target }} · สั่ง {{ h.assigned_date }}
+              {% if h.due_date %}· กำหนดส่ง {{ h.due_date }}{% endif %}
+              {% if h.total %}
+                · <span class="tag {{ 'green' if h.submitted >= h.total else 'amber' }}">ส่งแล้ว {{ h.submitted }}/{{ h.total }}</span>
+              {% endif %}
+              {% if h.file_url %}· <a href="{{ h.file_url }}" target="_blank" rel="noopener">📎 ใบงาน</a>{% endif %}
+            </span>
+          </div>
+          <a class="btn btn-primary btn-sm" href="/admin/homework/{{ h.id }}">ตรวจการส่ง</a>
+          <form method="post" action="/admin/homework/{{ h.id }}/delete" class="inline"
+                onsubmit="return confirm('ลบการบ้าน “{{ h.title }}” ?')">
+            <button class="btn btn-ghost btn-sm btn-del">ลบ</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
     {% else %}
     <p class="empty">ยังไม่มีการบ้าน</p>
-    {% endfor %}
+    {% endif %}
   </section>
 
   <!-- ══════ เอกสารประกอบการเรียน ══════ -->
@@ -746,6 +783,24 @@
 .subjbar .n{margin-left:auto;font-size:.8rem;font-weight:700;color:#fff;
             background:var(--c);border-radius:999px;padding:.1rem .55rem}
 
+/* ── การบ้าน: แถบระดับชั้น → แถบรายวิชา ── */
+.hwlv{display:flex;flex-wrap:wrap;gap:.45rem;margin:.2rem 0 .8rem}
+.hwlvbtn{border:2px solid var(--sky-100);background:#fff;border-radius:999px;
+         padding:.45rem 1rem;font:inherit;font-weight:700;color:var(--ink-soft);cursor:pointer}
+.hwlvbtn .n{font-size:.78rem;color:var(--ink-soft);margin-left:.2rem}
+.hwlvbtn.on{background:#E3F3FD;border-color:#26A5E0;color:#0D6A99}
+.hwlvbtn.on .n{color:#0D6A99}
+.hwsj{display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:.4rem}
+.hwsjbtn{display:inline-flex;align-items:center;gap:.35rem;border:2px solid var(--c);
+         background:#fff;color:var(--c);border-radius:999px;padding:.38rem .85rem;
+         font:inherit;font-size:.9rem;font-weight:700;cursor:pointer}
+.hwsjbtn i{font-style:normal}
+.hwsjbtn b{background:var(--c);color:#fff;border-radius:999px;padding:0 .45rem;font-size:.76rem}
+.hwsjbtn.on{background:color-mix(in srgb, var(--c) 14%, #fff)}
+.hwsjbox .rowcard{border-left:5px solid var(--c)}
+.hwadd{margin:0 0 .6rem}
+.hwlvbox[hidden],.hwsjbox[hidden]{display:none}
+
 .aud{display:inline-block;margin-top:.35rem;font-size:.82rem;font-weight:600;
       border-radius:999px;padding:.15rem .6rem}
 .aud.ok{background:#E4F7EE;color:#1F8A62}
@@ -797,6 +852,52 @@ document.querySelectorAll('input[name="is_hourly"]').forEach(function (box) {
   box.addEventListener('change', sync);
   sync();
 });
+</script>
+
+<script>
+/* การบ้าน: เลือกชั้น → เลือกวิชา · จำตัวเลือกล่าสุดไว้ หลังบันทึก/ลบจะกลับมาที่เดิม */
+(function () {
+  var lvBtns = document.querySelectorAll('[data-hwlv]');
+  if (!lvBtns.length) return;
+  function get(k){ try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+  function put(k,v){ try { localStorage.setItem(k, v); } catch (e) {} }
+  function showSubject(box, name) {
+    var btns = box.querySelectorAll('[data-hwsj]');
+    var ok = Array.prototype.some.call(btns, function (b) { return b.dataset.hwsj === name; });
+    if (!ok) name = btns[0].dataset.hwsj;
+    btns.forEach(function (b) { b.classList.toggle('on', b.dataset.hwsj === name); });
+    box.querySelectorAll('[data-hwsjbox]').forEach(function (d) { d.hidden = d.dataset.hwsjbox !== name; });
+    put('hwSubj', name);
+  }
+  function showLevel(name) {
+    var ok = Array.prototype.some.call(lvBtns, function (b) { return b.dataset.hwlv === name; });
+    if (!ok) name = lvBtns[0].dataset.hwlv;
+    lvBtns.forEach(function (b) { b.classList.toggle('on', b.dataset.hwlv === name); });
+    document.querySelectorAll('[data-hwlvbox]').forEach(function (d) {
+      d.hidden = d.dataset.hwlvbox !== name;
+      if (!d.hidden) showSubject(d, get('hwSubj'));
+    });
+    put('hwLevel', name);
+  }
+  lvBtns.forEach(function (b) { b.addEventListener('click', function () { showLevel(b.dataset.hwlv); }); });
+  document.querySelectorAll('[data-hwsj]').forEach(function (b) {
+    b.addEventListener('click', function () { showSubject(b.closest('[data-hwlvbox]'), b.dataset.hwsj); });
+  });
+  /* ปุ่ม "สั่งการบ้านในหมวดนี้" — เปิดฟอร์มแล้วเลือกชั้น+วิชาให้เลย */
+  document.querySelectorAll('.hwadd').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var box = document.getElementById('hwNew');
+      var t = document.getElementById('hwTarget');
+      if (t && t.value !== 'level') { t.value = 'level'; t.dispatchEvent(new Event('change')); }
+      var lv = document.getElementById('hwLevelSel'), sj = document.getElementById('hwSubject');
+      if (lv) lv.value = b.dataset.level;
+      if (sj) sj.value = b.dataset.subject;
+      box.open = true;
+      box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+  showLevel(get('hwLevel'));
+})();
 </script>
 
 <script>
