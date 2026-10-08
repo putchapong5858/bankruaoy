@@ -19,7 +19,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import (config, content, db, gemini, line_auth, line_push, quiz,
-               quiz_import, tts)
+               quiz_import, scenes, tts)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -1127,6 +1127,10 @@ async def _question_payload(request: Request, current_image: str = "") -> dict:
             (form.get("find_color") or "blue").strip(),
             (form.get("find_level") or "easy").strip(),
         )
+    elif kind == "tapscene":
+        # เก็บเป็น "bedroom|toothbrush" = ฉาก | สิ่งที่ให้เด็กแตะหา
+        # ดรอปดาวน์เดียวส่งมาทั้งคู่เลย ครูจึงเลือกผิดคู่กันไม่ได้
+        data["icon"] = (form.get("tap_pick") or "").strip()
     elif kind == "mathrun":
         # เก็บเป็น "4+5|20|1" = โจทย์ | วินาทีคิดเร็ว | โชว์จุดช่วยนับ
         data["icon"] = "%s|%s|%s" % (
@@ -1224,6 +1228,9 @@ def admin_quiz_edit(request: Request, quiz_id: str, saved: str = "", err: str = 
                 # ถ้าไม่ส่งมา Jinja จะ throw UndefinedError ทั้งหน้า
                 # (หน้าจัดการข้อขึ้น Internal Server Error ทุกชุด)
                 memory_objects=quiz.MEMORY_OBJECTS,
+                # ฟอร์มข้อสอบชนิด "แตะหาในภาพ" วนลูปรายการฉาก — ไม่ส่งมาแล้ว
+                # ดรอปดาวน์จะว่าง ครูสร้างข้อชนิดนี้ไม่ได้
+                tap_scenes=scenes.choices(),
                 ai_ready=gemini.is_ready(),
                 saved=saved, err=err)
 

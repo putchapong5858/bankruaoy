@@ -2,7 +2,7 @@
    ฟอร์มเพิ่ม/แก้ไขคำถาม 1 ข้อ — ใช้ร่วมกันทั้งตอนเพิ่มและตอนแก้
    q = None คือเพิ่มข้อใหม่
    ───────────────────────────────────────────────────────── #}
-{% macro question_form(quiz, q, icon_sets={}, models={}, model_groups=[], memory_objects={}) %}
+{% macro question_form(quiz, q, icon_sets={}, models={}, model_groups=[], memory_objects={}, tap_scenes=[]) %}
 <style>
 .gonegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:.4rem}
 .goneitem{display:flex;flex-direction:column;align-items:center;gap:.15rem;
@@ -32,6 +32,7 @@
         <option value="findshape" {{ 'selected' if kind == 'findshape' }}>นับรูปทรงในภาพรวม (เชาวน์ปัญญา)</option>
         <option value="scenepeek" {{ 'selected' if kind == 'scenepeek' }}>ดูภาพแล้วจำ (สังเกตและความจำ)</option>
         <option value="whatsgone" {{ 'selected' if kind == 'whatsgone' }}>อะไรหายไปจากถาด (สังเกตและความจำ)</option>
+        <option value="tapscene"  {{ 'selected' if kind == 'tapscene' }}>แตะหาในภาพ / ชี้อวัยวะ (คำศัพท์)</option>
       </select>
     </label>
     <label>คะแนนของข้อนี้
@@ -238,6 +239,33 @@
     <p class="muted" style="font-size:.85rem;margin:.4rem 0 0">
       แนะนำ — อนุบาล 3 ใช้ 20 วินาที + ติ๊กจุดช่วยนับ ·
       ป.1 ใช้ 12 วินาที ไม่ต้องติ๊กจุด
+    </p>
+  </div>
+
+  {# ───── แตะหาในภาพ / ชี้อวัยวะ ───── #}
+  <div class="kindbox" data-for="tapscene">
+    <p class="muted" style="font-size:.88rem;margin:.3rem 0">
+      ระบบวาดฉากให้เอง แล้วให้เด็ก <b>แตะของในภาพ</b> ตรง ๆ ไม่ต้องลาก
+      (เด็กอนุบาลลากบนแท็บเล็ตมักพลาด แล้วจะคิดว่าตัวเองตอบผิดทั้งที่รู้คำตอบ)<br>
+      ตัวเลือกระบบสร้างให้จากของทุกชิ้นในฉาก ครูไม่ต้องกรอกเอง ·
+      เว้นโจทย์ว่างไว้ได้ ระบบจะเขียนโจทย์ให้อัตโนมัติ
+    </p>
+    <label style="display:block;max-width:420px">ฉาก และสิ่งที่ให้เด็กหา
+      <select name="tap_pick">
+        {% for key, name, items in tap_scenes %}
+        <optgroup label="{{ name }}">
+          {% for ikey, ith in items %}
+          <option value="{{ key }}|{{ ikey }}"
+            {{ 'selected' if q and q.kind == 'tapscene' and q.icon == key ~ '|' ~ ikey }}>
+            {{ name }} → {{ ith }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+    </label>
+    <p class="muted" style="font-size:.85rem;margin:.4rem 0 0">
+      ฉากเดียวกันออกได้หลายข้อ แค่เปลี่ยนสิ่งที่ให้หา · ตัวหนู (ชี้อวัยวะ)
+      ของที่มีเป็นคู่อย่าง ตา หู มือ เท้า แตะข้างไหนก็ถูกเหมือนกัน
     </p>
   </div>
 

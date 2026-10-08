@@ -20,7 +20,7 @@ import re
 import unicodedata
 from datetime import datetime, timezone
 
-from . import config, shapes, tts
+from . import config, scenes, shapes, tts
 from .db import (SupabaseError, delete, gather, insert, select,
                  select_one, update)
 
@@ -39,12 +39,13 @@ KINDS = {
     "logic":     "อ่านเบาะแสแล้วหาคำตอบ (เชาวน์ปัญญา)",
     "scenepeek": "ดูภาพแล้วจำ (สังเกตและความจำ)",
     "whatsgone": "อะไรหายไปจากถาด (สังเกตและความจำ)",
+    "tapscene":  "แตะหาในภาพ / ชี้อวัยวะ (คำศัพท์)",
 }
 
 # รูปแบบที่ตรวจคำตอบเหมือนกัน คือเลือกตัวเลือกที่ถูก 1 ตัว
 PICK_KINDS = ("choice", "truefalse", "count", "model3d", "compare",
               "mathrun", "findshape", "pattern", "logic",
-              "scenepeek", "whatsgone")
+              "scenepeek", "whatsgone", "tapscene")
 
 # อีโมจิยอดนิยมสำหรับโจทย์นับจำนวน — ครูกดเลือกได้เลยไม่ต้องพิมพ์
 ICON_SETS = {
@@ -256,6 +257,9 @@ def list_questions(quiz_id: str | int, with_answers: bool = True) -> list[dict]:
         # ภาพรูปทรงสร้างสด ๆ จาก seed — ทั้งหน้าครูและหน้าเด็กใช้ตัวสร้างเดียวกัน
         if q.get("kind") == "findshape":
             q["find"] = shapes.scene_of(q.get("icon"))
+        # ฉากแตะหาของ — ภาพวาดสดจากชื่อฉาก ใช้ตัวสร้างเดียวกันทั้งหน้าครูและหน้าเด็ก
+        if q.get("kind") == "tapscene":
+            q["tap"] = scenes.payload(q.get("icon"), q["options"])
         if not with_answers:
             for o in q["options"]:
                 o.pop("is_correct", None)
@@ -301,7 +305,7 @@ def save_question(quiz_id: str | int, data: dict,
     image_url = _txt(data.get("image_url"), 500)
 
     # โจทย์ที่เป็นรูปล้วน (เช่น ถ่ายจากหนังสือ) ไม่ต้องมีข้อความก็ได้
-    if not prompt and not image_url and kind != "whatsgone":
+    if not prompt and not image_url and kind not in ("whatsgone", "tapscene"):
         raise SupabaseError("กรุณากรอกโจทย์ หรือแนบรูปโจทย์อย่างน้อยหนึ่งอย่าง")
 
     try:
@@ -354,6 +358,21 @@ def save_question(quiz_id: str | int, data: dict,
             fields["prompt"] = "ในภาพนี้มี%sกี่รูป?" % shapes.label(sp["shape"], sp["color"])
         if not fields.get("hint"):
             fields["hint"] = "แตะรูปทีละรูปเพื่อทำเครื่องหมาย จะได้ไม่นับซ้ำนะ"
+    elif kind == "tapscene":
+        # โจทย์แตะหาของในภาพ — ระบบวาดฉากและสร้างตัวเลือกให้เอง
+        # ครูแค่เลือกว่า "ฉากไหน" กับ "ให้หาอะไร"
+        sc = scenes.spec(icon)
+        if not sc:
+            raise SupabaseError(
+                'โจทย์แตะหาในภาพต้องอยู่ในรูปแบบ "ฉาก|สิ่งที่ให้หา" '
+                "เช่น bedroom|toothbrush (ฉากที่มี: %s)" % ", ".join(scenes.SCENES)
+            )
+        options = scenes.options_for(icon) or []
+        accepted = []
+        if not prompt:
+            fields["prompt"] = scenes.prompt_for(icon)
+        if not fields.get("hint"):
+            fields["hint"] = "แตะที่ภาพได้เลย ไม่ต้องลากนะ"
     elif kind == "count":
         # โจทย์นับจำนวน — ระบบสร้างตัวเลือกตัวเลขให้เอง ครูแค่บอกรูปกับจำนวน
         if not icon:
@@ -1007,6 +1026,8 @@ def public_questions(questions: list[dict]) -> list[dict]:
             "peek": peek_spec(q.get("icon")) if q.get("kind") == "scenepeek" else None,
             # โจทย์อะไรหายไป — ถาดก่อนและถาดหลัง (ตัดคีย์ชิ้นที่หายออกแล้ว)
             "tray": _gone_public(q.get("icon")) if q.get("kind") == "whatsgone" else None,
+            # โจทย์แตะหาในภาพ — ภาพฉากกับจุดแตะ (ไม่มีเครื่องหมายว่าจุดไหนถูก)
+            "tap": _tap_public(q, voice) if q.get("kind") == "tapscene" else None,
             "model": (MODELS.get(q.get("icon") or "") or None)
                      if q.get("kind") == "model3d" else None,
             "model_url": model_url(q["icon"]) if q.get("kind") == "model3d"
@@ -1030,6 +1051,19 @@ def public_questions(questions: list[dict]) -> list[dict]:
             ),
         })
     return out
+
+
+def _tap_public(q: dict, voice: str) -> dict | None:
+    """ฉากแตะหาของฉบับที่ส่งให้เบราว์เซอร์ — เติมที่อยู่ไฟล์เสียงของแต่ละชิ้นเข้าไปด้วย
+
+    เด็กแตะชิ้นไหนก็ได้ยินชื่อชิ้นนั้น (ได้ยินเหมือนกันทุกชิ้น จึงไม่ใช่การบอกเฉลย)
+    """
+    pack = scenes.payload(q.get("icon"), q.get("options") or [])
+    if not pack:
+        return None
+    for s in pack["spots"]:
+        s["audio"] = tts.public_url(s["label"], voice)
+    return pack
 
 
 def _math_public(raw: str) -> dict | None:

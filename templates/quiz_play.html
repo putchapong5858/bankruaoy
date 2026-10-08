@@ -860,6 +860,42 @@
         });
       }
 
+      /* โจทย์แตะหาในภาพ / ชี้อวัยวะ — เด็กแตะของในฉากได้เลย ไม่ต้องลาก
+         (เด็กอนุบาลกล้ามเนื้อมือยังไม่นิ่ง การลากบนแท็บเล็ตมักพลาด
+          แล้วเด็กจะคิดว่าตัวเองตอบผิด ทั้งที่รู้คำตอบอยู่แล้ว) */
+      if (q.kind === "tapscene" && q.tap) {
+        var tw = document.createElement("div");
+        tw.className = "tapwrap" + (q.tap.body ? " body" : "");
+        tw.innerHTML = q.tap.svg;
+        box.appendChild(tw);
+
+        var spotOf = {};
+        q.tap.spots.forEach(function (s) { spotOf[s.key] = s; });
+
+        Array.prototype.forEach.call(tw.querySelectorAll(".tsp"), function (g) {
+          var s = spotOf[g.getAttribute("data-key")];
+          if (!s) return;
+          g.setAttribute("role", "button");
+          g.setAttribute("tabindex", "0");
+          g.setAttribute("aria-label", s.label);
+          function choose() {
+            if (tw.classList.contains("locked")) return;
+            Array.prototype.forEach.call(tw.querySelectorAll(".tsp"),
+              function (o) { o.classList.remove("on"); });
+            g.classList.add("on");
+            picked = s.option_id;
+            // แตะชิ้นไหนก็ได้ยินชื่อชิ้นนั้น — ได้ยินเท่ากันทุกชิ้น ไม่ใช่การบอกเฉลย
+            if (READ && s.label) speak(s.label, s.audio);
+            else play("tap");
+            el("submit").disabled = false;
+          }
+          g.addEventListener("click", choose);
+          g.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(); }
+          });
+        });
+      }
+
       // โจทย์คิดเลขเร็ว — ก้อนเมฆสีน้ำ + แถบสายฟ้าโบนัสความเร็ว
       if (q.kind === "mathrun" && q.math) {
         var m = q.math;
@@ -1070,7 +1106,9 @@
       // ถ้าทุกตัวเลือกมีรูป ให้วางเป็นการ์ดรูปใหญ่ ๆ เด็กอนุบาลกดง่ายกว่าอ่านตัวหนังสือ
       var pics = !numbers && q.options.length > 0 &&
                  q.options.every(function (o) { return !!o.image_url; });
-      q.options.forEach(function (o) {
+      // ข้อแตะหาในภาพไม่ต้องมีปุ่มตัวเลือกใต้ภาพ — ตัวเลือกคือของในภาพอยู่แล้ว
+      // ถ้าโชว์ปุ่มด้วยจะกลายเป็นรายชื่อของทั้งหมด เด็กเดาได้โดยไม่ต้องดูภาพ
+      (q.kind === "tapscene" ? [] : q.options).forEach(function (o) {
         var b = document.createElement("button");
         b.type = "button";
         b.className = numbers ? "opt num"
@@ -1203,11 +1241,40 @@
     return true;
   }
 
+  // ── ติดเครื่องหมายบนภาพฉาก แล้วล็อกไม่ให้แตะต่อ ──
+  function markTap(ok, answerLabel) {
+    var tw = document.querySelector("#answers .tapwrap");
+    if (!tw) return false;
+    tw.classList.add("locked");
+
+    function stamp(g, cls, sym) {
+      g.classList.add(cls);
+      var t = g.querySelector(".ts-mtxt");
+      if (t) t.textContent = sym;
+    }
+    var on = tw.querySelector(".tsp.on");
+    if (on) stamp(on, ok ? "right" : "wrong", ok ? "✓" : "✗");
+
+    // ตอบผิด — ชี้ให้เห็นว่าของที่ถูกอยู่ตรงไหน เด็กจะได้จำตำแหน่งได้
+    if (!ok && answerLabel) {
+      var want = null;
+      ((QS[i].tap && QS[i].tap.spots) || []).forEach(function (s) {
+        if (s.label === answerLabel) want = s.key;
+      });
+      if (want) {
+        var g = tw.querySelector('.tsp[data-key="' + want + '"]');
+        if (g && g !== on) stamp(g, "right", "✓");
+      }
+    }
+    return true;
+  }
+
   // ── ป๊อปอัพบอกผลรายข้อ ──
   function showResult(res) {
     paintDots(res.correct ? "ok" : "no");
     // โจทย์ต่อรูปแบบ/เรียงลำดับ — ถูกได้เสียงปรบมือ + ✓ สีเขียว · ผิดได้เสียงเตือน + ✗ สีแดงที่ตัวที่เลือก
     var marked = (QS[i].kind === "pattern" || QS[i].kind === "logic") && markPicked(res.correct);
+    if (QS[i].kind === "tapscene") marked = markTap(res.correct, res.answer || "");
     play(res.correct ? (marked ? "clap" : "correct") : (marked ? "buzz" : "wrong"));
     buddy(res.correct ? "happy" : "cheerup",
           pick(res.correct ? CHEER_OK : CHEER_NO));
@@ -1268,7 +1335,8 @@
     el("explain").textContent = res.explanation || "";
     el("next").textContent = (i + 1 >= QS.length) ? "ดูคะแนนของหนู →" : "ข้อต่อไป →";
     // เว้นจังหวะให้เด็กเห็น ✓ / ✗ ที่ปุ่มก่อน แล้วค่อยเลื่อนป๊อปอัพขึ้นมา
-    setTimeout(function () { el("sheet").hidden = false; }, document.querySelector("#answers .mark") ? 750 : 0);
+    setTimeout(function () { el("sheet").hidden = false; },
+      document.querySelector("#answers .mark, #answers .tsp.right, #answers .tsp.wrong") ? 750 : 0);
     if (res.correct) setTimeout(confetti, 60);
     // พูดเป็นท่อน ๆ เพื่อให้คำอังกฤษได้เสียงอังกฤษจริง ๆ ไม่ใช่เสียงไทยอ่านอังกฤษ
     var line = res.correct ? "เก่งมาก ตอบถูกค่ะ"
@@ -1637,6 +1705,35 @@
   #answers.duo.letters .opt{min-height:112px}
   #answers.duo.letters .opt span{font-size:2.8rem}
 }
+
+/* ══════ โจทย์แตะหาในภาพ / ชี้อวัยวะ ══════
+   จุดแตะเป็นวงใสวางทับรูป กว้างพอให้นิ้วเด็กอนุบาลกดติดแน่
+   ไม่มีเครื่องหมายอะไรบอกว่าจุดไหนถูก จนกว่าเด็กจะตอบ */
+#answers > .tapwrap{flex:0 0 100%;width:100%;border:2px solid #dbeefc;
+                    border-radius:18px;overflow:hidden;background:#fff;
+                    touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#answers > .tapwrap.body{max-width:340px;margin:0 auto}
+.tsvg{display:block;width:100%;height:auto;user-select:none}
+.ts-emo{font-size:58px;pointer-events:none}
+.tsvg.body .ts-emo{display:none}
+/* pointer-events:all สำคัญ — ถ้าไม่ใส่ วงใส (fill:transparent) จะแตะไม่ติดเลย */
+.ts-pad{fill:#fff;fill-opacity:0;pointer-events:all}
+.tsp{cursor:pointer}
+.tsp:focus{outline:none}
+.tsp:focus-visible .ts-ring,
+.tsp.on .ts-ring{opacity:1}
+.ts-ring{fill:none;stroke:#2EA6DC;stroke-width:5;opacity:0;pointer-events:none;
+         stroke-dasharray:7 8;transition:opacity .12s}
+.tsp.on .ts-ring{animation:tspin 7s linear infinite}
+@keyframes tspin{to{stroke-dashoffset:-120}}
+.tsp.right .ts-ring{stroke:#1f9d55;opacity:1;stroke-dasharray:none}
+.tsp.wrong .ts-ring{stroke:#e0585f;opacity:1;stroke-dasharray:none}
+.ts-mark{opacity:0;pointer-events:none}
+.tsp.right .ts-mark,.tsp.wrong .ts-mark{opacity:1}
+.ts-mdot{fill:#1f9d55}
+.tsp.wrong .ts-mdot{fill:#e0585f}
+.ts-mtxt{fill:#fff;font-size:17px;font-weight:700}
+.tapwrap.locked .tsp{cursor:default}
 
 /* ══════ โจทย์นับรูปทรงในภาพรวม (เชาวน์ปัญญา) ══════ */
 #answers.findrow > .findwrap{flex:0 0 100%;width:100%;margin-bottom:.9rem}

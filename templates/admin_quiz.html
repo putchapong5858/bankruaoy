@@ -352,6 +352,17 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
         </div>
         {% endif %}
 
+        {% if q.kind == 'tapscene' and q.tap %}
+        <div class="tapprev">
+          {{ q.tap.svg | safe }}
+          <p class="muted" style="font-size:.85rem;margin:.3rem 0 0">
+            ฉาก {{ q.tap.name }} · ให้แตะหา
+            <b>{% for o in q.options if o.is_correct %}{{ o.label }}{% endfor %}</b>
+            · ในฉากมีของให้แตะ {{ q.tap.spots | length }} ชิ้น
+          </p>
+        </div>
+        {% endif %}
+
         {% if q.kind == 'mathrun' and q.icon %}
         {% set ms = q.icon.split('|') %}
         <p class="muted" style="font-size:.85rem;margin:.2rem 0 .4rem">
@@ -396,7 +407,7 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
 
       <details class="editbox">
         <summary>แก้ไขข้อนี้</summary>
-        {{ question_form(quiz, q, icon_sets, models, model_groups, memory_objects | default({}, true)) }}
+        {{ question_form(quiz, q, icon_sets, models, model_groups, memory_objects | default({}, true), tap_scenes | default([], true)) }}
       </details>
     </div>
     {% else %}
@@ -407,7 +418,7 @@ AI จะแยกเป็นข้อ ๆ พร้อมตัวเลือ
   <!-- ══════ เพิ่มข้อใหม่ ══════ -->
   <section class="panel" id="add">
     <h2><i>➕</i> เพิ่มคำถามใหม่</h2>
-    {{ question_form(quiz, none, icon_sets, models, model_groups, memory_objects | default({}, true)) }}
+    {{ question_form(quiz, none, icon_sets, models, model_groups, memory_objects | default({}, true), tap_scenes | default([], true)) }}
   </section>
 
 </main>
@@ -473,6 +484,9 @@ img.cico{height:28px;width:auto}
 /* ตัวอย่างภาพนับรูปทรงในหน้าครู — ใช้ SVG ชุดเดียวกับหน้าเด็ก */
 .findprev{margin:.4rem 0 .6rem}
 .findprev .findsvg{width:190px;height:auto;border:1px solid var(--line);border-radius:12px}
+.tapprev .tsvg{width:260px;height:auto;border:1px solid var(--line);border-radius:12px}
+.tapprev .ts-pad{fill:none}.tapprev .ts-ring,.tapprev .ts-mark{display:none}
+.tapprev .ts-emo{font-size:58px}
 .findprev .fs-paper{fill:#fff}
 .findprev .fs-bg{fill:var(--c);opacity:0}
 .findprev .fs-ln{fill:none;stroke:var(--c);stroke-width:2.6;stroke-linejoin:round}
