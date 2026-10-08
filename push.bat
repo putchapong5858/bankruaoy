@@ -51,8 +51,28 @@ echo.
 goto END
 
 :NOCHANGE
+REM ---- no new files, but there may be commits that never reached GitHub ----
+git fetch origin >nul 2>&1
+set "AHEAD=0"
+for /f %%n in ('git rev-list --count origin/main..HEAD 2^>nul') do set "AHEAD=%%n"
+if "%AHEAD%"=="0" goto UPTODATE
 echo.
-echo    Nothing has changed - no push needed.
+echo    Found %AHEAD% commit(s) not yet on GitHub - pushing now...
+git push
+if errorlevel 1 goto FAILPUSH
+echo.
+echo ==========================================================
+echo    DONE - pushed successfully
+echo ==========================================================
+echo.
+echo    Vercel is building now. Wait 1-2 minutes, then open
+echo    https://bankruaoy.com
+echo.
+goto END
+
+:UPTODATE
+echo.
+echo    Nothing has changed - GitHub is already up to date.
 echo.
 goto END
 
