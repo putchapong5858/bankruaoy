@@ -107,6 +107,20 @@ PLACES: dict[str, dict] = {
             ("duck",   "เป็ด",      "🦆", 556, 300),
         ],
     },
+    "bathroom": {
+        "name": "ในห้องน้ำ",
+        "bg": "tile",
+        "items": [
+            ("toothbrush", "แปรงสีฟัน",   "🪥", 120, 170),
+            ("soap",       "สบู่",         "🧼", 268, 170),
+            ("shampoo",    "แชมพู",       "🧴", 416, 170),
+            ("mask",       "หน้ากากอนามัย", "😷", 556, 170),
+            ("sponge",     "ฟองน้ำ",      "🧽", 120, 300),
+            ("tissue",     "กระดาษชำระ",   "🧻", 268, 300),
+            ("bucket",     "ถังน้ำ",       "🪣", 416, 300),
+            ("shower",     "ฝักบัว",       "🚿", 556, 300),
+        ],
+    },
 }
 
 # ── ตัวการ์ตูนให้แตะชี้อวัยวะ ────────────────────────────
@@ -130,10 +144,25 @@ BODY_PARTS: list[tuple[str, str, list[tuple]]] = [
                           ("ellipse", 206, 462, 30, 17)]),
 ]
 
+# ── ภาพตัดให้เห็นอวัยวะภายใน (วิทยาศาสตร์ ป.1 เรื่องร่างกายของเรา) ──
+# วางจุดแตะให้ห่างกันพอ ไม่ให้วงทับกันจนเด็กกดอวัยวะหนึ่งแล้วไปโดนอีกอวัยวะ
+ORGAN_PARTS: list[tuple[str, str, list[tuple]]] = [
+    ("brain",     "สมอง",         [("ellipse", 170, 76, 38, 28)]),
+    ("lung",      "ปอด",          [("circle", 128, 228, 27),
+                                   ("circle", 212, 228, 27)]),
+    ("heart",     "หัวใจ",        [("circle", 170, 276, 25)]),
+    ("stomach",   "กระเพาะอาหาร", [("circle", 126, 326, 24)]),
+    ("intestine", "ลำไส้",         [("ellipse", 171, 362, 31, 24)]),
+    ("bone",      "กระดูก",       [("circle", 138, 440, 24),
+                                   ("circle", 202, 440, 24)]),
+]
+
 BODY = {"name": "ตัวหนู (ชี้อวัยวะ)", "bg": "body",
         "items": [(k, th, "", 0, 0) for k, th, _s in BODY_PARTS]}
+ORGANS = {"name": "อวัยวะภายในของเรา", "bg": "organs",
+          "items": [(k, th, "", 0, 0) for k, th, _s in ORGAN_PARTS]}
 
-SCENES: dict[str, dict] = {**PLACES, "body": BODY}
+SCENES: dict[str, dict] = {**PLACES, "body": BODY, "organs": ORGANS}
 
 # ─────────────────────────── พื้นหลัง ───────────────────────────
 
@@ -240,8 +269,122 @@ def _bg_body() -> str:
     )
 
 
-_BGS = {"room": _bg_room, "market": _bg_market,
-        "outdoor": _bg_outdoor, "body": _bg_body}
+def _bg_tile() -> str:
+    """ห้องน้ำ — ผนังกระเบื้องสี่เหลี่ยม พื้นเปียกเล็กน้อย"""
+    grid = "".join(
+        f'<path d="M{x},0 V330" stroke="#DCEAF2" stroke-width="3"/>'
+        for x in range(0, 641, 80))
+    grid += "".join(
+        f'<path d="M0,{y} H640" stroke="#DCEAF2" stroke-width="3"/>'
+        for y in range(0, 331, 66))
+    return ('<rect x="0" y="0" width="640" height="420" fill="#F4FBFE"/>'
+            + grid +
+            '<rect x="0" y="330" width="640" height="90" fill="#DFF0F7"/>'
+            '<path d="M0,330 H640" stroke="#BCDBE8" stroke-width="4"/>'
+            '<g opacity=".5" fill="#BCDBE8">'
+            '<ellipse cx="120" cy="392" rx="52" ry="11"/>'
+            '<ellipse cx="420" cy="400" rx="66" ry="12"/></g>')
+
+
+def _bg_organs() -> str:
+    """ภาพตัดให้เห็นอวัยวะภายใน วาดเองทั้งหมด ไม่ติดลิขสิทธิ์ใคร
+    วาดแบบการ์ตูนใสคล้ายรูปในหนังสือเรียน ไม่ใช่ภาพกายวิภาคจริง
+    เพื่อให้เด็ก ป.1 ดูแล้วไม่ตกใจ · ตำแหน่งอวัยวะวางตามรูปในหนังสือ
+    (กระเพาะอาหารอยู่ใต้หัวใจค่อนไปทางซ้ายของภาพ ลำไส้อยู่ล่างสุด)"""
+    skin, line, bone = "#FBDCC4", "#C98F62", "#F4F1E4"
+    ribs = "".join(
+        f'<path d="M126,{y} q44,-12 88,0" stroke="{bone}" stroke-width="10" '
+        f'fill="none" stroke-linecap="round"/>'
+        f'<path d="M126,{y} q44,-12 88,0" stroke="#CFC6AA" stroke-width="2" '
+        f'fill="none" stroke-linecap="round" opacity=".8"/>'
+        for y in (206, 228, 250, 272))
+    return (
+        '<rect x="0" y="0" width="340" height="520" fill="#FFFDF8"/>'
+        # ── ขา พร้อมกระดูกขาที่เห็นชัด ──
+        f'<path d="M138,392 V474" stroke="{skin}" stroke-width="46" '
+        'stroke-linecap="round"/>'
+        f'<path d="M202,392 V474" stroke="{skin}" stroke-width="46" '
+        'stroke-linecap="round"/>'
+        + "".join(
+            f'<g><path d="M{x},404 V470" stroke="{bone}" stroke-width="20" '
+            f'stroke-linecap="round"/>'
+            f'<path d="M{x},404 V470" stroke="#BDB49A" stroke-width="2.6" '
+            f'fill="none"/>'
+            f'<circle cx="{x}" cy="404" r="12" fill="{bone}" '
+            f'stroke="#BDB49A" stroke-width="2.6"/>'
+            f'<circle cx="{x}" cy="470" r="12" fill="{bone}" '
+            f'stroke="#BDB49A" stroke-width="2.6"/></g>' for x in (138, 202))
+        + f'<ellipse cx="132" cy="492" rx="28" ry="15" fill="{skin}" '
+          f'stroke="{line}" stroke-width="2.4"/>'
+          f'<ellipse cx="208" cy="492" rx="28" ry="15" fill="{skin}" '
+          f'stroke="{line}" stroke-width="2.4"/>'
+        # ── แขน ──
+        f'<path d="M112,206 L74,330" stroke="{skin}" stroke-width="28" '
+        'stroke-linecap="round"/>'
+        f'<path d="M228,206 L266,330" stroke="{skin}" stroke-width="28" '
+        'stroke-linecap="round"/>'
+        f'<circle cx="68" cy="340" r="20" fill="{skin}" stroke="{line}" '
+        'stroke-width="2.4"/>'
+        f'<circle cx="272" cy="340" r="20" fill="{skin}" stroke="{line}" '
+        'stroke-width="2.4"/>'
+        # ── ลำตัวแบบใส + ซี่โครง ──
+        f'<rect x="98" y="176" width="144" height="224" rx="42" '
+        f'fill="#FDF0E4" stroke="{line}" stroke-width="3"/>'
+        + ribs +
+        # ── ปอด ──
+        '<path d="M130,198 q20,4 20,28 v28 q0,24 -22,24 q-20,0 -20,-26 '
+        'v-30 q0,-24 22,-24 Z" fill="#F6B8B0" stroke="#C4625C" '
+        'stroke-width="4" stroke-linejoin="round"/>'
+        '<path d="M210,198 q-20,4 -20,28 v28 q0,24 22,24 q20,0 20,-26 '
+        'v-30 q0,-24 -22,-24 Z" fill="#F6B8B0" stroke="#C4625C" '
+        'stroke-width="4" stroke-linejoin="round"/>'
+        '<path d="M130,214 v52 M210,214 v52" stroke="#DC8F87" '
+        'stroke-width="3" opacity=".7"/>'
+        # ── หัวใจ ──
+        '<path d="M170,296 q-27,-17 -27,-34 a13.5,13.5 0 0,1 27,-7 '
+        'a13.5,13.5 0 0,1 27,7 q0,17 -27,34 Z" fill="#E2574C" '
+        'stroke="#A8322A" stroke-width="4" stroke-linejoin="round"/>'
+        # ── กระเพาะอาหาร (ถุงรูปถั่ว มีหลอดอาหารเข้าด้านบน) ──
+        '<path d="M124,294 v12 q-20,8 -20,24 q0,22 24,24 q20,2 24,-14 '
+        'q3,-12 -5,-20" fill="#F3907E" stroke="#AE4435" stroke-width="4" '
+        'stroke-linejoin="round" stroke-linecap="round"/>'
+        '<path d="M110,322 q18,8 34,0" stroke="#C9604F" stroke-width="3" '
+        'fill="none" opacity=".6"/>'
+        # ── ลำไส้ (ลำไส้ใหญ่เป็นกรอบ ลำไส้เล็กขดอยู่ข้างใน) ──
+        '<path d="M148,384 V344 q0,-10 10,-10 h26 q10,0 10,10 v40" '
+        'fill="none" stroke="#E8927C" stroke-width="13" '
+        'stroke-linecap="round" stroke-linejoin="round"/>'
+        '<path d="M158,362 q14,-7 28,0 q13,7 0,13 q-14,6 -28,0 '
+        'q-12,-6 0,-13 Z" fill="none" stroke="#F6B9A6" stroke-width="8"/>'
+        # ── คอ + หัว ──
+        f'<rect x="156" y="150" width="28" height="36" rx="12" fill="{skin}" '
+        f'stroke="{line}" stroke-width="2.4"/>'
+        f'<circle cx="170" cy="96" r="62" fill="{skin}" stroke="{line}" '
+        'stroke-width="2.8"/>'
+        # ── สมอง (อยู่ครึ่งบนของศีรษะ เหลือที่ให้หน้าตา) ──
+        '<path d="M136,78 q0,-30 34,-30 q34,0 34,30 q0,24 -34,24 '
+        'q-34,0 -34,-24 Z" fill="#F6AFC2" stroke="#C4607C" '
+        'stroke-width="4" stroke-linejoin="round"/>'
+        '<path d="M170,50 V100 M144,62 q26,9 52,0 M142,84 q28,10 56,0" '
+        'stroke="#C4607C" stroke-width="3" fill="none" opacity=".75"/>'
+        # ── หน้าตา ──
+        '<circle cx="152" cy="124" r="5.5" fill="#3B2C22"/>'
+        '<circle cx="188" cy="124" r="5.5" fill="#3B2C22"/>'
+        '<path d="M160,142 q10,9 20,0" stroke="#C4625C" stroke-width="3" '
+        'fill="none" stroke-linecap="round"/>'
+        '<circle cx="134" cy="132" r="7" fill="#F7B6B0" opacity=".65"/>'
+        '<circle cx="206" cy="132" r="7" fill="#F7B6B0" opacity=".65"/>'
+    )
+
+
+_BGS = {"room": _bg_room, "market": _bg_market, "outdoor": _bg_outdoor,
+        "tile": _bg_tile, "body": _bg_body, "organs": _bg_organs}
+
+# ฉากที่เป็น "รูปวาด" ไม่ใช่ฉากวางอีโมจิ — จุดแตะเป็นรูปทรงทับบนภาพ
+FIGURES = {
+    "body":   {"vb": "0 0 340 500", "bg": _bg_body},
+    "organs": {"vb": "0 0 340 520", "bg": _bg_organs},
+}
 
 
 # ─────────────────────────── สร้างภาพ ───────────────────────────
@@ -272,11 +415,14 @@ def _place_svg(scene: dict) -> str:
     return "".join(parts)
 
 
-def _body_svg() -> str:
-    parts = ['<svg class="tsvg body" viewBox="0 0 340 500" '
+def _figure_svg(scene_key: str) -> str:
+    """ฉากที่เป็นรูปวาด — ตัวหนู หรือ ภาพอวัยวะภายใน"""
+    f = FIGURES[scene_key]
+    partlist = BODY_PARTS if scene_key == "body" else ORGAN_PARTS
+    parts = [f'<svg class="tsvg body" viewBox="{f["vb"]}" '
              'xmlns="http://www.w3.org/2000/svg" role="img">',
-             _bg_body()]
-    for key, _th, shapes_ in BODY_PARTS:
+             f["bg"]()]
+    for key, _th, shapes_ in partlist:
         inner = []
         last = shapes_[-1]
         for sh in shapes_:
@@ -307,7 +453,8 @@ def svg_of(scene_key: str) -> str:
     scene = SCENES.get(scene_key)
     if not scene:
         return ""
-    return _body_svg() if scene_key == "body" else _place_svg(scene)
+    return (_figure_svg(scene_key) if scene_key in FIGURES
+            else _place_svg(scene))
 
 
 # ─────────────────────────── อ่านโจทย์ ───────────────────────────
@@ -352,8 +499,8 @@ def prompt_for(raw: str) -> str:
     if not s:
         return ""
     th = label_of(s["scene"], s["target"])
-    if s["scene"] == "body":
-        return "แตะที่%sของหนูสิ" % th
+    if s["scene"] in FIGURES:
+        return "แตะที่%sสิ" % th
     return "%s มี%sอยู่ แตะหาให้เจอสิ" % (s["name"], th)
 
 
@@ -376,7 +523,7 @@ def payload(raw: str, options: list[dict]) -> dict | None:
              for (k, th), o in zip(items, opts)]
     return {"svg": svg_of(s["scene"]), "spots": spots,
             "scene": s["scene"], "name": s["name"],
-            "body": s["scene"] == "body"}
+            "body": s["scene"] in FIGURES}
 
 
 def options_for(raw: str) -> list[dict] | None:
