@@ -107,6 +107,34 @@ PLACES: dict[str, dict] = {
             ("duck",   "เป็ด",      "🦆", 556, 300),
         ],
     },
+    "playroom": {
+        "name": "มุมของเล่น",
+        "bg": "playmat",
+        "items": [
+            ("ball",    "ลูกบอล",   "\u26bd", 120, 170),
+            ("teddy",   "ตุ๊กตาหมี", "\U0001f9f8", 268, 170),
+            ("robot",   "หุ่นยนต์",  "\U0001f916", 416, 170),
+            ("kite",    "ว่าว",      "\U0001fa81", 556, 170),
+            ("car",     "รถของเล่น", "\U0001f697", 120, 300),
+            ("balloon", "ลูกโป่ง",   "\U0001f388", 268, 300),
+            ("puzzle",  "ตัวต่อ",    "\U0001f9e9", 416, 300),
+            ("drum",    "กลอง",     "\U0001f941", 556, 300),
+        ],
+    },
+    "homeuse": {
+        "name": "ของใช้ในบ้าน",
+        "bg": "room",
+        "items": [
+            ("spoon",    "ช้อน",     "\U0001f944", 120, 170),
+            ("plate",    "จาน",      "\U0001f37d\ufe0f", 268, 170),
+            ("umbrella", "ร่ม",      "\u2602\ufe0f", 416, 170),
+            ("clock",    "นาฬิกา",   "\u23f0", 556, 170),
+            ("scissors", "กรรไกร",   "\u2702\ufe0f", 120, 300),
+            ("pencil",   "ดินสอ",    "\u270f\ufe0f", 268, 300),
+            ("book",     "หนังสือ",  "\U0001f4d5", 416, 300),
+            ("broom",    "ไม้กวาด",  "\U0001f9f9", 556, 300),
+        ],
+    },
     "bathroom": {
         "name": "ในห้องน้ำ",
         "bg": "tile",
@@ -286,6 +314,24 @@ def _bg_tile() -> str:
             '<ellipse cx="420" cy="400" rx="66" ry="12"/></g>')
 
 
+def _bg_playmat() -> str:
+    """มุมของเล่น — พรมลายทางสีสดใส มีกล่องของเล่นอยู่มุมห้อง"""
+    stripes = "".join(
+        f'<rect x="0" y="{y}" width="640" height="22" '
+        f'fill="{"#FBE3C8" if (y // 22) % 2 == 0 else "#FFF4E6"}"/>'
+        for y in range(330, 420, 22))
+    return ('<rect x="0" y="0" width="640" height="420" fill="#FFFBF3"/>'
+            + "".join(f'<circle cx="{x}" cy="{y}" r="7" fill="#F6E4C9"/>'
+                      for y in range(66, 330, 70) for x in range(44, 640, 76))
+            + stripes +
+            '<path d="M0,330 H640" stroke="#EBD3B2" stroke-width="4"/>'
+            '<g opacity=".8">'
+            '<rect x="24" y="364" width="96" height="44" rx="8" fill="#F2A8A0" '
+            'stroke="#C96C62" stroke-width="4"/>'
+            '<rect x="24" y="356" width="96" height="16" rx="7" fill="#F8CBC5" '
+            'stroke="#C96C62" stroke-width="4"/></g>')
+
+
 def _bg_organs() -> str:
     """ภาพตัดให้เห็นอวัยวะภายใน วาดเองทั้งหมด ไม่ติดลิขสิทธิ์ใคร
     วาดแบบการ์ตูนใสคล้ายรูปในหนังสือเรียน ไม่ใช่ภาพกายวิภาคจริง
@@ -378,6 +424,7 @@ def _bg_organs() -> str:
 
 
 _BGS = {"room": _bg_room, "market": _bg_market, "outdoor": _bg_outdoor,
+        "playmat": _bg_playmat,
         "tile": _bg_tile, "body": _bg_body, "organs": _bg_organs}
 
 # ฉากที่เป็น "รูปวาด" ไม่ใช่ฉากวางอีโมจิ — จุดแตะเป็นรูปทรงทับบนภาพ
