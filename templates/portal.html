@@ -258,6 +258,20 @@
     {% endif %}
   </section>
 
+  <!-- เกมวิทยาศาสตร์ -->
+  {% if s.level in ['อนุบาล 3', 'ป.1'] %}
+  {% set glv = 'K3' if s.level == 'อนุบาล 3' else 'P1' %}
+  <section class="panel" id="games">
+    <h2><i>🎮</i> เกมแสนสนุก</h2>
+    <a class="gamecard" href="/static/games/force.html?lv={{ glv }}">
+      <span class="gc-ic" aria-hidden="true">🛒</span>
+      <span class="gc-tx"><b>สนามแรงผลักแรงดึง</b>
+        <small>3 เกม: ชักเย่อตอบไว · ผลักกล่องเข้าบ้าน · แยกใส่ตะกร้า · วิทยาศาสตร์ บทที่ 6 แรงและการเคลื่อนที่</small></span>
+      <span class="gc-go">เล่นเลย ▶</span>
+    </a>
+  </section>
+  {% endif %}
+
   <!-- การบ้าน -->
   <section class="panel">
     <h2><i>📚</i> การบ้าน</h2>
@@ -387,6 +401,13 @@
 </main>
 
 <style>
+.gamecard{display:flex;align-items:center;gap:.9rem;padding:.9rem 1rem;border:2px solid #cfe6fb;border-radius:16px;
+  background:#f2f9ff;text-decoration:none;color:inherit}
+.gamecard:hover{background:#e6f3ff}
+.gc-ic{font-size:2.2rem;line-height:1}
+.gc-tx{flex:1;display:flex;flex-direction:column;gap:.15rem}
+.gc-tx small{color:#5b6b7a}
+.gc-go{font-weight:700;color:#1d6fb8;white-space:nowrap}
 /* ── กล่องแบบฝึกหัดแยกรายวิชา ──────────────────────────
    ผู้ปกครองจะได้กวาดตาหาวิชาที่ต้องการได้เร็ว ไม่ต้องไล่อ่านทีละชุด */
 .subjnav{display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:1rem}
