@@ -173,6 +173,23 @@ def healthz_tts(request: Request, probe: str = ""):
     return JSONResponse(tts.status(probe=want))
 
 
+@app.get("/healthz/line")
+def healthz_line(request: Request, probe: str = ""):
+    """สถานะระบบแจ้งเตือนผู้ปกครองทางไลน์ — ไม่เคยส่งค่า token ออกมา
+
+    ต่อท้าย ?probe=1 จะถาม LINE จริงว่า token ยังใช้ได้ไหม และเหลือโควตาเท่าไร
+    เป็นการอ่านข้อมูลอย่างเดียว ไม่ส่งข้อความหาผู้ปกครองแม้แต่คนเดียว
+    (ต้องเข้าสู่ระบบเป็นครูก่อน กันคนนอกยิงถามรัว ๆ)
+    """
+    want = probe in ("1", "true", "yes")
+    if want:
+        _, blocked = require_admin(request)
+        if blocked:
+            return JSONResponse({"error": "ต้องเข้าสู่ระบบเป็นครูก่อนจึงจะทดสอบได้"},
+                                status_code=403)
+    return JSONResponse(line_push.status(probe=want))
+
+
 @app.get("/tts")
 def tts_audio(request: Request, t: str = "", v: str = ""):
     """สร้างเสียงอ่านให้ถ้ายังไม่เคยสร้าง แล้วพาไปที่ไฟล์บน CDN

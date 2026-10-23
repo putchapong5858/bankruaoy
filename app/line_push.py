@@ -70,6 +70,58 @@ def multicast(user_ids: list[str], messages: list[dict]) -> int:
     return sent
 
 
+def status(probe: bool = False) -> dict:
+    """สถานะระบบแจ้งเตือนผู้ปกครอง — ไม่เคยส่งค่า token ออกมา
+
+    probe=True จะยิงถาม LINE จริงว่า token ยังใช้ได้ไหม
+    ใช้เฉพาะคำสั่งอ่านข้อมูล (bot info กับโควตา)
+    ไม่ส่งข้อความหาผู้ปกครองสักคนเดียว และไม่เสียโควตา
+    """
+    info: dict = {
+        "ready": is_ready(),
+        "oa_id": config.LINE_OA_ID,
+        "note": "แช็นเนล Messaging API ใช้เฉพาะ Channel access token "
+                "ไม่ได้ใช้ Channel secret",
+    }
+    if not info["ready"]:
+        info["problem"] = ("ยังไม่ได้ตั้ง LINE_MESSAGING_TOKEN ที่ Vercel → "
+                           "Settings → Environment Variables")
+        return info
+    if not probe:
+        info["hint"] = "ต่อท้าย ?probe=1 เพื่อให้ตรวจกับ LINE จริง ๆ"
+        return info
+
+    try:
+        with httpx.Client(timeout=15) as client:
+            res = client.get(f"{API}/info", headers=_headers())
+    except Exception as exc:                       # ต่อเน็ตไม่ได้
+        info["token_valid"] = None
+        info["problem"] = f"ติดต่อ LINE ไม่ได้: {type(exc).__name__}"
+        return info
+
+    if res.status_code == 401:
+        info["token_valid"] = False
+        info["problem"] = ("Channel access token ใช้ไม่ได้แล้ว "
+                           "ต้องออก token ใหม่ที่ LINE Developers "
+                           "แล้วนำไปแก้ที่ Vercel")
+        return info
+    if res.status_code >= 400:
+        info["token_valid"] = False
+        info["problem"] = f"LINE ตอบกลับ {res.status_code}"
+        return info
+
+    bot = res.json()
+    info["token_valid"] = True
+    info["bot_name"] = bot.get("displayName")
+    info["basic_id"] = bot.get("basicId")
+    info["chat_mode"] = bot.get("chatMode")
+    left = quota_left()
+    info["quota_left"] = left
+    info["quota_note"] = ("แพ็กเกจไม่จำกัด หรือดูโควตาไม่ได้"
+                          if left is None else "ข้อความฟรีที่เหลือเดือนนี้")
+    return info
+
+
 def quota_left() -> int | None:
     """ข้อความฟรีที่เหลือของเดือนนี้ — คืน None ถ้าดูไม่ได้"""
     if not is_ready():
