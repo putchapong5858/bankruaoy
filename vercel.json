@@ -16,6 +16,7 @@
           "app/**",
           "templates/**"
         ],
+        "excludeFiles": "static/**",
         "maxLambdaSize": "40mb"
       }
     }
