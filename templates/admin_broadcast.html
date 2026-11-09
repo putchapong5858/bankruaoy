@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}ส่งข่าวเข้าไลน์ผู้ปกครอง{% endblock %}
+
+{% block topright %}
+<div class="who">
+  <a class="btn btn-ghost btn-sm" href="/admin">← กลับหน้าจัดการ</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<main class="portal">
+
+  <div class="hello">
+    <h1>📣 ส่งข่าวเข้าไลน์ผู้ปกครอง</h1>
+    <p class="muted">
+      พิมพ์ข่าว เลือกระดับชั้น แล้วกดดูตัวอย่างก่อน —
+      ระบบจะบอกว่าจะส่งถึงกี่คน แล้วค่อยกดส่งจริงอีกครั้ง
+      ผู้ปกครองที่มีลูกหลายคนจะได้รับข้อความครั้งเดียว
+    </p>
+  </div>
+
+  {% if sent %}
+  <p class="flash">ส่งเข้าไลน์เรียบร้อยแล้ว {{ sent }} คนค่ะ</p>
+  {% endif %}
+  {% if err %}
+  <p class="flash warn">{{ err }}</p>
+  {% endif %}
+
+  {% if not ready %}
+  <section class="panel">
+    <h2><i>⚠️</i> ยังส่งไม่ได้</h2>
+    <p class="muted">
+      ยังไม่ได้ตั้งค่า <code>LINE_MESSAGING_TOKEN</code> ที่ Vercel →
+      Settings → Environment Variables
+    </p>
+  </section>
+  {% else %}
+
+  {% if preview %}
+  <section class="panel">
+    <h2><i>👀</i> ตรวจก่อนส่งจริง</h2>
+    <p class="muted" style="margin-top:-.5rem">
+      ตรวจข้อความกับจำนวนผู้รับให้ดี กดส่งแล้วเรียกคืนไม่ได้
+    </p>
+
+    <div class="subjbox" style="--c:#26A5E0">
+      <div class="subjhead">
+        <span class="subjicon">👨‍👩‍👧</span>
+        <b>จะส่งถึง {{ preview.count }} คน</b>
+        <span class="subjn">{{ preview.levels | join(' · ') }}</span>
+      </div>
+      <p class="muted" style="padding:.2rem .6rem .6rem">
+        เช่น {{ preview.names | join(', ') }}{% if preview.count > 12 %} และอีก
+        {{ preview.count - 12 }} คน{% endif %}
+      </p>
+    </div>
+
+    <div class="subjbox" style="--c:#3CC98A;margin-top:.7rem">
+      <div class="subjhead">
+        <span class="subjicon">💬</span><b>ข้อความที่จะส่ง</b>
+      </div>
+      <pre style="white-space:pre-wrap;word-break:break-word;margin:0;
+                  padding:.2rem .7rem .8rem;font:inherit">{{ text }}</pre>
+    </div>
+
+    <form method="post" action="/admin/broadcast" style="margin-top:1rem">
+      <input type="hidden" name="step" value="send">
+      <input type="hidden" name="text" value="{{ text }}">
+      {% for lv in chosen %}
+      <input type="hidden" name="levels" value="{{ lv }}">
+      {% endfor %}
+      <button class="btn btn-primary" type="submit">
+        ✅ ส่งเข้าไลน์เลย {{ preview.count }} คน
+      </button>
+      <a class="btn btn-ghost" href="/admin/broadcast">ยกเลิก แก้ไขใหม่</a>
+    </form>
+  </section>
+  {% endif %}
+
+  <section class="panel">
+    <h2><i>✍️</i> {{ 'แก้ไขข่าว' if preview else 'เขียนข่าว' }}</h2>
+    <form method="post" action="/admin/broadcast">
+      <input type="hidden" name="step" value="preview">
+
+      <label for="text"><b>ข้อความ</b></label>
+      <textarea id="text" name="text" rows="12"
+        style="width:100%;font:inherit;padding:.7rem;border-radius:.7rem;
+               border:1.5px solid #cfe3ec"
+        placeholder="เช่น&#10;📣 บ้านครูอ้อยมีกิจกรรมใหม่ค่ะ&#10;&#10;รายละเอียด…&#10;&#10;https://bankruaoy.com/portal"
+        >{{ text }}</textarea>
+      <p class="muted" style="margin:.3rem 0 1rem">
+        ขึ้นบรรทัดใหม่ได้ตามปกติ · ใส่อีโมจิได้ · ความยาวไม่เกิน 4,500 ตัวอักษร
+      </p>
+
+      <p><b>ส่งถึงผู้ปกครองของเด็กระดับชั้น</b></p>
+      <div class="grid4" style="margin-bottom:1rem">
+        {% for lv in levels %}
+        <label style="display:flex;align-items:center;gap:.45rem;
+                      padding:.45rem .7rem;border:1.5px solid #cfe3ec;
+                      border-radius:.7rem;cursor:pointer">
+          <input type="checkbox" name="levels" value="{{ lv }}"
+                 {% if lv in chosen %}checked{% endif %}>
+          {{ lv }}
+        </label>
+        {% endfor %}
+      </div>
+
+      <button class="btn btn-primary" type="submit">👀 ดูตัวอย่างก่อนส่ง</button>
+    </form>
+  </section>
+
+  {% endif %}
+
+</main>
+{% endblock %}

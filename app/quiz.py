@@ -1205,6 +1205,24 @@ def parents_to_notify(level: str = "") -> list[dict]:
     return [p for p in parents if p["id"] in wanted]
 
 
+def parents_for_levels(levels: list[str]) -> list[dict]:
+    """ผู้ปกครองที่มีลูกกำลังเรียนอยู่ในระดับชั้นที่เลือก — ไม่ซ้ำคน
+
+    ผู้ปกครองที่มีลูกหลายคนคนละชั้นจะได้รับข้อความเพียงครั้งเดียว
+    """
+    want = {(lv or "").strip() for lv in levels if (lv or "").strip()}
+    if not want:
+        return []
+    students = select("students", "parent_id,level,active", limit=2000)
+    ids = {s["parent_id"] for s in students
+           if s.get("active") and (s.get("level") or "").strip() in want}
+    if not ids:
+        return []
+    return [p for p in select("parents", limit=1000)
+            if p.get("status") == "active" and p.get("line_user_id")
+            and p["id"] in ids]
+
+
 def mark_notified(quiz_id: str | int) -> None:
     update("quizzes", {"notified_at": _now()}, id=f"eq.{quiz_id}")
 

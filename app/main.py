@@ -623,6 +623,71 @@ async def admin_voice_build(request: Request):
     })
 
 
+# ─── ส่งข่าวเข้าไลน์ผู้ปกครอง ───
+
+def _broadcast_page(request, user, **ctx):
+    base = dict(levels=config.LEVELS, ready=line_push.is_ready(),
+                text="", chosen=[], preview=None, sent=0, saved="", err="")
+    base.update(ctx)
+    return page(request, "admin_broadcast.html", user=user, **base)
+
+
+@app.get("/admin/broadcast", response_class=HTMLResponse)
+def admin_broadcast(request: Request, sent: int = 0, err: str = ""):
+    """หน้าพิมพ์ข่าวแล้วส่งเข้าไลน์ผู้ปกครองตามระดับชั้นที่เลือก"""
+    user, blocked = require_admin(request)
+    if blocked:
+        return blocked
+    return _broadcast_page(request, user, sent=sent, err=err)
+
+
+@app.post("/admin/broadcast", response_class=HTMLResponse)
+async def admin_broadcast_post(request: Request):
+    """สองจังหวะ — จังหวะแรกแสดงตัวอย่างและจำนวนผู้รับ จังหวะสองจึงส่งจริง"""
+    user, blocked = require_admin(request)
+    if blocked:
+        return blocked
+
+    form = await request.form()
+    text = (form.get("text") or "").strip()
+    chosen = [v for v in form.getlist("levels") if v in config.LEVELS]
+    step = form.get("step") or "preview"
+
+    def back(err):
+        return _broadcast_page(request, user, text=text, chosen=chosen, err=err)
+
+    if not line_push.is_ready():
+        return back("ยังไม่ได้ตั้งค่า LINE_MESSAGING_TOKEN ที่ Vercel")
+    if not text:
+        return back("ยังไม่ได้พิมพ์ข้อความ")
+    if not chosen:
+        return back("ยังไม่ได้เลือกระดับชั้นที่จะส่งถึง")
+
+    try:
+        parents = quiz.parents_for_levels(chosen)
+    except Exception as exc:
+        return back(f"อ่านรายชื่อผู้ปกครองไม่สำเร็จ ({str(exc)[:120]})")
+    if not parents:
+        return back("ไม่มีผู้ปกครองที่ตรงกับระดับชั้นที่เลือก")
+
+    if step != "send":
+        return _broadcast_page(request, user, text=text, chosen=chosen,
+                               preview={"count": len(parents),
+                                        "levels": chosen,
+                                        "names": [p.get("display_name") or "—"
+                                                  for p in parents][:12]})
+
+    try:
+        n = line_push.multicast([p["line_user_id"] for p in parents],
+                                line_push.announce_message(text))
+    except line_push.LinePushError as exc:
+        return back(str(exc))
+    except Exception as exc:
+        return back(f"ส่งไม่สำเร็จ ({str(exc)[:120]})")
+
+    return RedirectResponse(f"/admin/broadcast?sent={n}", status_code=303)
+
+
 @app.post("/admin/parent/{parent_id}/{action}")
 def admin_parent(request: Request, parent_id: str, action: str):
     _, blocked = require_admin(request)

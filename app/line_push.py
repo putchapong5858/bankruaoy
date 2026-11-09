@@ -142,6 +142,19 @@ def quota_left() -> int | None:
 #  ข้อความสำเร็จรูป
 # ────────────────────────────────────────────────
 
+def announce_message(text: str) -> list[dict]:
+    """ข่าวทั่วไปที่ครูพิมพ์เอง ส่งเป็นข้อความธรรมดาหนึ่งก้อน"""
+    body = (text or "").strip()
+    if not body:
+        raise LinePushError("ยังไม่ได้พิมพ์ข้อความ")
+    if len(body) > 4500:
+        raise LinePushError(
+            f"ข้อความยาว {len(body)} ตัวอักษร — LINE ส่งได้ครั้งละไม่เกิน "
+            "5,000 ตัวอักษร กรุณาตัดให้สั้นลง"
+        )
+    return [{"type": "text", "text": body}]
+
+
 def new_quiz_message(quiz: dict, question_count: int) -> list[dict]:
     """ข้อความแจ้งว่ามีแบบฝึกหัดใหม่ — เขียนให้ผู้ปกครองอ่านแล้วรู้เรื่องทันที"""
     level = (quiz.get("level") or "").strip() or "ทุกระดับชั้น"
