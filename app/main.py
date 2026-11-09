@@ -5,6 +5,7 @@ FastAPI + Jinja2 + Supabase + LINE Login
 
 from __future__ import annotations
 
+import os
 import random
 import re
 import time
@@ -139,10 +140,17 @@ def home(request: Request):
 
 @app.get("/healthz")
 def healthz():
+    """สถานะเว็บ พร้อมบอกว่าโค้ดชุดไหนที่กำลังทำงานอยู่จริง
+
+    ช่อง commit คือเลขย่อของ commit ที่ Vercel สร้าง deployment นี้
+    push.bat ใช้ค่านี้เทียบกับ commit ในเครื่อง เพื่อยืนยันว่า
+    โค้ดที่เพิ่ง push ขึ้นเว็บจริงแล้ว ไม่ใช่แค่ขึ้น GitHub
+    """
     return JSONResponse({
         "ok": True,
         "database": db.health(),
         "missing_config": config.missing_config(),
+        "commit": os.environ.get("VERCEL_GIT_COMMIT_SHA", "")[:7],
     })
 
 
