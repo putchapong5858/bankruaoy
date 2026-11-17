@@ -1723,13 +1723,19 @@ async def quiz_answer(request: Request, attempt_id: str):
 
     item = quiz.get_quiz(attempt["quiz_id"]) or {}
     reveal = bool(item.get("show_answer_on_wrong")) and not correct
-    return JSONResponse({
+    out = {
         "correct": correct,
         "answer": quiz.correct_answer_text(question) if reveal else "",
         # คำอธิบายเป็น "ความรู้" ไม่ใช่ "เฉลย" — ส่งให้ทั้งตอนตอบถูกและตอบผิด
         # เด็กที่ตอบถูกก็ควรได้เห็นว่า Dog แปลว่า สุนัข ด้วย (ส่งหลังตอบแล้วเท่านั้น)
         "explanation": question.get("explanation") or "",
-    })
+    }
+    if question.get("kind") == "match":
+        # ข้อจับคู่ — บอกถูก/ผิดรายคู่หลังตอบแล้ว และเฉลยคู่ที่ถูกเมื่อครูเปิดให้เฉลย
+        out["pair_ok"] = quiz.match_pair_ok(question, given)
+        if reveal:
+            out["pairs"] = quiz.match_pairs(question)
+    return JSONResponse(out)
 
 
 @app.post("/quiz/{attempt_id}/finish")

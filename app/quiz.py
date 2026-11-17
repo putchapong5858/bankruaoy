@@ -658,9 +658,40 @@ def correct_answer_text(question: dict) -> str:
     if kind == "fill":
         return " หรือ ".join(question.get("accepted") or [])
     if kind == "match":
+        # ฝั่งขวาที่เป็นรูปหรืออีโมจิ เขียนเป็นข้อความไม่ได้ (เดิมเด็กเห็นพาธไฟล์ /static/...)
+        # หน้าเด็กจะลากเส้นประสีเขียวไปคู่ที่ถูกแทน จาก match_pairs()
+        if any(_media_value(o.get("match_value")) for o in options):
+            return ""
         return " · ".join(f"{o['label']} คู่กับ {o.get('match_value') or ''}"
                           for o in options)
     return ""
+
+
+_IMG_VALUE = re.compile(r"^(/static/|https://)\S+\.(webp|png|jpe?g|gif|svg)(\?\S*)?$", re.I)
+_LETTERS = re.compile(r"[A-Za-z0-9\u0E00-\u0E7F]")
+
+
+def _media_value(v) -> bool:
+    """ค่าฝั่งขวาของข้อจับคู่เป็นรูปหรืออีโมจิ (ไม่ใช่ข้อความให้อ่าน)"""
+    s = str(v or "").strip()
+    if not s:
+        return False
+    return bool(_IMG_VALUE.match(s)) or (len(s) <= 12 and not _LETTERS.search(s))
+
+
+def match_pair_ok(question: dict, given) -> dict:
+    """ข้อจับคู่ — บอกว่าคู่ไหนที่เด็กจับถูก {option_id: True/False} ใช้ติด ✓/✗ รายคู่"""
+    if not isinstance(given, dict):
+        given = {}
+    return {str(o["id"]): _normalize(str(given.get(str(o["id"]), "")))
+            == _normalize(o.get("match_value") or "")
+            for o in (question.get("options") or [])}
+
+
+def match_pairs(question: dict) -> dict:
+    """เฉลยข้อจับคู่ {option_id: ค่าฝั่งขวาที่ถูก} — ส่งเฉพาะหลังตอบผิดและครูเปิดให้เฉลย"""
+    return {str(o["id"]): o.get("match_value") or ""
+            for o in (question.get("options") or [])}
 
 
 # ════════════════════════════════════════════════════════

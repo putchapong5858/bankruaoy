@@ -703,30 +703,7 @@
       setTimeout(function () { input.focus(); }, 80);
 
     } else if (q.kind === "match") {
-      picked = {};
-      q.options.forEach(function (o) {
-        var row = document.createElement("div");
-        row.className = "matchrow";
-        var left = document.createElement("span");
-        left.className = "mleft";
-        left.textContent = o.label;
-        var sel = document.createElement("select");
-        sel.className = "mright";
-        sel.innerHTML = '<option value="">— เลือก —</option>';
-        q.match_choices.forEach(function (c) {
-          var op = document.createElement("option");
-          op.value = c; op.textContent = c;
-          sel.appendChild(op);
-        });
-        sel.addEventListener("change", function () {
-          picked[o.id] = sel.value;
-          var done = q.options.every(function (x) { return picked[x.id]; });
-          el("submit").disabled = !done;
-        });
-        row.appendChild(left);
-        row.appendChild(sel);
-        box.appendChild(row);
-      });
+      renderMatch(q, box);
 
     } else {
       // โจทย์เทียบเลข — จระเข้อ้าปากหันไปทางเลขที่มากกว่า
@@ -1188,6 +1165,226 @@
     else if (HAS_MATH) startTimer(0);   // ยังเดินนาฬิการวมด้านบนต่อไป
   }
 
+
+  // ══════ ข้อจับคู่ — แตะการ์ดซ้ายแล้วแตะการ์ดขวา ระบบลากเส้นสีให้ ══════
+  // ค่าฝั่งขวาเป็นได้ 3 แบบ: พาธรูป (/static/...webp) · อีโมจิ · ข้อความ
+  // คำตอบที่ส่งไปตรวจยังเป็นรูปแบบเดิม {option_id: ค่าฝั่งขวา} เซิร์ฟเวอร์ไม่ต้องเปลี่ยน
+  var MCOLORS = ["#26a5e0", "#f08a24", "#8e5bd6", "#e0457b", "#1f9e6e", "#c9a100"];
+  var mboard = null;               // ข้อมูลกระดานจับคู่ของข้อปัจจุบัน ใช้ตอนวาดเส้นใหม่และตอนเฉลย
+
+  function isImgValue(v) {
+    return /^(\/static\/|https:\/\/)[^\s"'<>]+\.(webp|png|jpe?g|gif|svg)(\?[^\s"'<>]*)?$/i
+      .test(String(v || "").trim());
+  }
+  function isEmojiValue(v) {
+    var s = String(v || "").trim();
+    return !!s && s.length <= 12 && !/[A-Za-z0-9฀-๿]/.test(s);
+  }
+  function fillMatchFace(node, v) {
+    node.innerHTML = "";
+    if (isImgValue(v)) {
+      var im = document.createElement("img");
+      im.src = String(v).trim();
+      im.alt = "";
+      im.draggable = false;
+      im.addEventListener("load", drawMatchLines);
+      node.appendChild(im);
+      node.classList.add("mpic");
+    } else if (isEmojiValue(v)) {
+      var e = document.createElement("span");
+      e.className = "memo";
+      e.textContent = String(v).trim();
+      node.appendChild(e);
+    } else {
+      var s = document.createElement("span");
+      s.className = "mtxt";
+      s.textContent = String(v || "");
+      node.appendChild(s);
+    }
+  }
+
+  function renderMatch(q, box) {
+    picked = {};
+    // ล้างคลาสจัดวางของข้อก่อนหน้า (piccards, duo ฯลฯ) ไม่งั้นกระดานเพี้ยน
+    box.className = "matchwrap";
+    var hint = document.createElement("p");
+    hint.className = "mhow";
+    hint.textContent = "แตะคำทางซ้าย แล้วแตะภาพที่คู่กันทางขวา · แตะซ้ำเพื่อเปลี่ยน";
+    box.appendChild(hint);
+
+    var board = document.createElement("div");
+    board.className = "mboard";
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "mlines");
+    svg.setAttribute("aria-hidden", "true");
+    var colL = document.createElement("div"); colL.className = "mcol l";
+    var colR = document.createElement("div"); colR.className = "mcol r";
+    board.appendChild(svg); board.appendChild(colL); board.appendChild(colR);
+    box.appendChild(board);
+
+    var rights = (q.match_choices || []).slice();
+    var allText = rights.every(function (v) { return !isImgValue(v) && !isEmojiValue(v); });
+    board.classList.toggle("textonly", allText);
+    hint.textContent = allText
+      ? "แตะคำทางซ้าย แล้วแตะคำที่คู่กันทางขวา · แตะซ้ำเพื่อเปลี่ยน"
+      : "แตะคำทางซ้าย แล้วแตะภาพที่คู่กันทางขวา · แตะซ้ำเพื่อเปลี่ยน";
+
+    var M = mboard = { q: q, board: board, svg: svg, rights: rights,
+                       L: [], R: [], pairs: {}, owner: {}, sel: null, locked: false };
+
+    q.options.forEach(function (o, k) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "mcard ml";
+      b.style.setProperty("--mc", MCOLORS[k % MCOLORS.length]);
+      var s = document.createElement("span");
+      s.className = "mtxt";
+      s.textContent = o.label;
+      b.appendChild(s);
+      b.addEventListener("click", function () { tapMatch("L", k); });
+      colL.appendChild(b);
+      M.L.push(b);
+    });
+    rights.forEach(function (v, r) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "mcard mr";
+      b.setAttribute("aria-label", isImgValue(v) ? "ภาพที่ " + (r + 1) : String(v));
+      fillMatchFace(b, v);
+      b.addEventListener("click", function () { tapMatch("R", r); });
+      colR.appendChild(b);
+      M.R.push(b);
+    });
+    paintMatch();
+    setTimeout(drawMatchLines, 30);
+  }
+
+  function tapMatch(side, k) {
+    var M = mboard;
+    if (!M || M.locked || busy) return;
+    if (side === "L") {
+      var o = M.q.options[k];
+      if (READ && o.label && o.label.length <= 15 && !/[0-9]/.test(o.label)) speak(o.label, o.audio);
+      else play("tap");
+    } else {
+      play("tap");
+    }
+    var sel = M.sel;
+    if (sel && sel.side === side && sel.k === k) {          // แตะตัวเดิม = ยกเลิกการเลือก
+      M.sel = null;
+    } else if (sel && sel.side !== side) {                  // เลือกครบสองฝั่ง = จับคู่
+      var l = side === "L" ? k : sel.k;
+      var r = side === "R" ? k : sel.k;
+      unpairL(l); unpairR(r);
+      M.pairs[l] = r; M.owner[r] = l;
+      M.sel = null;
+    } else {
+      // แตะการ์ดที่จับคู่ไว้แล้ว = ถอดคู่เดิมออกแล้วเลือกการ์ดนี้ใหม่
+      if (side === "L") unpairL(k); else unpairR(k);
+      M.sel = { side: side, k: k };
+    }
+    syncPicked();
+    paintMatch();
+    drawMatchLines();
+  }
+  function unpairL(l) {
+    var M = mboard;
+    if (M.pairs[l] !== undefined) { delete M.owner[M.pairs[l]]; delete M.pairs[l]; }
+  }
+  function unpairR(r) {
+    var M = mboard;
+    if (M.owner[r] !== undefined) { delete M.pairs[M.owner[r]]; delete M.owner[r]; }
+  }
+  function syncPicked() {
+    var M = mboard;
+    picked = {};
+    M.q.options.forEach(function (o, l) {
+      if (M.pairs[l] !== undefined) picked[o.id] = M.rights[M.pairs[l]];
+    });
+    el("submit").disabled = !M.q.options.every(function (o, l) { return M.pairs[l] !== undefined; });
+  }
+  function paintMatch() {
+    var M = mboard;
+    M.L.forEach(function (b, l) {
+      b.classList.toggle("on", !!M.sel && M.sel.side === "L" && M.sel.k === l);
+      b.classList.toggle("paired", M.pairs[l] !== undefined);
+    });
+    M.R.forEach(function (b, r) {
+      var l = M.owner[r];
+      b.classList.toggle("on", !!M.sel && M.sel.side === "R" && M.sel.k === r);
+      b.classList.toggle("paired", l !== undefined);
+      if (l !== undefined) b.style.setProperty("--mc", MCOLORS[l % MCOLORS.length]);
+      else b.style.removeProperty("--mc");
+    });
+  }
+
+  // วาดเส้นจากขอบขวาของการ์ดซ้าย ไปขอบซ้ายของการ์ดขวา
+  function drawMatchLines() {
+    var M = mboard;
+    if (!M || !M.board.isConnected) return;
+    var box = M.board.getBoundingClientRect();
+    var svg = M.svg;
+    svg.setAttribute("width", box.width);
+    svg.setAttribute("height", box.height);
+    svg.setAttribute("viewBox", "0 0 " + box.width + " " + box.height);
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    function line(l, r, color, cls) {
+      var a = M.L[l].getBoundingClientRect(), b = M.R[r].getBoundingClientRect();
+      var x1 = a.right - box.left, y1 = a.top + a.height / 2 - box.top;
+      var x2 = b.left - box.left, y2 = b.top + b.height / 2 - box.top;
+      var ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      ln.setAttribute("x1", x1); ln.setAttribute("y1", y1);
+      ln.setAttribute("x2", x2); ln.setAttribute("y2", y2);
+      ln.setAttribute("stroke", color);
+      ln.setAttribute("class", "mline " + (cls || ""));
+      svg.appendChild(ln);
+      [[x1, y1], [x2, y2]].forEach(function (p) {
+        var c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        c.setAttribute("cx", p[0]); c.setAttribute("cy", p[1]); c.setAttribute("r", 6);
+        c.setAttribute("fill", color);
+        c.setAttribute("class", "mend " + (cls || ""));
+        svg.appendChild(c);
+      });
+    }
+    Object.keys(M.pairs).forEach(function (l) {
+      l = +l;
+      var cls = M.result ? (M.result.ok[l] ? "good" : "bad") : "";
+      line(l, M.pairs[l], cls === "bad" ? "#e5484d" : (cls === "good" ? "#12a150" : MCOLORS[l % MCOLORS.length]), cls);
+    });
+    if (M.result && M.result.fix) {
+      Object.keys(M.result.fix).forEach(function (l) { line(+l, M.result.fix[l], "#12a150", "fix"); });
+    }
+  }
+  window.addEventListener("resize", drawMatchLines);
+
+  // หลังส่งคำตอบ — ติด ✓/✗ ทีละคู่ และถ้าครูเปิดให้เฉลย ลากเส้นประสีเขียวไปคู่ที่ถูก
+  function markMatch(res) {
+    var M = mboard;
+    if (!M || M.q !== QS[i]) return false;
+    M.locked = true;
+    M.sel = null;
+    var ok = {}, fix = {};
+    M.q.options.forEach(function (o, l) {
+      var good = res.pair_ok ? !!res.pair_ok[o.id] : !!res.correct;
+      ok[l] = good;
+      var m = document.createElement("i");
+      m.className = "mark " + (good ? "ok" : "no");
+      m.setAttribute("aria-hidden", "true");
+      m.textContent = good ? "✓" : "✗";
+      M.L[l].appendChild(m);
+      M.L[l].classList.add(good ? "is-right" : "is-wrong");
+      if (!good && res.pairs && res.pairs[o.id] !== undefined) {
+        var r = M.rights.indexOf(res.pairs[o.id]);
+        if (r >= 0) fix[l] = r;
+      }
+    });
+    M.result = { ok: ok, fix: fix };
+    M.L.concat(M.R).forEach(function (b) { b.disabled = true; });
+    paintMatch();
+    drawMatchLines();
+    return true;
+  }
+
   // ── ส่งคำตอบไปตรวจที่เซิร์ฟเวอร์ ──
   var lastSpeed = 0;        // ดาวความเร็วของข้อที่เพิ่งตอบ
 
@@ -1275,6 +1472,7 @@
     // โจทย์ต่อรูปแบบ/เรียงลำดับ — ถูกได้เสียงปรบมือ + ✓ สีเขียว · ผิดได้เสียงเตือน + ✗ สีแดงที่ตัวที่เลือก
     var marked = (QS[i].kind === "pattern" || QS[i].kind === "logic") && markPicked(res.correct);
     if (QS[i].kind === "tapscene") marked = markTap(res.correct, res.answer || "");
+    if (QS[i].kind === "match") marked = markMatch(res);
     play(res.correct ? (marked ? "clap" : "correct") : (marked ? "buzz" : "wrong"));
     buddy(res.correct ? "happy" : "cheerup",
           pick(res.correct ? CHEER_OK : CHEER_NO));
@@ -1330,8 +1528,10 @@
     el("face").textContent = res.correct ? "🎉" : "💪";
     el("verdict").textContent = res.correct ? "เก่งมาก! ตอบถูกค่ะ" : "ยังไม่ถูกนะ ไม่เป็นไรค่ะ";
     el("verdict").className = res.correct ? "good" : "bad";
+    var matchFix = q.kind === "match" && !res.correct && res.pairs;
     el("reveal").textContent = speedLine ||
-      (res.answer ? "คำตอบที่ถูกคือ " + res.answer : "");
+      (res.answer ? "คำตอบที่ถูกคือ " + res.answer
+                  : (matchFix ? "เส้นประสีเขียวคือคู่ที่ถูกนะคะ" : ""));
     el("explain").textContent = res.explanation || "";
     el("next").textContent = (i + 1 >= QS.length) ? "ดูคะแนนของหนู →" : "ข้อต่อไป →";
     // เว้นจังหวะให้เด็กเห็น ✓ / ✗ ที่ปุ่มก่อน แล้วค่อยเลื่อนป๊อปอัพขึ้นมา
@@ -1479,9 +1679,36 @@
       font:inherit;font-size:1.25rem;background:#f8fcff;text-align:center}
 .fill:focus{outline:none;border-color:#26a5e0;background:#fff}
 
-.matchrow{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;align-items:center;margin-bottom:.6rem}
-.mleft{background:#f2faff;border:2px solid #dbeefc;border-radius:14px;padding:.8rem;font-size:1.1rem;text-align:center}
-.mright{padding:.8rem;border:2.5px solid #dbeefc;border-radius:14px;font:inherit;font-size:1rem;background:#fff}
+/* ══════ ข้อจับคู่ — การ์ดสองฝั่ง เส้นสีวาดด้วย SVG ทับด้านหลัง ══════ */
+.mhow{text-align:center;color:#3e6b85;font-size:.92rem;margin:0 0 .6rem}
+.mboard{position:relative;display:grid;grid-template-columns:1fr 1fr;column-gap:22%;
+        padding:.2rem 0 .4rem}
+.mlines{position:absolute;inset:0;pointer-events:none;overflow:visible;z-index:0}
+.mline{stroke-width:5;stroke-linecap:round}
+.mline.fix{stroke-dasharray:9 8;stroke-width:4}
+.mline.bad{opacity:.55}
+.mend.fix{opacity:.9}
+.mcol{display:flex;flex-direction:column;gap:.7rem;justify-content:space-around;
+      position:relative;z-index:1}
+.mcard{--mc:#9cc4da;position:relative;display:flex;align-items:center;justify-content:center;
+       min-height:92px;padding:.5rem;border:3px solid #dbeefc;border-radius:18px;
+       background:#fff;font:inherit;color:#0e3b57;cursor:pointer;
+       -webkit-tap-highlight-color:transparent;transition:transform .12s,border-color .12s,box-shadow .12s}
+.mcard:active{transform:scale(.97)}
+.mcard.ml{background:#f6fbff}
+.mcard .mtxt{font-size:1.45rem;font-weight:700;line-height:1.3;text-align:center;word-break:break-word}
+.mboard.textonly .mcard .mtxt{font-size:1.1rem;font-weight:600}
+.mboard.textonly .mcard{min-height:68px}
+.mcard .memo{font-size:3.1rem;line-height:1}
+.mcard.mpic{padding:.35rem}
+.mcard.mpic img{width:100%;max-width:120px;aspect-ratio:1/1;object-fit:contain;display:block;
+                pointer-events:none}
+.mcard.ml.paired,.mcard.mr.paired{border-color:var(--mc);box-shadow:0 0 0 2px var(--mc) inset}
+.mcard.ml{border-left:8px solid var(--mc)}
+.mcard.on{border-color:#0c6b9e;box-shadow:0 0 0 4px rgba(38,165,224,.35);transform:scale(1.03)}
+.mcard:disabled{cursor:default}
+.mcard.is-right{border-color:#12a150;box-shadow:0 0 0 2px #12a150 inset}
+.mcard.is-wrong{border-color:#e5484d;box-shadow:0 0 0 2px #e5484d inset}
 
 .btn.big{width:100%;padding:1.05rem;font-size:1.15rem;border-radius:999px;margin-top:.5rem}
 .btn.big:disabled{opacity:.45;cursor:not-allowed;transform:none}
@@ -1515,7 +1742,11 @@
 
 @media(max-width:480px){
   .q-prompt{font-size:1.2rem}
-  .matchrow{grid-template-columns:1fr}
+  .mboard{column-gap:16%}
+  .mcard{min-height:76px;border-radius:15px}
+  .mcard .mtxt{font-size:1.2rem}
+  .mcard .memo{font-size:2.5rem}
+  .mcard.mpic img{max-width:84px}
 }
 
 /* ══════ เจ้านกฮูกน้อย — เพื่อนประจำแบบฝึกหัด ══════ */
@@ -1604,11 +1835,11 @@
 /* ── ✓ / ✗ ที่ปุ่มคำตอบ ── */
 .opt{position:relative}
 .opt:disabled{cursor:default;opacity:1;color:inherit}
-.opt .mark{position:absolute;top:-12px;right:-10px;width:42px;height:42px;border-radius:50%;
+.opt .mark,.mcard .mark{position:absolute;top:-12px;right:-10px;width:42px;height:42px;border-radius:50%;
   display:grid;place-items:center;font-style:normal;font-weight:900;font-size:1.6rem;line-height:1;
   color:#fff;box-shadow:0 4px 10px rgba(0,0,0,.18);z-index:2;animation:stamp .4s cubic-bezier(.3,1.7,.5,1)}
-.opt .mark.ok{background:#22b35e}
-.opt .mark.no{background:#e53935}
+.opt .mark.ok,.mcard .mark.ok{background:#22b35e}
+.opt .mark.no,.mcard .mark.no{background:#e53935}
 .opt.is-right{border-color:#22b35e !important;background:#eafaf0 !important;box-shadow:0 0 0 4px rgba(34,179,94,.18) !important}
 .opt.is-wrong{border-color:#e53935 !important;background:#fdecec !important;box-shadow:0 0 0 4px rgba(229,57,53,.15) !important;
   animation:nope .4s ease}
