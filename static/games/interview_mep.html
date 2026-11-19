@@ -29,7 +29,7 @@ button:focus-visible{outline:3px solid var(--sky);outline-offset:3px}
 .brand{display:flex;flex-direction:column;line-height:1.2;min-width:0}
 .brand b{font-family:var(--th);font-size:1.15rem;color:var(--board)}
 .brand small{color:var(--soft);font-size:.85rem}
-.tools{margin-left:auto;display:flex;gap:8px}
+.tools{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 .chip{border:2px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font-size:.88rem}
 .chip[aria-pressed="true"]{border-color:var(--sky);background:#e9f4fd}
 .stars{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
@@ -115,13 +115,13 @@ button:focus-visible{outline:3px solid var(--sky);outline-offset:3px}
 .panel p{margin:0;line-height:1.6}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-weight:700}
-.field input{font-family:var(--en);font-size:1.3rem;padding:10px 14px;border:3px solid var(--line);border-radius:14px;max-width:320px}
+.field input{font-family:var(--en);font-size:1.3rem;padding:10px 14px;border:3px solid var(--line);border-radius:14px;width:100%;max-width:320px}
 .ages{display:flex;gap:8px;flex-wrap:wrap}
 .ages button{border:3px solid var(--line);background:#fff;border-radius:14px;padding:8px 16px;font-family:var(--en);font-size:1.2rem;font-weight:700}
 .ages button[aria-pressed="true"]{border-color:var(--accent);background:#fff1ea}
 .note{font-size:.9rem;color:var(--soft);background:#fffaf2;border-radius:14px;padding:10px 12px;line-height:1.55}
 .intro{display:grid;grid-template-columns:minmax(0,1fr) 200px;gap:14px;align-items:center}
-@media (max-width:640px){.intro{grid-template-columns:1fr}.intro .tmini{display:none}}
+@media (max-width:640px){.intro{grid-template-columns:minmax(0,1fr)}.intro .tmini{display:none}}
 .rub{width:100%;border-collapse:collapse;font-size:.95rem}
 .rub th,.rub td{border-bottom:2px solid #f3e7d4;padding:8px 6px;text-align:left;vertical-align:top}
 .rub th{color:var(--soft);font-weight:600}
